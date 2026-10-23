@@ -7,6 +7,8 @@ import { cleanupStrapi, setupStrapi } from './harness'
 
 // A fixture type made with `withSiteScope` and `withEditorial` (test/strapi/app/src/api/article/).
 const ARTICLE_UID = 'api::article.article' as UID.ContentType
+// The same in several locales (test/strapi/app/src/api/essay/).
+const ESSAY_UID = 'api::essay.essay' as UID.ContentType
 const PASSWORD = 'Password1234'
 
 type Role = 'strapi-super-admin' | 'strapi-editor' | 'strapi-author'
@@ -304,6 +306,37 @@ describe('editorial transitions', () => {
       const created = await articles().create({ data: { title: 'y', site } } as never)
       expect(await stateOf(created.documentId)).toEqual({ state: 'draft', published: false })
     })
+  })
+
+  it('keeps a state per locale, as Strapi keeps a published version per locale', async () => {
+    const essays = strapi.documents(ESSAY_UID)
+    await strapi.plugin('i18n').service('locales').create({ code: 'es', name: 'Spanish (es)' })
+    const { documentId } = await essays.create({
+      locale: 'en',
+      data: { title: 'Essay', site },
+    } as never)
+    for (const to of ['in_review', 'published']) {
+      const response = await adminRequest('strapi-super-admin', '/micelio/transitions', {
+        uid: ESSAY_UID,
+        documentId,
+        locale: 'en',
+        to,
+      })
+      expect(response.status).toBe(200)
+    }
+    // The other locale is created after the first is published: it starts as a draft of its own.
+    await essays.update({ documentId, locale: 'es', data: { title: 'Ensayo' } } as never)
+    const stateIn = async (locale: string) => {
+      const draft = (await essays.findOne({
+        documentId,
+        locale,
+        populate: ['editorial'],
+      } as never)) as unknown as { editorial?: { state?: string } | null }
+      const published = await essays.findOne({ documentId, locale, status: 'published' } as never)
+      return { state: draft.editorial?.state ?? 'draft', published: published !== null }
+    }
+    expect(await stateIn('en')).toEqual({ state: 'published', published: true })
+    expect(await stateIn('es')).toEqual({ state: 'draft', published: false })
   })
 
   it('keeps the admin users out of the content API', async () => {

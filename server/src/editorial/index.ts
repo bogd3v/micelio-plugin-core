@@ -8,8 +8,9 @@ import type { ContentTypeSchema } from '../site-scope'
  * It turns on Strapi's draft and publish, which stores the published snapshot, and adds the
  * `editorial` component (ADR-0017, section 5). From then on the entry is published and
  * unpublished only through the `transitions` service: publishing it any other way, the Content
- * Manager included, is refused. Apply `withSiteScope` too: the policy of a transition is the
- * entry's site's.
+ * Manager included, is refused. In a localised type each locale has its own state, as it has its
+ * own published version. Apply `withSiteScope` too: the policy of a transition is the entry's
+ * site's.
  *
  * @example
  * ```ts
@@ -32,6 +33,8 @@ export function withEditorial<T extends ContentTypeSchema>(schema: T): T {
         repeatable: false,
         component: EDITORIAL_COMPONENT_UID,
         required: true,
+        // Publishing is per locale, so is the state: unset, i18n would share one across locales.
+        pluginOptions: { i18n: { localized: true } },
       },
     },
   }

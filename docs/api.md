@@ -51,7 +51,7 @@ An admin API route, for the admin panel and admin users; it is not part of the c
 | ------ | ---------------------- | --------------------------------------------------------- |
 | `POST` | `/micelio/transitions` | `{ "data": { uid, documentId, locale, from, to, site } }` |
 
-The body names the entry and where it goes: `{ "uid": "api::article.article", "documentId": "…", "to": "in_review" }`, with an optional `locale` (publishing is per locale) and, to schedule, `publishAt` as an ISO 8601 date in the future.
+The body names the entry and where it goes: `{ "uid": "api::article.article", "documentId": "…", "to": "in_review" }`, with an optional `locale` (publishing is per locale, and so is the editorial state: each locale of an entry moves on its own) and, to schedule, `publishAt` as an ISO 8601 date in the future.
 
 Entries of a type made with `withEditorial` move through these transitions (ADR-0017, section 5), and no other route publishes or unpublishes them, the Content Manager included:
 
