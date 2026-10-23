@@ -1,10 +1,12 @@
 {
+  // The tests and the configuration files. The plugin's own code is checked by
+  // server/tsconfig.json and admin/tsconfig.json, which `strapi-plugin build` uses.
   "extends": "@micelio/tsconfig",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "composite": true,
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["test", "vitest.config.mts"]
 }

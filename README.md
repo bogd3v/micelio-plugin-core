@@ -1,6 +1,14 @@
 # Micelio Plugin Core
 
-Micelio's core as a Strapi 5 plugin: sites, blocks, the editorial workflow, hooks and the host check.
+`@micelio/strapi-plugin-core` is Micelio's core as a Strapi 5 plugin. It will hold what a Micelio site needs from its CMS: several sites per CMS, the block catalogue, the editorial workflow, the hooks other Micelio plugins build on, and a host check that refuses to start in production when the host is missing what Micelio needs ([ADR-0017](https://github.com/bogd3v/micelio/blob/main/docs/adr/0017-distribution-plugins-multisite-editorial.md)).
+
+It is at `0.1.0` and empty on purpose: the plugin registers and loads, and the capabilities arrive with the issues of the first milestone. Until then, install nothing from it on a site.
+
+## Plugin or distribution
+
+[`micelio-cms`](https://github.com/bogd3v/micelio-cms) is the **reference distribution**: a Strapi project with the plugins installed and the configuration a plugin cannot set for its host (security middlewares, CSP, uploads provider, database, image and Compose files). It is what hosting runs and what "Micelio 0.6" means. Use it to run a Micelio site. The plugin is for a developer who already runs Strapi and wants Micelio in it.
+
+`micelio` in `package.json` names the release line of Micelio this version supports (`0.6`).
 
 ## Getting started
 
@@ -9,7 +17,7 @@ npm ci
 npm run check
 ```
 
-Conventions, commands and structure are in [AGENTS.md](AGENTS.md); the rules every Micelio repository shares are in the [engineering standard](docs/engineering-standard.md). To contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
+`npm run check` builds the plugin, boots a clean Strapi 5 on SQLite with it installed, and checks that it registers. Conventions, commands and structure are in [AGENTS.md](AGENTS.md); the rules every Micelio repository shares are in the [engineering standard](docs/engineering-standard.md). To contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Releases
 
