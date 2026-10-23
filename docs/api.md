@@ -69,6 +69,8 @@ A site replaces the default for a transition with its `editorialPolicy`, a map f
 
 `in_review → published` and `scheduled → published` are the transitions that publish the entry in Strapi, and `published → draft` the one that unpublishes it. The scheduler, a cron job of the plugin, performs `scheduled → published` for every entry whose `publishAt` has passed: every minute by default (`scheduledPublishRule`, README; `false` turns it off), with an empty `publishedBy`. An entry it cannot publish is logged and stays scheduled for the next run. Leaving `in_review` records the user in `reviewedBy`; publishing records them in `publishedBy`.
 
+Every transition, the scheduler's included, runs the hooks of [docs/hooks.md](hooks.md): other plugins react to it there, and a `beforeTransition` handler may refuse it.
+
 ### Errors
 
 Every refusal answers `application/problem+json`:
@@ -81,3 +83,4 @@ Every refusal answers `application/problem+json`:
 | 403    | `editorialTransitionForbidden` | The site's policy or the user's permissions refuse it |
 | 404    | `editorialEntryNotFound`       | No such entry in that locale                          |
 | 409    | `editorialTransitionInvalid`   | The state machine has no such transition              |
+| 409    | `editorialTransitionRefused`   | A `beforeTransition` handler of a plugin refused it   |
