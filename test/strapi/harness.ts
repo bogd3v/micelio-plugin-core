@@ -20,18 +20,24 @@ const APP_DIR = fileURLToPath(new URL('app', import.meta.url))
 const DATABASE_FILENAME = path.join('.tmp', `test-${process.env.VITEST_POOL_ID ?? '1'}.db`)
 const DATABASE_PATH = path.join(APP_DIR, DATABASE_FILENAME)
 
-/** The variables Strapi requires, with values that are only good for tests. */
-function setupEnvironment(): void {
-  process.env.NODE_ENV = 'test'
-  process.env.PORT = '0'
-  process.env.STRAPI_TELEMETRY_DISABLED = 'true'
-  process.env.STRAPI_DISABLE_CRON = 'true'
-  process.env.DATABASE_FILENAME = DATABASE_FILENAME
-  process.env.APP_KEYS = 'testKeyOne,testKeyTwo'
-  process.env.API_TOKEN_SALT = 'test-api-token-salt'
-  process.env.ADMIN_JWT_SECRET = 'test-admin-jwt-secret'
-  process.env.TRANSFER_TOKEN_SALT = 'test-transfer-token-salt'
-  process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef'
+/**
+ * The variables Strapi requires, with values that are only good for tests.
+ *
+ * @param environment - `NODE_ENV`; `production` turns on the host check's refusals.
+ */
+export function testEnvironment(environment = 'test'): Record<string, string> {
+  return {
+    NODE_ENV: environment,
+    PORT: '0',
+    STRAPI_TELEMETRY_DISABLED: 'true',
+    STRAPI_DISABLE_CRON: 'true',
+    DATABASE_FILENAME,
+    APP_KEYS: 'testKeyOne,testKeyTwo',
+    API_TOKEN_SALT: 'test-api-token-salt',
+    ADMIN_JWT_SECRET: 'test-admin-jwt-secret',
+    TRANSFER_TOKEN_SALT: 'test-transfer-token-salt',
+    ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef',
+  }
 }
 
 function removeDatabase(): void {
@@ -43,17 +49,25 @@ let instance: Core.Strapi | undefined
 /**
  * Boots Strapi on an empty database, once per test file.
  *
+ * @param environment - `NODE_ENV` of the boot.
  * @returns The running instance; its HTTP server listens on a free port.
+ * @throws What the boot threw, once the instance is cleaned up.
  */
-export async function setupStrapi(): Promise<Core.Strapi> {
+export async function setupStrapi(environment?: string): Promise<Core.Strapi> {
   if (instance) return instance
-  setupEnvironment()
+  Object.assign(process.env, testEnvironment(environment))
   removeDatabase()
   // The local upload provider refuses to start without its folder, as in a new Strapi project.
   fs.mkdirSync(path.join(APP_DIR, 'public', 'uploads'), { recursive: true })
   instance = createStrapi({ appDir: APP_DIR, distDir: APP_DIR })
-  await instance.load()
-  await instance.start()
+  try {
+    await instance.load()
+    await instance.start()
+  } catch (error) {
+    // A refused boot leaves nothing running for the next test file to trip on.
+    await cleanupStrapi()
+    throw error
+  }
   instance.log.level = 'error'
   return instance
 }
