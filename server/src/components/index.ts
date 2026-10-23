@@ -1,20 +1,25 @@
 import type { Core } from '@strapi/strapi'
+import { EDITORIAL_COMPONENT_CATEGORY } from '../constants/editorial'
 import { SITE_COMPONENT_CATEGORY } from '../constants/site'
-import accentOverride from './accent-override.json'
-import author from './author.json'
-import fediverse from './fediverse.json'
-import modules from './modules.json'
-import socialLink from './social-link.json'
-import theme from './theme.json'
+import editorial from './editorial/editorial.json'
+import accentOverride from './site/accent-override.json'
+import author from './site/author.json'
+import fediverse from './site/fediverse.json'
+import modules from './site/modules.json'
+import socialLink from './site/social-link.json'
+import theme from './site/theme.json'
 
-// Keyed by component name; the UID is `micelio-site.<name>`.
-const SITE_COMPONENTS: Record<string, object> = {
-  'accent-override': accentOverride,
-  author,
-  fediverse,
-  modules,
-  'social-link': socialLink,
-  theme,
+// Keyed by category, then by component name: the UID is `<category>.<name>`.
+const COMPONENTS: Record<string, Record<string, object>> = {
+  [SITE_COMPONENT_CATEGORY]: {
+    'accent-override': accentOverride,
+    author,
+    fediverse,
+    modules,
+    'social-link': socialLink,
+    theme,
+  },
+  [EDITORIAL_COMPONENT_CATEGORY]: { editorial },
 }
 
 /**
@@ -27,19 +32,21 @@ const SITE_COMPONENTS: Record<string, object> = {
  */
 export function registerComponents(strapi: Core.Strapi): void {
   const components = Object.fromEntries(
-    Object.entries(SITE_COMPONENTS).map(([name, schema]) => {
-      const uid = `${SITE_COMPONENT_CATEGORY}.${name}`
-      const component = {
-        ...structuredClone(schema),
-        __schema__: structuredClone(schema),
-        uid,
-        category: SITE_COMPONENT_CATEGORY,
-        modelType: 'component',
-        modelName: name,
-        globalId: `Component${pascalCase(SITE_COMPONENT_CATEGORY)}${pascalCase(name)}`,
-      }
-      return [uid, component]
-    })
+    Object.entries(COMPONENTS).flatMap(([category, schemas]) =>
+      Object.entries(schemas).map(([name, schema]) => {
+        const uid = `${category}.${name}`
+        const component = {
+          ...structuredClone(schema),
+          __schema__: structuredClone(schema),
+          uid,
+          category,
+          modelType: 'component',
+          modelName: name,
+          globalId: `Component${pascalCase(category)}${pascalCase(name)}`,
+        }
+        return [uid, component]
+      })
+    )
   )
   strapi.get('components').add(components)
 }

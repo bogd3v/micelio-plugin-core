@@ -42,3 +42,42 @@ A client branches on `code`, never on `detail`. The same code answers when the r
 - `hosts` is a list of host names, stored in lower case: no scheme, port or path. Two sites cannot share a host name.
 - Exactly one site is the default. Making a site the default takes it from the previous one; the default site can be neither unset nor deleted, so make another site the default first.
 - A fresh instance starts with one neutral site, `default`.
+
+## Editorial transitions
+
+An admin API route, for the admin panel and admin users; it is not part of the content API.
+
+| Method | Path                   | Answers                                                   |
+| ------ | ---------------------- | --------------------------------------------------------- |
+| `POST` | `/micelio/transitions` | `{ "data": { uid, documentId, locale, from, to, site } }` |
+
+The body names the entry and where it goes: `{ "uid": "api::article.article", "documentId": "…", "to": "in_review" }`, with an optional `locale` (publishing is per locale) and, to schedule, `publishAt` as an ISO 8601 date in the future.
+
+Entries of a type made with `withEditorial` move through these transitions (ADR-0017, section 5), and no other route publishes or unpublishes them, the Content Manager included:
+
+| Transition              | Who may perform it by default               | Strapi permission it also needs |
+| ----------------------- | ------------------------------------------- | ------------------------------- |
+| `draft → in_review`     | Author, Editor, Super Admin                 | update                          |
+| `in_review → draft`     | Author, Editor, Super Admin                 | update                          |
+| `in_review → published` | Editor, Super Admin                         | publish                         |
+| `draft → scheduled`     | Editor, Super Admin                         | update                          |
+| `scheduled → draft`     | Editor, Super Admin                         | update                          |
+| `scheduled → published` | The plugin's scheduler only, at `publishAt` |                                 |
+| `published → draft`     | Editor, Super Admin                         | publish                         |
+
+A site replaces the default for a transition with its `editorialPolicy`, a map from `from->to` to role codes: `{ "draft->in_review": ["strapi-editor"] }`. The Strapi permission is checked as the Content Manager checks it, so an Author moves only their own entries.
+
+`in_review → published` is the one transition that publishes the entry in Strapi, and `published → draft` the one that unpublishes it. Leaving `in_review` records the user in `reviewedBy`; publishing records them in `publishedBy`.
+
+### Errors
+
+Every refusal answers `application/problem+json`:
+
+| Status | `code`                         | When                                                  |
+| ------ | ------------------------------ | ----------------------------------------------------- |
+| 400    | `editorialRequestInvalid`      | The body lacks `uid`, `documentId` or a valid `to`    |
+| 400    | `editorialTypeInvalid`         | The type was not made with `withEditorial`            |
+| 400    | `editorialPublishAtInvalid`    | `scheduled` without a `publishAt` in the future       |
+| 403    | `editorialTransitionForbidden` | The site's policy or the user's permissions refuse it |
+| 404    | `editorialEntryNotFound`       | No such entry in that locale                          |
+| 409    | `editorialTransitionInvalid`   | The state machine has no such transition              |

@@ -1,6 +1,7 @@
 import type { Core, Modules, UID } from '@strapi/strapi'
 import { errors } from '@strapi/utils'
 import { SITE_UID } from '../constants/site'
+import { parseEditorialPolicy } from '../editorial/machine'
 import { normalizeHosts } from '../site-scope/hosts'
 
 type Params = Record<string, unknown> & { data?: Record<string, unknown>; documentId?: string }
@@ -12,6 +13,7 @@ const SITE = SITE_UID as UID.ContentType
  *
  * @remarks
  * - `hosts` is a list of host names in lower case, and no two sites share one.
+ * - `editorialPolicy`, when set, maps user transitions to lists of role codes.
  * - Exactly one site is the default: making a site the default takes it from the previous one,
  *   and the default site can be neither unset nor deleted. Make another site the default first.
  */
@@ -34,6 +36,10 @@ export function siteRules(strapi: Core.Strapi): Modules.Documents.Middleware.Mid
       const shared = hosts.find((host) => taken.has(host))
       if (shared) throw new errors.ValidationError(`Another site already has the host "${shared}"`)
       data.hosts = hosts
+    }
+    if ('editorialPolicy' in data) {
+      const parsed = parseEditorialPolicy(data.editorialPolicy)
+      if ('error' in parsed) throw new errors.ValidationError(parsed.error)
     }
     if (
       context.action === 'update' &&
