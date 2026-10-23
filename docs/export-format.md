@@ -187,7 +187,8 @@ An importer resolves an item by `block` first and by `__component` only when `bl
 - `media/sha256/<hex>` is the file as the media library stores it. Strapi may rewrite an image when it is uploaded; the archive holds the stored bytes, not the ones first sent. The derived formats (thumbnails, breakpoints) are not written: the importing instance's upload provider makes its own.
 - `url`, `previewUrl`, `provider`, `provider_metadata`, `formats` and Strapi's `hash` are not written: they describe where one instance stores the file, not the file.
 - A file that no document of the site refers to is not in the archive.
-- An importer reuses a file whose SHA-256 the target library already holds, uploads the others through the target's upload provider and applies its rules (size limit, denied types such as `text/html`). A file the target refuses refuses the archive (`exportMediaRefused`).
+- An importer reuses a file of the target library with the same name, type and SHA-256. It stores any other file as it is, through the target's upload provider, without the optimisation the target applies to an uploaded image, so that its digest survives a second export; the target makes its thumbnail and formats as for an upload. It applies the target's rules: the size limit, and `security.deniedTypes` and `allowedTypes` on the type the archive declares, which is the type the file is served with. A file the target refuses refuses the archive (`exportMediaRefused`).
+- A multiple media attribute that names one digest twice holds it once after an import: the archive holds one file per digest, and Strapi links a file once per attribute.
 
 ## Localisation
 
@@ -201,7 +202,7 @@ A type made with `withEditorial` writes its `editorial` component (`micelio-edit
 
 - `state` and `publishAt` are written as they are. `reviewedBy` and `publishedBy` relate to admin users, who are not exported, and are written as `null`.
 - The state and the versions agree: an entry in `published` has a published version, and an entry in any other state has none. An archive that breaks this refuses the import (`exportEditorialInconsistent`).
-- The import writes the versions as they are, published ones included, as the plugin itself and not as a transition: it does not run the transition policy and it does not fire `afterTransition` or `afterPublish`. It is a restore, not an editorial act.
+- The import writes the versions as they are, published ones included, as the plugin itself and not as a transition: it does not run the transition policy and it does not fire `afterTransition` or `afterPublish`. It is a restore, not an editorial act. Strapi's own document events (`entry.create`, `entry.publish`) still fire, so a plugin that reacts to them instead of to the core's hooks sees the import; `siteCreated` fires when the import creates the site.
 - A `scheduled` entry whose `publishAt` has passed is published by the scheduler at its next run on the target.
 - The site's `editorialPolicy` is imported as it is. Its role codes name Strapi admin roles, which are not exported; a code the target does not have is reported by the import and grants nothing.
 
@@ -290,11 +291,13 @@ A content type added by a Micelio plugin after `v0.4.0` gets its row here in the
 
 An import writes one archive into one target instance.
 
-- **Matching.** The site is matched by `documentId`. Every document is matched by its export name, the site and its `documentId`, and each version by locale and status.
+- **Matching.** The site is matched by `documentId`. Every document is matched by its export name, the site and its `documentId`, and each version by locale and status. `documentId`s are kept: Strapi's document service takes one in the `data` of a create. A document whose `documentId` the target holds under another site refuses the import (`exportDocumentInvalid`).
+- **Into an existing site.** An import may name a site of the target (`into`) instead: the archive's site is written into it, and that site keeps its `documentId`, its `slug` and whether it is the default. A fresh instance has a `default` site of its own, so moving a one-site instance is an import into `default`.
 - **Modes.** In `merge` (the default) a matched document is replaced by the archive's versions, a missing one is created, and documents of the site that the archive does not hold are left as they are. In `replace` the site's documents of each type the archive holds that are not in the archive are deleted. Types the archive does not hold are never touched.
 - **Idempotent.** Importing the same archive a second time, in either mode, writes nothing: an importer compares each version with what the target holds and skips the ones that are equal.
 - **All or nothing.** The content is written in one database transaction. Media is uploaded before it; an importer removes the files it uploaded when the transaction fails.
-- **Order.** `site`, media, then types with no relations to other types of the archive, then the rest; relations to documents created later in the same import are linked at the end of the transaction.
+- **Order.** Media first, then `site`, then the other types in byte order of export name. A reference to a document the import writes later is left out of the first write, and that document is written again once every document exists, in the same transaction.
+- **Timestamps.** Each version's `createdAt`, `updatedAt` and `publishedAt` are written as the archive has them.
 - **Older formats.** An importer of format `1.y` imports every `1.x` archive, with the content migrations its release ships for the blocks and types that changed since.
 - **A report.** The import answers with what it created, replaced, deleted and skipped per export name, the role codes of `editorialPolicy` the target does not have, and every export name it did not know.
 
@@ -302,7 +305,7 @@ Errors are problem details (section 4 of the standard) with these codes. The fir
 
 | `code`                        | When                                                                                             |
 | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| `exportSiteNotFound`          | No site has the slug the export names                                                            |
+| `exportSiteNotFound`          | No site has the slug the export names, or the one an import names with `into`                    |
 | `exportMediaUnreadable`       | A media file of the site cannot be read, or changes while it is written                          |
 | `exportArchiveCorrupt`        | A file is missing, extra, of the wrong size or hash, or breaks the layout rules                  |
 | `exportFormatUnsupported`     | `format` is not `micelio-site-export`, or `formatVersion` has a major the importer does not know |
@@ -334,7 +337,7 @@ An exporter conforms to format `1.0` when:
 - [ ] Every content type of the site is written under its export name, as [Content types](#content-types) says, with `documentId`s and no numeric ids.
 - [ ] Relations are written on their owning side, as references by export name and `documentId`.
 - [ ] Dynamic zone items carry `block` when the component is a block of the catalogue.
-- [ ] Media is written once per SHA-256, as the original file, with its index entry.
+- [ ] Media is written once per SHA-256, as the library stores it, with its index entry.
 - [ ] Nothing of [What is never exported](#what-is-never-exported) is in the archive, and personal data only with `personal: true`.
 - [ ] Two exports of an unchanged site differ only in `exportedAt`.
 
