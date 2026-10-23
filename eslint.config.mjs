@@ -9,5 +9,10 @@ export default [
     languageOptions: { sourceType: 'commonjs' },
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
+  {
+    // The admin customisation of the test app is an ES module: the admin's bundler imports it.
+    files: ['test/strapi/app/src/admin/**/*.js'],
+    languageOptions: { sourceType: 'module' },
+  },
   { ignores: ['dist/**', 'test/strapi/app/build/**'] },
 ]
