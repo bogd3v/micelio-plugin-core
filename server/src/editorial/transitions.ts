@@ -1,6 +1,8 @@
 import type { Core, UID } from '@strapi/strapi'
 import { EDITORIAL_ATTRIBUTE, type EditorialState } from '../constants/editorial'
+import { hooksOf } from '../hooks'
 import { SITE_ATTRIBUTE } from '../site-scope'
+import type { EntryPayload, TransitionPayload } from '../types/hooks'
 import { isEditorial } from '.'
 import { runAsTransition } from './context'
 import { type Actor, isTransition, mayPerform, parseEditorialPolicy } from './machine'
@@ -42,6 +44,7 @@ export type TransitionErrorCode =
   | 'editorialTransitionInvalid'
   | 'editorialTransitionForbidden'
   | 'editorialPublishAtInvalid'
+  | 'editorialTransitionRefused'
 
 /** A refused transition, with the HTTP status and code it answers. */
 export class TransitionError extends Error {
@@ -76,6 +79,11 @@ interface EditorialEntry {
  * the entry in Strapi, and moving from `published` to `draft` the one that unpublishes it: the
  * editorial state never contradicts `publishedAt`. `reviewedBy` records the user who moved the
  * entry out of `in_review`, and `publishedBy` the one who published it (empty for the scheduler).
+ *
+ * It runs the hooks of the transition (`docs/hooks.md`): `beforeTransition` once every check has
+ * passed and before anything is written, then `afterTransition` and, when the entry was published
+ * or unpublished, `afterPublish` or `afterUnpublish`. Every caller, the scheduler included, fires
+ * them by calling this function.
  *
  * @throws {@link TransitionError} when the transition is refused, with its status and code.
  */
@@ -147,12 +155,40 @@ export async function performTransition(
       transition.to === 'published' ? userId : (entry.editorial?.publishedBy?.id ?? null),
   }
   const target = { documentId: entry.documentId, locale: entry.locale ?? undefined }
+  const payload: TransitionPayload = {
+    site: entry.site?.documentId ?? null,
+    type: request.uid,
+    documentId: entry.documentId,
+    locale: entry.locale ?? null,
+    from: transition.from,
+    to: transition.to,
+    publishAt,
+    actor:
+      request.actor.kind === 'user' ? { kind: 'user', id: request.actor.id } : { kind: 'system' },
+  }
+  const hooks = hooksOf(strapi)
+  try {
+    await hooks.runBefore('beforeTransition', payload)
+  } catch (error) {
+    throw new TransitionError(409, 'editorialTransitionRefused', refusalMessage(error))
+  }
 
   await runAsTransition(async () => {
     if (transition.from === 'published') await documents.unpublish(target as never)
     await documents.update({ ...target, data: { [EDITORIAL_ATTRIBUTE]: editorial } } as never)
     if (transition.to === 'published') await documents.publish(target as never)
   })
+
+  await hooks.runAfter('afterTransition', payload)
+  const live: EntryPayload = {
+    site: payload.site,
+    type: payload.type,
+    documentId: payload.documentId,
+    locale: payload.locale,
+    actor: payload.actor,
+  }
+  if (transition.to === 'published') await hooks.runAfter('afterPublish', live)
+  else if (transition.from === 'published') await hooks.runAfter('afterUnpublish', live)
 
   return {
     uid: request.uid,
@@ -162,4 +198,9 @@ export async function performTransition(
     to: transition.to,
     site: entry.site?.documentId ?? null,
   }
+}
+
+function refusalMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  return message === '' ? 'A beforeTransition handler refused the transition' : message
 }

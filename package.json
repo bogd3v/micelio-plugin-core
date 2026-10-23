@@ -59,11 +59,13 @@
     "lint:fix": "eslint . --fix",
     "lint:licenses": "node scripts/check-licenses.mjs",
     "lint:standard": "micelio-lint-standard",
+    "lint:reference": "node scripts/hooks-reference.mjs --check",
+    "reference": "node scripts/hooks-reference.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "verify": "strapi-plugin verify",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run lint:licenses && npm run lint:standard"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run lint:licenses && npm run lint:standard && npm run lint:reference"
   },
   "peerDependencies": {
     "@strapi/design-system": "^2.2.4",

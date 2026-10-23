@@ -17,6 +17,17 @@ export { withEditorial } from './editorial'
 export { EDITORIAL_STATES, type EditorialState } from './constants/editorial'
 export { formatHostCheckReport } from './host-check/report'
 export type { HostCheckReport, HostCheckResult, HostCheckStatus } from './types/host-check'
+export type {
+  BlockCatalogueChangedPayload,
+  EntryPayload,
+  HookActor,
+  HookHandler,
+  HookName,
+  HookPayloads,
+  MicelioHooks,
+  SiteCreatedPayload,
+  TransitionPayload,
+} from './types/hooks'
 
 export default {
   register,

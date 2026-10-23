@@ -19,10 +19,11 @@ The plan is epic #1 and its milestone. Until its theme and fediverse milestones 
 
 ```bash
 npm ci
-npm run check            # typecheck, lint, format:check, test, lint:licenses and lint:standard
+npm run check            # typecheck, lint, format:check, test, lint:licenses, lint:standard and lint:reference
 npm run build            # strapi-plugin build: dist/server and dist/admin
 npm run dev              # strapi-plugin watch
 npm run verify           # strapi-plugin verify: the package.json and the build a host will load
+npm run reference        # regenerate docs/hooks.md from the TSDoc of server/src/types/hooks.ts
 ```
 
 `npm run test` builds the plugin first (`test/global-setup.ts`): the suites load `dist/`, as a host does.
@@ -35,13 +36,14 @@ npm run verify           # strapi-plugin verify: the package.json and the build 
   - `site-scope/` is what makes a type site-scoped: `withSiteScope` (the required `site` relation), the `site-scope` route middleware in `middlewares/` (resolves the site of a content API request, answers `unknownSite`), and the document service middleware that filters and guards by site. `sites/rules.ts` keeps `hosts` and the single default site consistent. `docs/api.md` describes the behaviour.
   - `editorial/` is the editorial workflow (ADR-0017, section 5): `withEditorial` (the component and draft and publish), the state machine and default policy (`machine.ts`), `performTransition` (behind the `transitions` service and `POST /micelio/transitions`), the scheduler (`scheduler.ts`, a cron job on `scheduledPublishRule`), and the guard that refuses every other route to `publishedAt`. Its component lives in `components/editorial/`.
   - `host-check/` is the host check (ADR-0017, section 7): the checks as pure functions of the facts (`checks.ts`), what it reads from the running host (`facts.ts`) and the report (`report.ts`). The `hostCheck` service runs it from `bootstrap`; `docs/operate/host-check.md` lists the checks.
+  - `hooks/` is the hooks registry behind `strapi.plugin('micelio').hooks` and the `hooks` service: registration, ordering and running a hook. The hooks and their payloads are declared in `types/hooks.ts`, a contract (section 6); `docs/hooks.md` is generated from its TSDoc. `performTransition` runs the transition hooks, so every path that publishes runs them; `sites/hooks.ts` runs `siteCreated`.
   - `utils/` holds pure helpers with no Strapi import (`problem.ts`, the problem details of section 4 of the standard).
-  - `constants/<domain>.ts` holds the constants shared by several files (`site.ts`: the UID, the component category). With `types/<domain>.ts` (`host-check.ts`: the report the status page renders) it is the shared folder of section 4 of the standard.
+  - `constants/<domain>.ts` holds the constants shared by several files (`site.ts`: the UID, the component category). With `types/<domain>.ts` (`host-check.ts`: the report the status page renders; `hooks.ts`: the hooks API and its payloads) it is the shared folder of section 4 of the standard.
 - `admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`) and its translations (`translations/en.json`, `es.json`).
 - `bin/micelio.js` — the package's `micelio` binary: `micelio doctor` loads the host project and prints the host check.
 - `strapi-server.js`, `strapi-admin.js` — the same entries as files, for tools that do not read the `exports` of `package.json`.
-- `test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it). `test/package.test.ts` packs the package and loads both entries from the tarball. `test/export-format.test.ts` fails when a content type of its list has no row in `docs/export-format.md`, the site export format (a contract of section 6). The app adds two fixture types made with the plugin's helpers: `app/src/api/note/` (`withSiteScope`) and `app/src/api/article/` (`withSiteScope` and `withEditorial`).
-- `scripts/` — `check-licenses.mjs` (`npm run lint:licenses`) and `release/version.mjs` (the release plan, read by the Release workflow).
+- `test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it). `test/package.test.ts` packs the package and loads both entries from the tarball. `test/export-format.test.ts` fails when a content type of its list has no row in `docs/export-format.md`, the site export format (a contract of section 6). The app adds two fixture types made with the plugin's helpers, `app/src/api/note/` (`withSiteScope`) and `app/src/api/article/` (`withSiteScope` and `withEditorial`), and a fixture plugin, `app/src/plugins/hook-recorder/`, that records every hook it receives.
+- `scripts/` — `check-licenses.mjs` (`npm run lint:licenses`), `hooks-reference.mjs` (`npm run reference` and `lint:reference`) and `release/version.mjs` (the release plan, read by the Release workflow).
 - `.github/workflows/` — `ci.yml`, `release.yml` and `pr-labels.yml`; CI calls the reusable workflows of `micelio-engineering`.
 
 | Item                               | Convention                     | Example                                 |
@@ -59,6 +61,7 @@ npm run verify           # strapi-plugin verify: the package.json and the build 
 - Content types are declared visible in the Content Manager and routes get an explicit prefix (ADR-0017, trade-offs); a test covers each.
 - Every content type is made with `withSiteScope`, and its content API routes carry the `plugin::micelio.site-scope` middleware (ADR-0017, section 4).
 - A publishable type is made with `withEditorial` and is published only through the `transitions` service. The states, the transitions and their default policy are a contract (section 6): adding one is a MINOR, renaming or removing one or changing a default is a MAJOR.
+- The hooks are a contract too: adding one is a MINOR, renaming or removing one or changing a payload is a MAJOR. A payload is plain data, never a Strapi entity. A change to `server/src/types/hooks.ts` regenerates `docs/hooks.md` (`npm run reference`) in the same pull request; `lint:reference` fails otherwise.
 - Every user-facing string of the admin lands in `en` and `es` in the same pull request.
 - The suites run on the clean Strapi of `test/strapi/app/`: Strapi's defaults and no other plugin. What the distribution adds (security middlewares, CSP, uploads provider) is never added there; the host check (#7) is what verifies it.
 - Before 1.0.0 a breaking change raises `y` and everything else raises `z` (section 7). The bump is made by a `chore(release)` pull request before the tag.

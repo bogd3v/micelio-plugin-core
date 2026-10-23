@@ -1,0 +1,330 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the hooks API > a fixture plugin > receives the documented payloads for every transition of the editorial workflow 1`] = `
+[
+  {
+    "hook": "beforeTransition",
+    "payload": {
+      "actor": {
+        "id": "<author>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "draft",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "in_review",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterTransition",
+    "payload": {
+      "actor": {
+        "id": "<author>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "draft",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "in_review",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "beforeTransition",
+    "payload": {
+      "actor": {
+        "id": "<author>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "in_review",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "draft",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterTransition",
+    "payload": {
+      "actor": {
+        "id": "<author>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "in_review",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "draft",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "beforeTransition",
+    "payload": {
+      "actor": {
+        "id": "<author>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "draft",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "in_review",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterTransition",
+    "payload": {
+      "actor": {
+        "id": "<author>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "draft",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "in_review",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "beforeTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "in_review",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "published",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "in_review",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "published",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterPublish",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "locale": null,
+      "site": "<site>",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "beforeTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "published",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "draft",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "published",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "draft",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterUnpublish",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "locale": null,
+      "site": "<site>",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "beforeTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "draft",
+      "locale": null,
+      "publishAt": "<publishAt>",
+      "site": "<site>",
+      "to": "scheduled",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "draft",
+      "locale": null,
+      "publishAt": "<publishAt>",
+      "site": "<site>",
+      "to": "scheduled",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "beforeTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "scheduled",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "draft",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "scheduled",
+      "locale": null,
+      "publishAt": null,
+      "site": "<site>",
+      "to": "draft",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "beforeTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "draft",
+      "locale": null,
+      "publishAt": "<publishAt>",
+      "site": "<site>",
+      "to": "scheduled",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterTransition",
+    "payload": {
+      "actor": {
+        "id": "<editor>",
+        "kind": "user",
+      },
+      "documentId": "<documentId>",
+      "from": "draft",
+      "locale": null,
+      "publishAt": "<publishAt>",
+      "site": "<site>",
+      "to": "scheduled",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "beforeTransition",
+    "payload": {
+      "actor": {
+        "kind": "system",
+      },
+      "documentId": "<documentId>",
+      "from": "scheduled",
+      "locale": null,
+      "publishAt": "<publishAt>",
+      "site": "<site>",
+      "to": "published",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterTransition",
+    "payload": {
+      "actor": {
+        "kind": "system",
+      },
+      "documentId": "<documentId>",
+      "from": "scheduled",
+      "locale": null,
+      "publishAt": "<publishAt>",
+      "site": "<site>",
+      "to": "published",
+      "type": "api::article.article",
+    },
+  },
+  {
+    "hook": "afterPublish",
+    "payload": {
+      "actor": {
+        "kind": "system",
+      },
+      "documentId": "<documentId>",
+      "locale": null,
+      "site": "<site>",
+      "type": "api::article.article",
+    },
+  },
+]
+`;
