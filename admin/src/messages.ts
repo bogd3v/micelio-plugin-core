@@ -25,6 +25,7 @@ export function useMessages(): Messages {
         { id: getTranslation(id), defaultMessage: (en as Record<string, string>)[id] ?? id },
         values
       ),
-    date: (iso) => formatDate(iso, { dateStyle: 'medium', timeStyle: 'short' }),
+    // Seconds included: a run again within the same minute must read as new.
+    date: (iso) => formatDate(iso, { dateStyle: 'medium', timeStyle: 'medium' }),
   }
 }

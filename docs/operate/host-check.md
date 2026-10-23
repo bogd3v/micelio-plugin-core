@@ -6,6 +6,7 @@ A plugin cannot set its host's middlewares, Content Security Policy, uploads pro
 
 - **At boot**, in the plugin's `bootstrap`, after the default site exists. In production (`NODE_ENV=production`) a failed required check stops the boot, and the error names each failed check and its fix. In any other environment every failure is logged as a warning and Strapi starts. An optional check never stops the boot.
 - **On demand**, with `npx micelio doctor` in the Strapi project's folder. It loads the project as `strapi console` does (the boot steps run against the configured database, the server does not start), prints every check with `pass`, `fail` or `skip`, and exits with `1` when a required check fails, `0` otherwise. It reads the same environment as the boot, so run it with the production variables to check production.
+- **From the admin**, with **Run again** on the status page ([status-page.md](status-page.md)). It runs the checks against the running Strapi and shows the report; it logs nothing and stops nothing.
 
 Strapi's own CLI cannot be extended by a plugin, so the command is the package's `micelio` binary, not `strapi micelio:doctor`.
 
@@ -35,7 +36,7 @@ Host check (production): a required check fails.
 
 ## What the frontend check asks
 
-For each distinct origin of the sites' `url`, the check sends `GET <origin>/_health` with `Accept: application/json` and waits at most two seconds. An answer outside `2xx`, a timeout or a refused connection counts as not reachable, and the check skips that frontend. A `2xx` answer whose JSON body has a `version` string (`{ "version": "0.6.3" }`) is compared with the plugin's release line; any other `2xx` answer is reachable with no version to compare. At boot the frontend is usually not up yet, so the result that matters is the one of `micelio doctor`; the status page shows the boot's run of the check next to a fresh answer of each frontend ([status-page.md](status-page.md)).
+For each distinct origin of the sites' `url`, the check sends `GET <origin>/_health` with `Accept: application/json` and waits at most two seconds. An answer outside `2xx`, a timeout or a refused connection counts as not reachable, and the check skips that frontend. A `2xx` answer whose JSON body has a `version` string (`{ "version": "0.6.3" }`) is compared with the plugin's release line; any other `2xx` answer is reachable with no version to compare. At boot the frontend is usually not up yet, so the result that matters is a later run: `micelio doctor`, or **Run again** on the status page.
 
 ## For other plugins
 

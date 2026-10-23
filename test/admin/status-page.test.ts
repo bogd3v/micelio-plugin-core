@@ -27,10 +27,11 @@ describe('the status page in the admin', () => {
     strapi = await setupStrapi()
     const { port } = strapi.server.httpServer.address() as AddressInfo
     base = `http://127.0.0.1:${port}`
-    frontend = await startFrontend('0.6.3')
+    // The blog's frontend is down when the check runs and up when the page loads, as at a boot.
+    const blogOrigin = await closedOrigin()
     const sites = strapi.documents(SITE_UID as UID.ContentType)
     for (const [slug, url] of [
-      ['blog', frontend.origin],
+      ['blog', blogOrigin],
       ['docs', await closedOrigin()],
     ]) {
       await sites.create({
@@ -47,6 +48,7 @@ describe('the status page in the admin', () => {
     }
     // Again, now that the sites have a frontend: the boot's run saw none.
     await strapi.plugin('micelio').service('hostCheck').run()
+    frontend = await startFrontend('0.6.3', Number(new URL(blogOrigin).port))
     const superAdmin = (await strapi.db.query('admin::role').findOne({
       where: { code: 'strapi-super-admin' },
     })) as { id: number }
@@ -99,6 +101,21 @@ describe('the status page in the admin', () => {
     expect(text).toContain('docs.example.com')
   })
 
+  it('runs the host check again and shows the new report without a reload', async () => {
+    const releaseLine = page.getByRole('row').filter({ hasText: 'Frontend release line' })
+    await expect(releaseLine.textContent()).resolves.toContain(
+      `${frontend.origin} is not reachable`
+    )
+    await page.getByRole('button', { name: 'Run again' }).click()
+    await releaseLine.getByText(`${frontend.origin} runs 0.6.3`).waitFor()
+    await page.getByRole('button', { name: 'Run again' }).waitFor()
+    // The verdict is announced, since the table changes where the focus is not.
+    await expect(page.getByRole('status').allTextContents()).resolves.toContainEqual(
+      expect.stringContaining('Every required check passes.')
+    )
+  })
+
+  // After the run: the button and the replaced report are checked too.
   it('has no WCAG 2.2 A or AA violation', async () => {
     const results = await new AxeBuilder({ page }).include('main').withTags(WCAG_TAGS).analyze()
     expect(
