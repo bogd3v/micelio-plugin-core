@@ -1,5 +1,5 @@
-// The server entry point Strapi loads through the `./strapi-server` export. Content types,
-// services and routes arrive with the issues of phase 0 (epic #1).
+// The server entry point Strapi loads through the `./strapi-server` export. Strapi reads the
+// default export; the named exports are for the content types of other Micelio plugins.
 import bootstrap from './bootstrap'
 import config from './config'
 import contentTypes from './content-types'
@@ -10,6 +10,9 @@ import policies from './policies'
 import register from './register'
 import routes from './routes'
 import services from './services'
+
+export { SITE_ATTRIBUTE, SITE_SCOPE_MIDDLEWARE, withSiteScope } from './site-scope'
+export { SITE_UID } from './constants/site'
 
 export default {
   register,

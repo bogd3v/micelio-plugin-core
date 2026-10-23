@@ -32,10 +32,12 @@ npm run verify           # strapi-plugin verify: the package.json and the build 
 - `server/src/` — the server entry (`index.ts`, exported as `./strapi-server`): lifecycle phases, config, content types, controllers, services, routes, policies and middlewares, one folder each.
   - `content-types/site/` is `plugin::micelio.site`, one row per site (ADR-0017, section 4). Its components live in `components/` and register in `register.ts` under the category `micelio-site`: Strapi loads components only from the host, and `micelio-cms` 0.6 already owns `site.*`.
   - `migrations/` holds the boot steps: idempotent, name-based, run from `bootstrap.ts` (`default-site.ts` creates the default site on an empty instance).
+  - `site-scope/` is what makes a type site-scoped: `withSiteScope` (the required `site` relation), the `site-scope` route middleware in `middlewares/` (resolves the site of a content API request, answers `unknownSite`), and the document service middleware that filters and guards by site. `sites/rules.ts` keeps `hosts` and the single default site consistent. `docs/api.md` describes the behaviour.
+  - `utils/` holds pure helpers with no Strapi import (`problem.ts`, the problem details of section 4 of the standard).
   - `constants/<domain>.ts` holds the constants shared by several files (`site.ts`: the UID, the component category). It is the shared folder of section 4 of the standard; a `types/<domain>.ts` joins it when the first shared type appears.
 - `admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`) and its translations (`translations/en.json`, `es.json`).
 - `strapi-server.js`, `strapi-admin.js` — the same entries as files, for tools that do not read the `exports` of `package.json`.
-- `test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it). `test/package.test.ts` packs the package and loads both entries from the tarball.
+- `test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it). `test/package.test.ts` packs the package and loads both entries from the tarball. `app/src/api/note/` is a site-scoped fixture type made with `withSiteScope`, the only type the app adds.
 - `scripts/` — `check-licenses.mjs` (`npm run lint:licenses`) and `release/version.mjs` (the release plan, read by the Release workflow).
 - `.github/workflows/` — `ci.yml`, `release.yml` and `pr-labels.yml`; CI calls the reusable workflows of `micelio-engineering`.
 
@@ -52,6 +54,7 @@ npm run verify           # strapi-plugin verify: the package.json and the build 
 - Hard limits: `.claude/TEAM.md`. Never push, merge, tag, release or deploy without the human's approval, and never read secrets.
 - `micelio` in `package.json` is the release line of the core this version supports (section 7). Raise it in the pull request that adopts a new line.
 - Content types are declared visible in the Content Manager and routes get an explicit prefix (ADR-0017, trade-offs); a test covers each.
+- Every content type is made with `withSiteScope`, and its content API routes carry the `plugin::micelio.site-scope` middleware (ADR-0017, section 4).
 - Every user-facing string of the admin lands in `en` and `es` in the same pull request.
 - The suites run on the clean Strapi of `test/strapi/app/`: Strapi's defaults and no other plugin. What the distribution adds (security middlewares, CSP, uploads provider) is never added there; the host check (#7) is what verifies it.
 - Before 1.0.0 a breaking change raises `y` and everything else raises `z` (section 7). The bump is made by a `chore(release)` pull request before the tag.
