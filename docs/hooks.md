@@ -58,7 +58,7 @@ strapi
 | [`afterPublish`](#afterpublish)                   | [`EntryPayload`](#entrypayload)                                 | Runs after an entry's version goes live: today, after `in_review → published` and `scheduled → published`, following `afterTransition`.    |
 | [`afterUnpublish`](#afterunpublish)               | [`EntryPayload`](#entrypayload)                                 | Runs after an entry's published version is taken down (`published → draft`), following `afterTransition`.                                  |
 | [`siteCreated`](#sitecreated)                     | [`SiteCreatedPayload`](#sitecreatedpayload)                     | Runs after a site is created, by the admin, the document service or the boot step that creates the default site on an empty instance.      |
-| [`blockCatalogueChanged`](#blockcataloguechanged) | [`BlockCatalogueChangedPayload`](#blockcataloguechangedpayload) | Runs after the block catalogue changes.                                                                                                    |
+| [`blockCatalogueChanged`](#blockcataloguechanged) | [`BlockCatalogueChangedPayload`](#blockcataloguechangedpayload) | Runs at boot when the block catalogue differs from the one the instance last booted with.                                                  |
 
 ### `beforeTransition`
 
@@ -106,10 +106,13 @@ Payload: [`SiteCreatedPayload`](#sitecreatedpayload).
 
 ### `blockCatalogueChanged`
 
-Runs after the block catalogue changes.
+Runs at boot when the block catalogue differs from the one the instance last booted with.
 
-The catalogue and the moment it changes belong to bogd3v/micelio-plugin-core#4; until it lands,
-nothing emits this hook. The catalogue is the same for every site (ADR-0018).
+The catalogue (`contract/blocks.ts`, ADR-0018) changes only with a new version of the plugin,
+so the hook runs once, at the end of the bootstrap, for each change. On a fresh instance, or one
+upgraded from a version without the catalogue, every block is `added`. It never runs per site:
+the catalogue is the same for every site. Several instances booting at once against one
+database may each run it.
 
 Payload: [`BlockCatalogueChangedPayload`](#blockcataloguechangedpayload).
 

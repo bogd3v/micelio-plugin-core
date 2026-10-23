@@ -18,6 +18,8 @@ npm run blocks:generate   # rewrite contract/blocks.schema.json and the referenc
 npm run lint:blocks       # fail when either drifts from contract/blocks.ts (part of npm run lint)
 ```
 
+When an instance boots with a catalogue that differs from the one it last booted with, the plugin runs the `blockCatalogueChanged` hook with the ids of the blocks added, changed and removed ([`docs/hooks.md`](hooks.md)); a fresh instance announces every block as added.
+
 A change to the catalogue follows ADR-0018, section 2: a new block, option, option value or optional field is a MINOR; removing or renaming one, or a new required field without a content migration, is a MAJOR (before 1.0.0, a `0.y`).
 
 ## How a schema maps to Strapi
