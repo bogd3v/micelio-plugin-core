@@ -117,7 +117,13 @@ async function readSiteOrigins(strapi: Core.Strapi): Promise<string[]> {
   return [...origins].sort()
 }
 
-async function readFrontend(origin: string): Promise<FrontendFacts> {
+/**
+ * Asks a frontend for `GET <origin>/_health`, at most two seconds.
+ *
+ * @returns `reachable: false` for an answer outside `2xx`, a timeout or a refused connection; the
+ * `version` when a `2xx` answer has one in its JSON body.
+ */
+export async function readFrontend(origin: string): Promise<FrontendFacts> {
   try {
     const response = await fetch(`${origin}/_health`, {
       headers: { accept: 'application/json' },

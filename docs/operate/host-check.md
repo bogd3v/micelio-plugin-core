@@ -35,7 +35,7 @@ Host check (production): a required check fails.
 
 ## What the frontend check asks
 
-For each distinct origin of the sites' `url`, the check sends `GET <origin>/_health` with `Accept: application/json` and waits at most two seconds. An answer outside `2xx`, a timeout or a refused connection counts as not reachable, and the check skips that frontend. A `2xx` answer whose JSON body has a `version` string (`{ "version": "0.6.3" }`) is compared with the plugin's release line; any other `2xx` answer is reachable with no version to compare. At boot the frontend is usually not up yet, so the result that matters is the one of `micelio doctor` and of the status page.
+For each distinct origin of the sites' `url`, the check sends `GET <origin>/_health` with `Accept: application/json` and waits at most two seconds. An answer outside `2xx`, a timeout or a refused connection counts as not reachable, and the check skips that frontend. A `2xx` answer whose JSON body has a `version` string (`{ "version": "0.6.3" }`) is compared with the plugin's release line; any other `2xx` answer is reachable with no version to compare. At boot the frontend is usually not up yet, so the result that matters is the one of `micelio doctor`; the status page shows the boot's run of the check next to a fresh answer of each frontend ([status-page.md](status-page.md)).
 
 ## For other plugins
 
