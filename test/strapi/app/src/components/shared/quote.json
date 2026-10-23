@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_quotes",
+  "info": {
+    "displayName": "Quote",
+    "description": "The `quote` block of the catalogue (contract/blocks.ts), for the export suite"
+  },
+  "options": {},
+  "attributes": {
+    "title": { "type": "string" },
+    "body": { "type": "text" }
+  }
+}
