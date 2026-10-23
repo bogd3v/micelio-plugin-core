@@ -19,6 +19,21 @@ npm run check
 
 `npm run check` builds the plugin, boots a clean Strapi 5 on SQLite with it installed, and checks that it registers. Conventions, commands and structure are in [AGENTS.md](AGENTS.md); the rules every Micelio repository shares are in the [engineering standard](docs/engineering-standard.md). To contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Configuration
+
+The plugin reads its options from the host's `config/plugins`:
+
+```js
+module.exports = {
+  micelio: {
+    config: {
+      // When the scheduler publishes the scheduled entries that are due, as a cron rule.
+      scheduledPublishRule: '* * * * *', // the default: every minute
+    },
+  },
+}
+```
+
 ## Releases
 
 The Release workflow (`.github/workflows/release.yml`) is started by the maintainer from the Actions tab. It defaults to a dry run that prints the version and the notes. Publishing needs a `release` environment with required reviewers (Settings → Environments), and a pull request title with a conventional prefix decides the version (section 7 of the standard).
