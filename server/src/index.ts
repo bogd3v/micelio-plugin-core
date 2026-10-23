@@ -1,5 +1,5 @@
-// The server entry point Strapi loads through the `./strapi-server` export. The plugin is empty
-// on purpose: content types, services and routes arrive with the issues of phase 0 (epic #1).
+// The server entry point Strapi loads through the `./strapi-server` export. Content types,
+// services and routes arrive with the issues of phase 0 (epic #1).
 import bootstrap from './bootstrap'
 import config from './config'
 import contentTypes from './content-types'
