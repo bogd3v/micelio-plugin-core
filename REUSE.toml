@@ -10,3 +10,39 @@ SPDX-PackageDownloadLocation = "https://github.com/bogd3v/micelio-plugin-core"
 path = "**"
 SPDX-FileCopyrightText = "2026 Alejandro Ramirez Garcia and the Micelio contributors"
 SPDX-License-Identifier = "AGPL-3.0-only"
+
+# The scaffold of Strapi's plugin SDK (@strapi/sdk-plugin 6.1.1, `strapi-plugin init`), modified by Micelio
+[[annotations]]
+path = [
+  "admin/src/index.ts",
+  "admin/src/pluginId.ts",
+  "admin/src/utils/getTranslation.ts",
+  "server/tsconfig.json",
+  "server/src/index.ts",
+  "server/src/register.ts",
+  "server/src/bootstrap.ts",
+  "server/src/destroy.ts",
+  "server/src/config/index.ts",
+  "server/src/controllers/index.ts",
+  "server/src/services/index.ts",
+  "server/src/routes/index.ts",
+  "server/src/routes/admin/index.ts",
+  "server/src/routes/content-api/index.ts",
+]
+SPDX-FileCopyrightText = ["2015-present Strapi Solutions SAS", "2026 Alejandro Ramirez Garcia and the Micelio contributors"]
+SPDX-License-Identifier = "AGPL-3.0-only AND MIT"
+
+# The scaffold of Strapi's plugin SDK, unmodified except for formatting
+[[annotations]]
+path = [
+  "admin/custom.d.ts",
+  "admin/tsconfig.json",
+  "admin/tsconfig.build.json",
+  "admin/src/components/Initializer.tsx",
+  "server/tsconfig.build.json",
+  "server/src/content-types/index.ts",
+  "server/src/middlewares/index.ts",
+  "server/src/policies/index.ts",
+]
+SPDX-FileCopyrightText = "2015-present Strapi Solutions SAS"
+SPDX-License-Identifier = "MIT"

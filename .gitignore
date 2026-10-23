@@ -3,3 +3,9 @@ dist/
 coverage/
 *.tsbuildinfo
 .env
+.tmp/
+*.tgz
+# What Strapi creates in the test app when it boots
+test/strapi/app/public/
+test/strapi/app/database/
+test/strapi/app/.strapi-updater.json

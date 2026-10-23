@@ -1,0 +1,9 @@
+{
+  "name": "micelio-plugin-core-test-app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A clean Strapi 5 with only @micelio/strapi-plugin-core installed, booted by the test harness.",
+  "strapi": {
+    "telemetryDisabled": true
+  }
+}
