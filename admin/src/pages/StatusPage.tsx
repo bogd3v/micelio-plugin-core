@@ -10,6 +10,7 @@ import {
   Thead,
   Tr,
   Typography,
+  useNotifyAT,
 } from '@strapi/design-system'
 import { Layouts, Page } from '@strapi/strapi/admin'
 import type { ReactNode } from 'react'
@@ -18,6 +19,7 @@ import type { HostCheckReport, HostCheckStatus } from '../../../server/src/types
 import type { StatusFrontend, StatusReport, StatusSite } from '../../../server/src/types/status'
 import { hasMessage, useMessages } from '../messages'
 import { STATUS_READ_PERMISSION } from '../permissions'
+import { useHostCheckRun } from '../hooks/useHostCheckRun'
 import { useStatus } from '../hooks/useStatus'
 import { checkText, type Text } from '../utils/checkText'
 
@@ -73,7 +75,7 @@ function StatusContent() {
   return (
     <Flex direction="column" alignItems="stretch" gap={6}>
       <PluginSection report={report} />
-      <HostCheckSection report={report.hostCheck} />
+      <HostCheckSection initial={report.hostCheck} />
       <FrontendsSection frontends={report.frontends} />
       <SitesSection sites={report.sites} />
     </Flex>
@@ -122,25 +124,50 @@ function PluginSection({ report }: { report: StatusReport }) {
   )
 }
 
-function HostCheckSection({ report }: { report: HostCheckReport | null }) {
+function HostCheckSection({ initial }: { initial: HostCheckReport | null }) {
   const { t, date } = useMessages()
+  const { notifyStatus, notifyAlert } = useNotifyAT()
+  const { report, isRunning, hasFailed, run } = useHostCheckRun(initial)
   const say = (text: Text) => ('messageId' in text ? t(text.messageId) : text.text)
+  const verdict = (current: HostCheckReport) =>
+    `${t(current.ok ? 'status.hostCheck.ok' : 'status.hostCheck.failed')} ${t(
+      'status.hostCheck.checkedAt',
+      { date: date(current.checkedAt), environment: current.environment }
+    )}`
+
+  const runAgain = async () => {
+    const answer = await run()
+    // The table changes without a focus move: say what the run found.
+    if (answer) notifyStatus(verdict(answer))
+    else notifyAlert(t('status.hostCheck.runFailed'))
+  }
+
+  const header = (
+    <Flex gap={4} wrap="wrap" justifyContent="space-between" alignItems="center">
+      <Typography textColor={report ? undefined : 'neutral600'}>
+        {report ? verdict(report) : t('status.hostCheck.notRun')}
+      </Typography>
+      <Button variant="secondary" size="S" loading={isRunning} onClick={runAgain}>
+        {t(isRunning ? 'status.hostCheck.running' : 'status.hostCheck.runAgain')}
+      </Button>
+    </Flex>
+  )
+  const failure = hasFailed ? (
+    <Typography textColor="danger700">{t('status.hostCheck.runFailed')}</Typography>
+  ) : null
+
   if (!report) {
     return (
       <Section title={t('status.hostCheck.title')}>
-        <Typography textColor="neutral600">{t('status.hostCheck.notRun')}</Typography>
+        {header}
+        {failure}
       </Section>
     )
   }
   return (
     <Section title={t('status.hostCheck.title')}>
-      <Typography>
-        {t(report.ok ? 'status.hostCheck.ok' : 'status.hostCheck.failed')}{' '}
-        {t('status.hostCheck.checkedAt', {
-          date: date(report.checkedAt),
-          environment: report.environment,
-        })}
-      </Typography>
+      {header}
+      {failure}
       <Table colCount={3} rowCount={report.results.length + 1}>
         <Thead>
           <Tr>

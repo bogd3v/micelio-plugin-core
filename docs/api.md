@@ -97,16 +97,19 @@ One entry per block of the catalogue, in its order. `schema` is the block's JSON
 
 ## Status
 
-An admin API route, behind the status page of the admin ([docs/operate/status-page.md](operate/status-page.md)). It needs the admin permission `plugin::micelio.status.read` (Settings → Roles → Plugins → Micelio); the super admin has it.
+Admin API routes, behind the status page of the admin ([docs/operate/status-page.md](operate/status-page.md)). It needs the admin permission `plugin::micelio.status.read` (Settings → Roles → Plugins → Micelio); the super admin has it.
 
-| Method | Path              | Answers                                                       |
-| ------ | ----------------- | ------------------------------------------------------------- |
-| `GET`  | `/micelio/status` | `{ "data": { plugin, sites, frontends, hostCheck, blocks } }` |
+| Method | Path                         | Answers                                                       |
+| ------ | ---------------------------- | ------------------------------------------------------------- |
+| `GET`  | `/micelio/status`            | `{ "data": { plugin, sites, frontends, hostCheck, blocks } }` |
+| `POST` | `/micelio/status/host-check` | `{ "data": HostCheckReport }`                                 |
 
 - `plugin`: `version` (the package's) and `coreLine` (`micelio` in its `package.json`).
 - `sites`: `documentId`, `name` (in the default locale when the site has it), `slug`, `hosts`, `isDefault` and `origin`, the origin of the site's `url` or `null`. The default site comes first.
 - `frontends`: one per distinct `origin`, with the `sites` (slugs) behind it, `health` and `version`. The route asks each one for `GET <origin>/_health` on every call, at most two seconds each: `reachable` with the `version` of its answer when it gave one, `unavailable` when it answered outside `2xx` or not at all. `unavailable` is not an error: a frontend may not serve the endpoint yet.
-- `hostCheck`: the latest run of the host check (`HostCheckReport`, [docs/operate/host-check.md](operate/host-check.md)), `null` if it has not run since the boot. The route does not run it again.
+- `hostCheck`: the latest run of the host check (`HostCheckReport`, [docs/operate/host-check.md](operate/host-check.md)), `null` if it has not run since the boot. `GET` does not run it again.
 - `blocks`: `count`, the number of blocks in the catalogue.
 
-The shape is `StatusReport` in `server/src/types/status.ts`. A role without the permission gets `403` with the `code` `statusForbidden`, as `application/problem+json`; a request without an admin token gets Strapi's `401`.
+`POST /micelio/status/host-check` runs the host check again, keeps its report as the latest (what `GET` answers afterwards) and answers it. It takes no body. It runs the check as `micelio doctor` reports it: a failed required check is in the report, and nothing is logged or stopped. A request made while a run is in progress gets that run's report instead of starting another.
+
+The shape is `StatusReport` in `server/src/types/status.ts`. On both routes, a role without the permission gets `403` with the `code` `statusForbidden`, as `application/problem+json`; a request without an admin token gets Strapi's `401`.

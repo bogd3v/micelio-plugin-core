@@ -4,6 +4,7 @@ import type { Core, UID } from '@strapi/strapi'
 import { BLOCKS } from '../../contract/blocks'
 import packageJson from '../../package.json'
 import { SITE_UID } from '../../server/src/constants/site'
+import type { HostCheckReport } from '../../server/src/types/host-check'
 import type { StatusReport } from '../../server/src/types/status'
 import { closedOrigin, startFrontend, type FrontendStub } from './frontend'
 import { cleanupStrapi, setupStrapi } from './harness'
@@ -42,6 +43,13 @@ describe('the status route', () => {
 
   function readStatus(role?: Role): Promise<Response> {
     return fetch(`${base}/micelio/status`, {
+      headers: role ? { Authorization: `Bearer ${tokens[role]}` } : {},
+    })
+  }
+
+  function runHostCheck(role?: Role): Promise<Response> {
+    return fetch(`${base}/micelio/status/host-check`, {
+      method: 'POST',
       headers: role ? { Authorization: `Bearer ${tokens[role]}` } : {},
     })
   }
@@ -122,5 +130,45 @@ describe('the status route', () => {
       actionId: string
     }[]
     expect(actions.map(({ actionId }) => actionId)).toContain('plugin::micelio.status.read')
+  })
+
+  it('runs the host check again, and keeps the new report as the latest', async () => {
+    const before = (await (await readStatus('strapi-super-admin')).json()) as {
+      data: StatusReport
+    }
+    const response = await runHostCheck('strapi-super-admin')
+    expect(response.status).toBe(200)
+    const { data } = (await response.json()) as { data: HostCheckReport }
+    expect(Date.parse(data.checkedAt)).toBeGreaterThan(
+      Date.parse(before.data.hostCheck?.checkedAt ?? '')
+    )
+    // The sites now have frontends: the boot's run had none to ask.
+    const releaseLine = data.results.find(({ id }) => id === 'frontend-release-line')
+    expect(releaseLine?.detail).toContain(`${frontend.origin} runs 0.6.3`)
+    const after = (await (await readStatus('strapi-super-admin')).json()) as {
+      data: StatusReport
+    }
+    expect(after.data.hostCheck).toEqual(data)
+  })
+
+  it('runs once for requests that arrive while a run is in progress', async () => {
+    const requestsBefore = frontend.healthRequests
+    const answers = await Promise.all([
+      runHostCheck('strapi-super-admin'),
+      runHostCheck('strapi-super-admin'),
+    ])
+    const reports = await Promise.all(
+      answers.map(async (answer) => ((await answer.json()) as { data: HostCheckReport }).data)
+    )
+    expect(reports[1].checkedAt).toBe(reports[0].checkedAt)
+    // One run asks each origin once; blog and shop share this one.
+    expect(frontend.healthRequests - requestsBefore).toBe(1)
+  })
+
+  it('refuses to run the host check for a role without the status permission', async () => {
+    const response = await runHostCheck('strapi-editor')
+    expect(response.status).toBe(403)
+    expect(((await response.json()) as { code: string }).code).toBe('statusForbidden')
+    expect((await runHostCheck()).status).toBe(401)
   })
 })

@@ -8,20 +8,37 @@ interface UserAbility {
   can(action: string): boolean
 }
 
-/** `GET /micelio/status`, for an admin user with the status permission: see `docs/api.md`. */
-export default ({ strapi }: { strapi: Core.Strapi }): { find(ctx: Context): Promise<void> } => ({
-  async find(ctx) {
-    const ability = ctx.state.userAbility as UserAbility | undefined
-    if (ability?.can(STATUS_READ_PERMISSION) !== true) {
-      sendProblem(ctx, {
-        type: 'about:blank',
-        title: 'Forbidden',
-        status: 403,
-        detail: `Reading the status page needs the permission ${STATUS_READ_PERMISSION}.`,
-        code: 'statusForbidden',
-      })
-      return
-    }
-    ctx.body = { data: await strapi.plugin('micelio').service('status').read() }
-  },
-})
+type Handler = (ctx: Context) => Promise<void>
+
+/**
+ * `GET /micelio/status` and `POST /micelio/status/host-check`, for an admin user with the status
+ * permission: see `docs/api.md`.
+ */
+export default ({ strapi }: { strapi: Core.Strapi }): Record<'find' | 'runHostCheck', Handler> => {
+  const status = () => strapi.plugin('micelio').service('status')
+
+  return {
+    async find(ctx) {
+      if (!isAllowed(ctx)) return
+      ctx.body = { data: await status().read() }
+    },
+    async runHostCheck(ctx) {
+      if (!isAllowed(ctx)) return
+      ctx.body = { data: await status().runHostCheck() }
+    },
+  }
+}
+
+/** Whether the admin may read the status page; answers the `403` itself when not. */
+function isAllowed(ctx: Context): boolean {
+  const ability = ctx.state.userAbility as UserAbility | undefined
+  if (ability?.can(STATUS_READ_PERMISSION) === true) return true
+  sendProblem(ctx, {
+    type: 'about:blank',
+    title: 'Forbidden',
+    status: 403,
+    detail: `Reading the status page needs the permission ${STATUS_READ_PERMISSION}.`,
+    code: 'statusForbidden',
+  })
+  return false
+}

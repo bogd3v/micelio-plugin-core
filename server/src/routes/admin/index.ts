@@ -1,7 +1,8 @@
 import type { Core } from '@strapi/strapi'
 
-// The prefix is explicit (ADR-0017, trade-offs): POST /micelio/transitions, GET /micelio/blocks, GET /micelio/status. It is set on the
-// router: a route's own `config.prefix` replaces the router's and does not add itself.
+// The prefix is explicit (ADR-0017, trade-offs): every route below answers under /micelio
+// (POST /micelio/transitions, GET /micelio/status, …). It is set on the router: a route's own
+// `config.prefix` replaces the router's and does not add itself.
 export default (): Core.RouterInput => ({
   type: 'admin',
   prefix: '/micelio',
@@ -22,6 +23,12 @@ export default (): Core.RouterInput => ({
       method: 'GET',
       path: '/status',
       handler: 'status.find',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/status/host-check',
+      handler: 'status.runHostCheck',
       config: { policies: ['admin::isAuthenticatedAdmin'] },
     },
   ],
