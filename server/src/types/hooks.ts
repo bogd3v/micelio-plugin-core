@@ -110,11 +110,14 @@ export interface HookPayloads {
    */
   siteCreated: SiteCreatedPayload
   /**
-   * Runs after the block catalogue changes.
+   * Runs at boot when the block catalogue differs from the one the instance last booted with.
    *
    * @remarks
-   * The catalogue and the moment it changes belong to bogd3v/micelio-plugin-core#4; until it lands,
-   * nothing emits this hook. The catalogue is the same for every site (ADR-0018).
+   * The catalogue (`contract/blocks.ts`, ADR-0018) changes only with a new version of the plugin,
+   * so the hook runs once, at the end of the bootstrap, for each change. On a fresh instance, or one
+   * upgraded from a version without the catalogue, every block is `added`. It never runs per site:
+   * the catalogue is the same for every site. Several instances booting at once against one
+   * database may each run it.
    */
   blockCatalogueChanged: BlockCatalogueChangedPayload
 }
