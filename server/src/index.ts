@@ -13,6 +13,8 @@ import services from './services'
 
 export { SITE_ATTRIBUTE, SITE_SCOPE_MIDDLEWARE, withSiteScope } from './site-scope'
 export { SITE_UID } from './constants/site'
+export { withEditorial } from './editorial'
+export { EDITORIAL_STATES, type EditorialState } from './constants/editorial'
 
 export default {
   register,
