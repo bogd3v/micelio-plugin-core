@@ -4,16 +4,67 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Core, UID } from '@strapi/strapi'
 import { chromium, type Browser, type Page } from 'playwright'
 import { BLOCKS } from '../../contract/blocks'
+import en from '../../admin/src/translations/en.json'
+import es from '../../admin/src/translations/es.json'
 import packageJson from '../../package.json'
 import { SITE_UID } from '../../server/src/constants/site'
 import { closedOrigin, startFrontend, type FrontendStub } from '../strapi/frontend'
 import { cleanupStrapi, setupStrapi } from '../strapi/harness'
 
 const EMAIL = 'admin@example.com'
+// A second super admin whose interface language is Spanish: Strapi 5.59 switches the admin to the
+// user's `preferedLanguage` once they log in (`features/Auth` of `@strapi/admin`).
+const SPANISH_EMAIL = 'admin-es@example.com'
 const PASSWORD = 'Password1234'
 
 // What the standard requires of the admin page: WCAG 2.0, 2.1 and 2.2, levels A and AA (section 9).
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']
+
+type Messages = Record<string, string>
+
+/** Opens the status page in a context of its own, logged in as one admin user. */
+async function openStatusPage(browser: Browser, base: string, email: string): Promise<Page> {
+  // A context of its own: axe injects its script into every frame of it.
+  const page = await (await browser.newContext()).newPage()
+  await page.goto(`${base}/admin/auth/login`)
+  await page.locator('input[name="email"]').fill(email)
+  await page.locator('input[name="password"]').fill(PASSWORD)
+  await page.getByRole('button', { name: 'Login' }).click()
+  await page.waitForURL(/\/admin(?!\/auth)/)
+  await page.goto(`${base}/admin/plugins/micelio`)
+  return page
+}
+
+/**
+ * The text of the page's `main`, one line per text node, as written in the source: `textContent`
+ * alone runs the cells together ("ResultadoWhat it found"), and `innerText` applies
+ * `text-transform`.
+ */
+async function textOf(page: Page): Promise<string> {
+  return page.getByRole('main').evaluate((main) => {
+    // 4 is `NodeFilter.SHOW_TEXT`; this file is type-checked without the DOM globals.
+    const walker = main.ownerDocument.createTreeWalker(main, 4)
+    const lines: string[] = []
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      lines.push(node.textContent ?? '')
+    }
+    return lines.join('\n')
+  })
+}
+
+/** Matches `text` with no letter right before or after it. */
+function wholeWords(text: string): RegExp {
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(?<!\\p{L})${escaped}(?!\\p{L})`, 'u')
+}
+
+/** The WCAG 2.2 A and AA violations axe finds in the page's `main`. */
+async function violationsOf(page: Page): Promise<unknown[]> {
+  const results = await new AxeBuilder({ page }).include('main').withTags(WCAG_TAGS).analyze()
+  return results.violations.flatMap(({ id, nodes }) =>
+    nodes.map(({ target, failureSummary }) => ({ id, target, failureSummary }))
+  )
+}
 
 describe('the status page in the admin', () => {
   let strapi: Core.Strapi
@@ -52,24 +103,23 @@ describe('the status page in the admin', () => {
     const superAdmin = (await strapi.db.query('admin::role').findOne({
       where: { code: 'strapi-super-admin' },
     })) as { id: number }
-    await strapi.service('admin::user').create({
-      email: EMAIL,
-      firstname: 'Admin',
-      lastname: 'Test',
-      password: PASSWORD,
-      roles: [superAdmin.id],
-      isActive: true,
-    })
+    for (const [email, preferedLanguage] of [
+      [EMAIL, null],
+      [SPANISH_EMAIL, 'es'],
+    ]) {
+      await strapi.service('admin::user').create({
+        email,
+        firstname: 'Admin',
+        lastname: 'Test',
+        password: PASSWORD,
+        roles: [superAdmin.id],
+        isActive: true,
+        preferedLanguage,
+      })
+    }
 
     browser = await chromium.launch()
-    // A context of its own: axe injects its script into every frame of it.
-    page = await (await browser.newContext()).newPage()
-    await page.goto(`${base}/admin/auth/login`)
-    await page.locator('input[name="email"]').fill(EMAIL)
-    await page.locator('input[name="password"]').fill(PASSWORD)
-    await page.getByRole('button', { name: 'Login' }).click()
-    await page.waitForURL(/\/admin(?!\/auth)/)
-    await page.goto(`${base}/admin/plugins/micelio`)
+    page = await openStatusPage(browser, base, EMAIL)
     await page.getByRole('heading', { name: 'Host check' }).waitFor()
   })
 
@@ -117,11 +167,56 @@ describe('the status page in the admin', () => {
 
   // After the run: the button and the replaced report are checked too.
   it('has no WCAG 2.2 A or AA violation', async () => {
-    const results = await new AxeBuilder({ page }).include('main').withTags(WCAG_TAGS).analyze()
-    expect(
-      results.violations.flatMap(({ id, nodes }) =>
-        nodes.map(({ target, failureSummary }) => ({ id, target, failureSummary }))
+    await expect(violationsOf(page)).resolves.toEqual([])
+  })
+
+  describe('in Spanish', () => {
+    let spanish: Page
+    let text: string
+
+    beforeAll(async () => {
+      spanish = await openStatusPage(browser, base, SPANISH_EMAIL)
+      await spanish.getByRole('heading', { name: 'Comprobación del host' }).waitFor()
+      text = await textOf(spanish)
+    })
+
+    it('shows the Spanish strings, with the title of every host check', () => {
+      expect(text).toContain('Comprobación del host')
+      expect(text).toContain('No disponible')
+      const titles = Object.entries(es as Messages).filter(([id]) =>
+        /^status\.hostCheck\.check\.[a-z-]+\.title$/.test(id)
       )
-    ).toEqual([])
+      expect(titles).toHaveLength(8)
+      for (const [id, title] of titles) expect(text, id).toContain(title)
+    })
+
+    it('shows each result of the host check in Spanish', async () => {
+      // `textContent`: the badges are upper case on screen only (`text-transform`).
+      const resultOf = (title: string) =>
+        spanish.getByRole('row').filter({ hasText: title }).textContent()
+      await expect(resultOf('Versión de Node')).resolves.toContain('Pasa')
+      // SQLite outside production: skipped. The stub frontends are not in frame-src: failed.
+      await expect(resultOf('PostgreSQL en producción')).resolves.toContain('Omitida')
+      await expect(resultOf('frame-src para la vista previa')).resolves.toContain('Falla')
+    })
+
+    it('shows no English string that has a Spanish one', () => {
+      const englishOnly = Object.entries(en as Messages).filter(
+        ([id, value]) => (es as Messages)[id] !== value
+      )
+      // A placeholder is filled in on screen: look for the text around it, as whole words, so
+      // that "Result" is not found in "Resultado".
+      const shown = englishOnly.filter(([, value]) =>
+        value
+          .split(/\{\w+\}/)
+          .map((part) => part.trim())
+          .some((part) => part.length > 3 && wholeWords(part).test(text))
+      )
+      expect(shown.map(([id]) => id)).toEqual([])
+    })
+
+    it('has no WCAG 2.2 A or AA violation', async () => {
+      await expect(violationsOf(spanish)).resolves.toEqual([])
+    })
   })
 })
