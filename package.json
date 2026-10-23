@@ -40,7 +40,11 @@
       "default": "./dist/server/index.js"
     }
   },
+  "bin": {
+    "micelio": "bin/micelio.js"
+  },
   "files": [
+    "bin",
     "dist",
     "strapi-admin.js",
     "strapi-server.js",
@@ -92,6 +96,7 @@
     "react-dom": "^18.3.1",
     "react-intl": "^6.8.9",
     "react-router-dom": "^6.30.6",
+    "sanitize-html": "^2.18.1",
     "styled-components": "^6.6.0",
     "typescript": "^5.9.3",
     "vitest": "^5.0.3"
