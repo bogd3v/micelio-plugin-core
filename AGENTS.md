@@ -24,6 +24,7 @@ npm run build            # strapi-plugin build: dist/server and dist/admin
 npm run dev              # strapi-plugin watch
 npm run verify           # strapi-plugin verify: the package.json and the build a host will load
 npm run reference        # regenerate docs/hooks.md from the TSDoc of server/src/types/hooks.ts
+npm run blocks:generate  # contract/blocks.schema.json and the reference in docs/blocks.md
 ```
 
 `npm run test` builds the plugin first (`test/global-setup.ts`): the suites load `dist/`, as a host does.
@@ -39,11 +40,12 @@ npm run reference        # regenerate docs/hooks.md from the TSDoc of server/src
   - `hooks/` is the hooks registry behind `strapi.plugin('micelio').hooks` and the `hooks` service: registration, ordering and running a hook. The hooks and their payloads are declared in `types/hooks.ts`, a contract (section 6); `docs/hooks.md` is generated from its TSDoc. `performTransition` runs the transition hooks, so every path that publishes runs them; `sites/hooks.ts` runs `siteCreated`.
   - `utils/` holds pure helpers with no Strapi import (`problem.ts`, the problem details of section 4 of the standard).
   - `constants/<domain>.ts` holds the constants shared by several files (`site.ts`: the UID, the component category). With `types/<domain>.ts` (`host-check.ts`: the report the status page renders; `hooks.ts`: the hooks API and its payloads) it is the shared folder of section 4 of the standard.
+- `contract/` — the block catalogue (ADR-0018): `blocks.ts` (the 19 entries), `fields.ts` (the zod field builders), `strapi.ts` (a block's JSON Schema read back as Strapi attributes) and the generated `blocks.schema.json`, published as `./blocks.schema.json`. `GET /micelio/blocks` serves it; `docs/blocks.md` has the reference and how `cost` is measured.
 - `admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`) and its translations (`translations/en.json`, `es.json`).
 - `bin/micelio.js` — the package's `micelio` binary: `micelio doctor` loads the host project and prints the host check.
 - `strapi-server.js`, `strapi-admin.js` — the same entries as files, for tools that do not read the `exports` of `package.json`.
-- `test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it). `test/package.test.ts` packs the package and loads both entries from the tarball. `test/export-format.test.ts` fails when a content type of its list has no row in `docs/export-format.md`, the site export format (a contract of section 6). The app adds two fixture types made with the plugin's helpers, `app/src/api/note/` (`withSiteScope`) and `app/src/api/article/` (`withSiteScope` and `withEditorial`), and a fixture plugin, `app/src/plugins/hook-recorder/`, that records every hook it receives.
-- `scripts/` — `check-licenses.mjs` (`npm run lint:licenses`), `hooks-reference.mjs` (`npm run reference` and `lint:reference`) and `release/version.mjs` (the release plan, read by the Release workflow).
+- `test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it). `test/package.test.ts` packs the package and loads both entries from the tarball. `test/export-format.test.ts` fails when a content type of its list has no row in `docs/export-format.md`, the site export format (a contract of section 6). The app adds two fixture types made with the plugin's helpers, `app/src/api/note/` (`withSiteScope`) and `app/src/api/article/` (`withSiteScope` and `withEditorial`), and a fixture plugin, `app/src/plugins/hook-recorder/`, that records every hook it receives. `fixtures/` holds the component JSON of `micelio-cms` the catalogue is tested against, and the script that regenerates it from a tag; it is never registered as a component.
+- `scripts/` — `check-licenses.mjs` (`npm run lint:licenses`), `hooks-reference.mjs` (`npm run reference` and `lint:reference`), `release/version.mjs` (the release plan, read by the Release workflow) and `blocks/` (`generate.ts`, behind `blocks:generate` and `lint:blocks`; `cost.mjs`, which measures `cost` on a build of `micelio`).
 - `.github/workflows/` — `ci.yml`, `release.yml` and `pr-labels.yml`; CI calls the reusable workflows of `micelio-engineering`.
 
 | Item                               | Convention                     | Example                                 |
@@ -62,6 +64,7 @@ npm run reference        # regenerate docs/hooks.md from the TSDoc of server/src
 - Every content type is made with `withSiteScope`, and its content API routes carry the `plugin::micelio.site-scope` middleware (ADR-0017, section 4).
 - A publishable type is made with `withEditorial` and is published only through the `transitions` service. The states, the transitions and their default policy are a contract (section 6): adding one is a MINOR, renaming or removing one or changing a default is a MAJOR.
 - The hooks are a contract too: adding one is a MINOR, renaming or removing one or changing a payload is a MAJOR. A payload is plain data, never a Strapi entity. A change to `server/src/types/hooks.ts` regenerates `docs/hooks.md` (`npm run reference`) in the same pull request; `lint:reference` fails otherwise.
+- The block catalogue is a contract (section 6; ADR-0018, section 2): a change to `contract/blocks.ts` regenerates its schema and reference in the same pull request (`lint:blocks` fails otherwise), and a new tag of `micelio-cms` regenerates the fixture.
 - Every user-facing string of the admin lands in `en` and `es` in the same pull request.
 - The suites run on the clean Strapi of `test/strapi/app/`: Strapi's defaults and no other plugin. What the distribution adds (security middlewares, CSP, uploads provider) is never added there; the host check (#7) is what verifies it.
 - Before 1.0.0 a breaking change raises `y` and everything else raises `z` (section 7). The bump is made by a `chore(release)` pull request before the tag.

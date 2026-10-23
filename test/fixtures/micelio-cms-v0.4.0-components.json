@@ -1,0 +1,678 @@
+{
+  "source": {
+    "repository": "bogd3v/micelio-cms",
+    "tag": "v0.4.0",
+    "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad"
+  },
+  "components": {
+    "section.cta": {
+      "collectionName": "components_section_ctas",
+      "info": {
+        "displayName": "Call to action",
+        "icon": "rocket",
+        "description": "A call to action"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["banner", "card"],
+          "default": "banner",
+          "required": true
+        },
+        "title": { "type": "string", "required": true },
+        "text": { "type": "text" },
+        "primaryLink": { "type": "component", "repeatable": false, "component": "section.link" },
+        "secondaryLink": { "type": "component", "repeatable": false, "component": "section.link" }
+      }
+    },
+    "section.faq-item": {
+      "collectionName": "components_section_faq_items",
+      "info": {
+        "displayName": "Question",
+        "icon": "question",
+        "description": "A question and its answer"
+      },
+      "options": {},
+      "attributes": {
+        "question": { "type": "string", "required": true },
+        "answer": { "type": "richtext", "required": true }
+      }
+    },
+    "section.faq": {
+      "collectionName": "components_section_faqs",
+      "info": {
+        "displayName": "FAQ",
+        "icon": "question",
+        "description": "Questions and answers, rendered with native <details>"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["list", "two-columns"],
+          "default": "list",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "items": {
+          "type": "component",
+          "repeatable": true,
+          "component": "section.faq-item",
+          "min": 1
+        }
+      }
+    },
+    "section.feature-grid": {
+      "collectionName": "components_section_feature_grids",
+      "info": {
+        "displayName": "Feature grid",
+        "icon": "grid",
+        "description": "Three to six features with icon, title and text"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["grid", "list", "bento"],
+          "default": "grid",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "text": { "type": "text" },
+        "items": {
+          "type": "component",
+          "repeatable": true,
+          "component": "section.feature-item",
+          "min": 3,
+          "max": 6
+        }
+      }
+    },
+    "section.feature-item": {
+      "collectionName": "components_section_feature_items",
+      "info": {
+        "displayName": "Feature",
+        "icon": "star",
+        "description": "One feature of a feature grid"
+      },
+      "options": {},
+      "attributes": {
+        "icon": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+        "title": { "type": "string", "required": true },
+        "text": { "type": "text" }
+      }
+    },
+    "section.gallery": {
+      "collectionName": "components_section_galleries",
+      "info": {
+        "displayName": "Gallery",
+        "icon": "images",
+        "description": "Images with their captions (each file's caption)"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["grid", "masonry"],
+          "default": "grid",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "images": {
+          "type": "media",
+          "multiple": true,
+          "allowedTypes": ["images"],
+          "required": true
+        }
+      }
+    },
+    "section.hero": {
+      "collectionName": "components_section_heroes",
+      "info": {
+        "displayName": "Hero",
+        "icon": "landscape",
+        "description": "Opening section: title, text, calls to action and media"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["centered", "split", "full-bleed"],
+          "default": "centered",
+          "required": true
+        },
+        "title": { "type": "string", "required": true },
+        "text": { "type": "text" },
+        "primaryLink": { "type": "component", "repeatable": false, "component": "section.link" },
+        "secondaryLink": { "type": "component", "repeatable": false, "component": "section.link" },
+        "media": { "type": "media", "multiple": false, "allowedTypes": ["images", "videos"] }
+      }
+    },
+    "section.link": {
+      "collectionName": "components_section_links",
+      "info": {
+        "displayName": "Link",
+        "icon": "link",
+        "description": "A labeled link: http(s), mailto: or a path on the site"
+      },
+      "options": {},
+      "attributes": {
+        "label": { "type": "string", "required": true },
+        "url": {
+          "type": "string",
+          "required": true,
+          "regex": "^(https?://\\S+|mailto:\\S+|/\\S*)$"
+        }
+      }
+    },
+    "section.logo-cloud": {
+      "collectionName": "components_section_logo_clouds",
+      "info": { "displayName": "Logo cloud", "icon": "apps", "description": "Logos with links" },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["row", "marquee"],
+          "default": "row",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "logos": { "type": "component", "repeatable": true, "component": "section.logo", "min": 1 }
+      }
+    },
+    "section.logo": {
+      "collectionName": "components_section_logos",
+      "info": {
+        "displayName": "Logo",
+        "icon": "picture",
+        "description": "A logo with its name and an optional link"
+      },
+      "options": {},
+      "attributes": {
+        "image": {
+          "type": "media",
+          "multiple": false,
+          "allowedTypes": ["images"],
+          "required": true
+        },
+        "name": { "type": "string", "required": true },
+        "url": { "type": "string", "regex": "^https?://\\S+$" }
+      }
+    },
+    "section.media-showcase": {
+      "collectionName": "components_section_media_showcases",
+      "info": {
+        "displayName": "Media showcase",
+        "icon": "picture",
+        "description": "An image or video with text"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["left", "right", "stacked"],
+          "default": "left",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "text": { "type": "richtext" },
+        "media": {
+          "type": "media",
+          "multiple": false,
+          "allowedTypes": ["images", "videos"],
+          "required": true
+        },
+        "link": { "type": "component", "repeatable": false, "component": "section.link" }
+      }
+    },
+    "section.newsletter": {
+      "collectionName": "components_section_newsletters",
+      "info": {
+        "displayName": "Newsletter",
+        "icon": "message",
+        "description": "Subscription form; where it posts is set in the frontend"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["inline", "card"],
+          "default": "inline",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "text": { "type": "text" },
+        "buttonLabel": { "type": "string" }
+      }
+    },
+    "section.plan": {
+      "collectionName": "components_section_plans",
+      "info": { "displayName": "Plan", "icon": "priceTag", "description": "A pricing plan" },
+      "options": {},
+      "attributes": {
+        "name": { "type": "string", "required": true },
+        "price": { "type": "string", "required": true },
+        "period": { "type": "string" },
+        "features": { "type": "text", "description": "One feature per line" },
+        "link": { "type": "component", "repeatable": false, "component": "section.link" },
+        "recommended": { "type": "boolean", "default": false }
+      }
+    },
+    "section.post-list": {
+      "collectionName": "components_section_post_lists",
+      "info": {
+        "displayName": "Post list",
+        "icon": "bulletList",
+        "description": "Latest articles, of a category or a tag"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["cards", "list"],
+          "default": "cards",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "category": {
+          "type": "relation",
+          "relation": "oneToOne",
+          "target": "api::category.category"
+        },
+        "tag": { "type": "relation", "relation": "oneToOne", "target": "api::tag.tag" },
+        "count": { "type": "integer", "min": 1, "max": 12, "default": 3, "required": true }
+      }
+    },
+    "section.pricing": {
+      "collectionName": "components_section_pricings",
+      "info": {
+        "displayName": "Pricing",
+        "icon": "priceTag",
+        "description": "Plans with price and features"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["cards", "table"],
+          "default": "cards",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "text": { "type": "text" },
+        "plans": { "type": "component", "repeatable": true, "component": "section.plan", "min": 1 }
+      }
+    },
+    "section.rich-text": {
+      "collectionName": "components_section_rich_texts",
+      "info": {
+        "displayName": "Rich text",
+        "icon": "feather",
+        "description": "Long text in Markdown"
+      },
+      "options": {},
+      "attributes": { "body": { "type": "richtext", "required": true } }
+    },
+    "section.scene": {
+      "collectionName": "components_section_scenes",
+      "info": {
+        "displayName": "Scene",
+        "icon": "globe",
+        "description": "3D scene (heavy island): a glTF model with a required poster and alt text"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["background", "inline"],
+          "default": "background",
+          "required": true
+        },
+        "model": {
+          "type": "media",
+          "multiple": false,
+          "allowedTypes": ["files"],
+          "required": true
+        },
+        "poster": {
+          "type": "media",
+          "multiple": false,
+          "allowedTypes": ["images"],
+          "required": true
+        },
+        "alt": { "type": "string", "required": true },
+        "title": { "type": "string" },
+        "text": { "type": "text" }
+      }
+    },
+    "section.stat": {
+      "collectionName": "components_section_stat_items",
+      "info": {
+        "displayName": "Stat",
+        "icon": "chartPie",
+        "description": "A figure with its label"
+      },
+      "options": {},
+      "attributes": {
+        "value": { "type": "string", "required": true },
+        "label": { "type": "string", "required": true }
+      }
+    },
+    "section.stats": {
+      "collectionName": "components_section_stats",
+      "info": {
+        "displayName": "Stats",
+        "icon": "chartBubble",
+        "description": "Two to four figures with their labels"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["row", "cards"],
+          "default": "row",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "items": {
+          "type": "component",
+          "repeatable": true,
+          "component": "section.stat",
+          "min": 2,
+          "max": 4
+        }
+      }
+    },
+    "section.testimonial": {
+      "collectionName": "components_section_testimonial_items",
+      "info": {
+        "displayName": "Testimonial",
+        "icon": "quote",
+        "description": "A quote and who said it"
+      },
+      "options": {},
+      "attributes": {
+        "quote": { "type": "text", "required": true },
+        "author": { "type": "string", "required": true },
+        "role": { "type": "string" },
+        "avatar": { "type": "media", "multiple": false, "allowedTypes": ["images"] }
+      }
+    },
+    "section.testimonials": {
+      "collectionName": "components_section_testimonials",
+      "info": {
+        "displayName": "Testimonials",
+        "icon": "discuss",
+        "description": "Quotes with their authors"
+      },
+      "options": {},
+      "attributes": {
+        "variant": {
+          "type": "enumeration",
+          "enum": ["single", "grid"],
+          "default": "single",
+          "required": true
+        },
+        "title": { "type": "string" },
+        "items": {
+          "type": "component",
+          "repeatable": true,
+          "component": "section.testimonial",
+          "min": 1
+        }
+      }
+    },
+    "shared.image-credit": {
+      "collectionName": "components_shared_image_credits",
+      "info": {
+        "displayName": "Image credit",
+        "icon": "picture",
+        "description": "Who made an image, where it comes from and under which license"
+      },
+      "options": {},
+      "attributes": {
+        "kind": {
+          "type": "enumeration",
+          "enum": ["photo", "illustration", "diagram", "screenshot"],
+          "default": "photo",
+          "required": true
+        },
+        "author": { "type": "string" },
+        "authorUrl": { "type": "string", "regex": "^https?://\\S+$" },
+        "source": { "type": "string" },
+        "sourceUrl": { "type": "string", "regex": "^https?://\\S+$" },
+        "license": {
+          "type": "enumeration",
+          "enum": [
+            "own-work",
+            "cc0",
+            "public-domain",
+            "cc-by-4.0",
+            "cc-by-sa-4.0",
+            "cc-by-nc-4.0",
+            "unsplash",
+            "permission",
+            "other"
+          ],
+          "required": true
+        },
+        "licenseUrl": { "type": "string", "regex": "^https?://\\S+$" },
+        "modifications": { "type": "string" }
+      }
+    },
+    "shared.media": {
+      "collectionName": "components_shared_media",
+      "info": { "displayName": "Media", "icon": "file-video" },
+      "options": {},
+      "attributes": {
+        "file": {
+          "allowedTypes": ["images", "files", "videos"],
+          "type": "media",
+          "multiple": false
+        },
+        "caption": { "type": "text" },
+        "credit": { "type": "component", "repeatable": false, "component": "shared.image-credit" }
+      }
+    },
+    "shared.meta-social": {
+      "collectionName": "components_shared_meta_socials",
+      "info": { "displayName": "metaSocial", "icon": "project-diagram", "description": "" },
+      "options": {},
+      "attributes": {
+        "socialNetwork": {
+          "type": "enumeration",
+          "enum": ["Facebook", "Twitter"],
+          "required": true
+        },
+        "title": { "type": "string", "required": true, "maxLength": 70 },
+        "description": { "type": "string", "maxLength": 200, "required": true },
+        "image": {
+          "allowedTypes": ["images", "files", "videos"],
+          "type": "media",
+          "multiple": false
+        }
+      }
+    },
+    "shared.playground": {
+      "collectionName": "components_shared_playgrounds",
+      "info": {
+        "displayName": "Playground",
+        "icon": "code",
+        "description": "Code the reader can run in the browser, with the output shown before running it"
+      },
+      "options": {},
+      "attributes": {
+        "runtime": {
+          "type": "enumeration",
+          "enum": ["python", "sql", "javascript"],
+          "required": true
+        },
+        "code": { "type": "text", "required": true, "maxLength": 5000 },
+        "expectedOutput": { "type": "text", "maxLength": 5000 },
+        "setup": { "type": "text", "maxLength": 20000 },
+        "caption": { "type": "text" }
+      },
+      "config": {
+        "metadatas": {
+          "code": {
+            "edit": {
+              "label": "code",
+              "description": "Código que el lector ve y puede editar y ejecutar."
+            }
+          },
+          "expectedOutput": {
+            "edit": {
+              "label": "expectedOutput",
+              "description": "Salida que se muestra sin ejecutar nada, y también si el navegador no puede ejecutar el código."
+            }
+          },
+          "setup": {
+            "edit": {
+              "label": "setup",
+              "description": "Código oculto que se ejecuta antes de «code», por ejemplo para crear las tablas de un ejemplo SQL. El lector no lo ve."
+            }
+          }
+        }
+      }
+    },
+    "shared.quote": {
+      "collectionName": "components_shared_quotes",
+      "info": { "displayName": "Quote", "icon": "indent" },
+      "options": {},
+      "attributes": { "title": { "type": "string" }, "body": { "type": "text" } }
+    },
+    "shared.reference": {
+      "collectionName": "components_shared_references",
+      "info": {
+        "displayName": "Reference",
+        "icon": "book",
+        "description": "A bibliographic source, cited in the body as [@key]"
+      },
+      "options": {},
+      "attributes": {
+        "key": {
+          "type": "string",
+          "required": true,
+          "maxLength": 64,
+          "regex": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "type": {
+          "type": "enumeration",
+          "enum": [
+            "journal",
+            "conference",
+            "preprint",
+            "book",
+            "chapter",
+            "web",
+            "software",
+            "docs"
+          ],
+          "default": "journal",
+          "required": true
+        },
+        "authors": { "type": "text", "required": true },
+        "year": { "type": "string", "required": true, "maxLength": 16 },
+        "title": { "type": "string", "required": true },
+        "container": { "type": "string" },
+        "volume": { "type": "string", "maxLength": 32 },
+        "issue": { "type": "string", "maxLength": 32 },
+        "pages": { "type": "string", "maxLength": 32 },
+        "venueLabel": { "type": "string", "maxLength": 80 },
+        "doi": { "type": "string", "regex": "^10\\.\\d{4,9}/\\S+$" },
+        "url": { "type": "string", "regex": "^https?://\\S+$" },
+        "accessedAt": { "type": "date" }
+      }
+    },
+    "shared.rich-text": {
+      "collectionName": "components_shared_rich_texts",
+      "info": { "displayName": "Rich text", "icon": "align-justify", "description": "" },
+      "options": {},
+      "attributes": { "body": { "type": "richtext" } }
+    },
+    "shared.seo": {
+      "collectionName": "components_shared_seos",
+      "info": { "displayName": "seo", "icon": "search", "description": "" },
+      "options": {},
+      "attributes": {
+        "metaTitle": { "required": true, "type": "string", "maxLength": 60 },
+        "metaDescription": {
+          "type": "string",
+          "required": true,
+          "maxLength": 160,
+          "minLength": 50
+        },
+        "metaImage": {
+          "type": "media",
+          "multiple": false,
+          "required": true,
+          "allowedTypes": ["images", "files", "videos"]
+        },
+        "metaSocial": {
+          "type": "component",
+          "repeatable": true,
+          "component": "shared.meta-social"
+        },
+        "keywords": { "type": "text", "regex": "[^,]+" },
+        "metaRobots": { "type": "string", "regex": "[^,]+" },
+        "structuredData": { "type": "json" },
+        "metaViewport": { "type": "string" },
+        "canonicalURL": { "type": "string" }
+      }
+    },
+    "shared.slide": {
+      "collectionName": "components_shared_slides",
+      "info": {
+        "displayName": "Slide",
+        "icon": "picture",
+        "description": "One image of a slider, with its own caption and credit"
+      },
+      "options": {},
+      "attributes": {
+        "file": {
+          "type": "media",
+          "multiple": false,
+          "required": true,
+          "allowedTypes": ["images"]
+        },
+        "caption": { "type": "text" },
+        "credit": { "type": "component", "repeatable": false, "component": "shared.image-credit" }
+      }
+    },
+    "shared.slider": {
+      "collectionName": "components_shared_sliders",
+      "info": { "displayName": "Slider", "icon": "address-book", "description": "" },
+      "options": {},
+      "attributes": {
+        "items": { "type": "component", "repeatable": true, "component": "shared.slide" },
+        "files": {
+          "type": "media",
+          "multiple": true,
+          "required": false,
+          "allowedTypes": ["images"]
+        }
+      },
+      "config": {
+        "metadatas": {
+          "files": {
+            "edit": {
+              "label": "files (obsoleto)",
+              "description": "Obsoleto: usa «items», donde cada imagen lleva su pie y su crédito. Al arrancar, un slider con imágenes aquí y sin «items» se copia a «items»."
+            }
+          }
+        }
+      }
+    },
+    "shared.tech-item": {
+      "collectionName": "components_shared_tech_items",
+      "info": {
+        "displayName": "Tech Item",
+        "icon": "tag",
+        "description": "A single technology name"
+      },
+      "options": {},
+      "attributes": { "name": { "type": "string", "required": true } }
+    }
+  }
+}

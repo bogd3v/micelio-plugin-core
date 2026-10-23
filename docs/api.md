@@ -84,3 +84,13 @@ Every refusal answers `application/problem+json`:
 | 404    | `editorialEntryNotFound`       | No such entry in that locale                          |
 | 409    | `editorialTransitionInvalid`   | The state machine has no such transition              |
 | 409    | `editorialTransitionRefused`   | A `beforeTransition` handler of a plugin refused it   |
+
+## Block catalogue
+
+An admin API route, for the admin panel and its builder; any admin user may read it.
+
+| Method | Path              | Answers                                                                 |
+| ------ | ----------------- | ----------------------------------------------------------------------- |
+| `GET`  | `/micelio/blocks` | `{ "data": [{ id, group, component, schema, options, cost, static }] }` |
+
+One entry per block of the catalogue, in its order. `schema` is the block's JSON Schema, the one under `$defs` in `contract/blocks.schema.json`; [`docs/blocks.md`](blocks.md) describes the fields and the reference of every block.
