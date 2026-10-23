@@ -8,5 +8,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["contract", "scripts", "test", "vitest.config.mts"]
+  "include": ["contract", "scripts", "test", "vitest.config.mts", "vitest.admin.config.mts"]
 }

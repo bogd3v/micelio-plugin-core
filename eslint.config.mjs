@@ -9,5 +9,5 @@ export default [
     languageOptions: { sourceType: 'commonjs' },
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
-  { ignores: ['dist/**'] },
+  { ignores: ['dist/**', 'test/strapi/app/build/**'] },
 ]
