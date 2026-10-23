@@ -53,10 +53,17 @@ export async function publishDueEntries(strapi: Core.Strapi, now = new Date()): 
  * Registers the cron job that runs {@link publishDueEntries} on `scheduledPublishRule`.
  *
  * @remarks
- * A run that starts while the previous one is still going is skipped.
+ * Nothing is registered when the rule is `false`. A run that starts while the previous one is
+ * still going is skipped.
+ *
+ * @returns Whether the job was registered.
  */
-export function registerScheduler(strapi: Core.Strapi): void {
-  const rule = strapi.config.get<string>('plugin::micelio.scheduledPublishRule')
+export function registerScheduler(strapi: Core.Strapi): boolean {
+  const rule = strapi.config.get<string | false>('plugin::micelio.scheduledPublishRule')
+  if (rule === false) {
+    strapi.log.info('micelio: the scheduler is off (scheduledPublishRule: false)')
+    return false
+  }
   let running = false
   strapi.cron.add({
     [SCHEDULER_JOB]: {
@@ -72,4 +79,5 @@ export function registerScheduler(strapi: Core.Strapi): void {
       options: { rule },
     },
   })
+  return true
 }

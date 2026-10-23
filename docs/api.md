@@ -67,7 +67,7 @@ Entries of a type made with `withEditorial` move through these transitions (ADR-
 
 A site replaces the default for a transition with its `editorialPolicy`, a map from `from->to` to role codes: `{ "draft->in_review": ["strapi-editor"] }`. The Strapi permission is checked as the Content Manager checks it, so an Author moves only their own entries.
 
-`in_review → published` and `scheduled → published` are the transitions that publish the entry in Strapi, and `published → draft` the one that unpublishes it. The scheduler, a cron job of the plugin, performs `scheduled → published` for every entry whose `publishAt` has passed: every minute by default (`scheduledPublishRule`, README), with an empty `publishedBy`. An entry it cannot publish is logged and stays scheduled for the next run. Leaving `in_review` records the user in `reviewedBy`; publishing records them in `publishedBy`.
+`in_review → published` and `scheduled → published` are the transitions that publish the entry in Strapi, and `published → draft` the one that unpublishes it. The scheduler, a cron job of the plugin, performs `scheduled → published` for every entry whose `publishAt` has passed: every minute by default (`scheduledPublishRule`, README; `false` turns it off), with an empty `publishedBy`. An entry it cannot publish is logged and stays scheduled for the next run. Leaving `in_review` records the user in `reviewedBy`; publishing records them in `publishedBy`.
 
 ### Errors
 
