@@ -1,0 +1,9 @@
+{
+  "collectionName": "components_fixture_links",
+  "info": { "displayName": "Link", "description": "A fixture component that is not a block" },
+  "options": {},
+  "attributes": {
+    "label": { "type": "string", "required": true },
+    "url": { "type": "string" }
+  }
+}

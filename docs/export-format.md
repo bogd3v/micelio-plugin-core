@@ -8,7 +8,7 @@ The words **must**, **must not** and **may** in this document are requirements o
 
 ## The archive
 
-An archive is a gzip-compressed POSIX tar file (pax format) named `<site slug>-<UTC date and time>.micelio.tar.gz`, for example `example-20261023T120000Z.micelio.tar.gz`. It holds **one site**: an instance with several sites writes one archive per site.
+An archive is a gzip-compressed POSIX tar file in ustar format, which every pax reader also reads, named `<site slug>-<UTC date and time>.micelio.tar.gz`, for example `example-20261023T120000Z.micelio.tar.gz`. It holds **one site**: an instance with several sites writes one archive per site.
 
 ```text
 manifest.json
@@ -125,6 +125,7 @@ A content file holds the documents of one type that belong to the site, in Strap
 - `versions` has one entry per locale and status the document has. A type without i18n writes `locale: null`. A type without draft and publish has only `status: "published"`, as Strapi stores it. A draft-and-publish type writes its draft always and its published version when it has one.
 - `data` holds the attributes of the type as the version stores them, by the rules below. Attributes that are not localised are written in every locale's `data`, as Strapi stores them; an importer takes them from the version in the default locale of the manifest when the versions disagree.
 - `createdBy` and `updatedBy` (admin users) are not written.
+- The `site` relation of a site-scoped type is not written: every document of the archive belongs to `manifest.site`. A document belongs to the site when one of its rows does, so a version stored without the relation (a locale the site itself lacks) is still written.
 
 ### Attributes
 
@@ -183,7 +184,7 @@ An importer resolves an item by `block` first and by `__component` only when `bl
 }
 ```
 
-- `media/sha256/<hex>` is the original file as uploaded. The derived formats (thumbnails, breakpoints) are not written: the importing instance's upload provider makes its own.
+- `media/sha256/<hex>` is the file as the media library stores it. Strapi may rewrite an image when it is uploaded; the archive holds the stored bytes, not the ones first sent. The derived formats (thumbnails, breakpoints) are not written: the importing instance's upload provider makes its own.
 - `url`, `previewUrl`, `provider`, `provider_metadata`, `formats` and Strapi's `hash` are not written: they describe where one instance stores the file, not the file.
 - A file that no document of the site refers to is not in the archive.
 - An importer reuses a file whose SHA-256 the target library already holds, uploads the others through the target's upload provider and applies its rules (size limit, denied types such as `text/html`). A file the target refuses refuses the archive (`exportMediaRefused`).
@@ -228,6 +229,18 @@ An archive **never** holds, whatever is asked:
 - Accounts and sessions: admin users, roles and permissions; reader accounts (`plugin::users-permissions.user`); sessions and refresh tokens.
 - Instance configuration: environment variables, plugin stores (the users-permissions settings, the Content Manager layouts), API tokens, the upload provider's settings, rate-limit keys and counters.
 - History that is Strapi's: content history versions, releases.
+
+## How a type declares its export
+
+A content type of a Micelio plugin is in the archive when it is made with `withSiteScope`, and the `site` type always is. What it writes follows from its schema, and the type may say more in `pluginOptions.micelio`:
+
+| Declared on  | Key          | Meaning                                                                                                                                                                                                      |
+| ------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The type     | `exportName` | Its export name. Without it: the singular name for `api::` types and the types of this plugin (`plugin::micelio.site` is `site`), and `<plugin>.<singular name>` for another plugin's (`fediverse.follower`) |
+| The type     | `export`     | `personal`: the type is written only with `personal`. `never`: never written                                                                                                                                 |
+| An attribute | `export`     | The same, for one attribute, at any depth of its components                                                                                                                                                  |
+
+An attribute that declares nothing is written, except a `private` attribute, which is never written unless it declares `personal`, and a `password`, which is never written whatever it declares. The rows of [Content types](#content-types) are what these declarations must give for each type.
 
 ## Content types
 
@@ -285,10 +298,12 @@ An import writes one archive into one target instance.
 - **Older formats.** An importer of format `1.y` imports every `1.x` archive, with the content migrations its release ships for the blocks and types that changed since.
 - **A report.** The import answers with what it created, replaced, deleted and skipped per export name, the role codes of `editorialPolicy` the target does not have, and every export name it did not know.
 
-Errors are problem details (section 4 of the standard) with these codes:
+Errors are problem details (section 4 of the standard) with these codes. The first two are the exporter's:
 
 | `code`                        | When                                                                                             |
 | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| `exportSiteNotFound`          | No site has the slug the export names                                                            |
+| `exportMediaUnreadable`       | A media file of the site cannot be read, or changes while it is written                          |
 | `exportArchiveCorrupt`        | A file is missing, extra, of the wrong size or hash, or breaks the layout rules                  |
 | `exportFormatUnsupported`     | `format` is not `micelio-site-export`, or `formatVersion` has a major the importer does not know |
 | `exportDocumentInvalid`       | A document does not validate against the schema of its type                                      |
