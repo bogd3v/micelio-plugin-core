@@ -1,6 +1,6 @@
-# Export a site
+# Export and import a site
 
-**Kind:** how-to. Write one site of a Micelio CMS as an archive of the [site export format](../export-format.md), to keep it, move it to another host or hand it to its owner. Importing an archive arrives with bogd3v/micelio-plugin-core#30.
+**Kind:** how-to. Write one site of a Micelio CMS as an archive of the [site export format](../export-format.md), to keep it, move it to another host or hand it to its owner, and write such an archive into a CMS.
 
 ## Write the archive
 
@@ -18,9 +18,26 @@ Without options the archive holds the site's content and media, and the personal
 
 No archive holds passwords, tokens, keys, admin users, reader accounts or the instance's configuration, with or without `--personal`.
 
+## Import an archive
+
+On the target CMS, in the Strapi project's folder, with its environment:
+
+```bash
+npx micelio import <file> --into default
+```
+
+The command reads and checks the whole archive before it writes anything: sizes and SHA-256 of every file, the format version, every document against the target's types, the editorial states, the locales, the site's slug and hosts. Then it stores the media and writes the content in one database transaction, and prints a report as JSON: what it created, replaced, deleted and skipped for each export name, the media it stored and reused, the export names the target has no type for, the editorial role codes the target lacks and the references it could not resolve. A refused archive exits with `1`, names the cause and its code, and leaves the target as it was.
+
+- **`--into <site slug>`** writes the archive's site into an existing site of the target, which keeps its slug and stays the default if it was. A fresh CMS already has a `default` site, so moving a one-site CMS is `--into default`. Without `--into`, the import finds the archive's site by its `documentId` or creates it, and refuses when another site has its slug (`exportSiteSlugTaken`) or one of its hosts (`exportHostTaken`).
+- **`--replace`** also deletes the site's documents the archive does not hold, for each type the archive holds. Without it, they are left as they are.
+- **Locales** belong to the CMS and its other sites: an archive that uses a locale the target lacks is refused (`exportLocaleMissing`). Add the locale in the admin and run the import again.
+- **Run it again** whenever you like: an archive the target already holds writes nothing.
+
+The import is a restore. Published entries are published as they were, with their dates, without the editorial transitions; the target's own upload rules (size limit, denied and allowed types) still apply to every media file.
+
 ## From code
 
-Another plugin or a script calls the service with an output stream:
+Another plugin or a script calls the service with an output or an input stream:
 
 ```ts
 const manifest = await strapi
@@ -29,4 +46,11 @@ const manifest = await strapi
   .export({ site: 'example', personal: false }, fs.createWriteStream('example.micelio.tar.gz'))
 ```
 
-It answers the archive's manifest and refuses with an `ExportError` whose `code` is one of the format's.
+```ts
+const report = await strapi
+  .plugin('micelio')
+  .service('siteExport')
+  .import(fs.createReadStream('example.micelio.tar.gz'), { into: 'default', mode: 'merge' })
+```
+
+`export` answers the archive's manifest and `import` its report. Both refuse with an `ExportError` whose `code` is one of the format's.

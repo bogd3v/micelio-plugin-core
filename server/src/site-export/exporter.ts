@@ -6,7 +6,6 @@ import { createGzip } from 'node:zlib'
 import type { Core, UID } from '@strapi/strapi'
 import packageJson from '../../../package.json'
 import { SITE_UID } from '../constants/site'
-import { isSiteScoped, SITE_ATTRIBUTE } from '../site-scope'
 import {
   CONTENT_FOLDER,
   EXPORT_FORMAT,
@@ -17,25 +16,10 @@ import {
 } from './constants'
 import { ExportError } from './errors'
 import { digestFile, openFile, type LocatedFile } from './media'
-import { exportNameOf, exportPolicyOf, isWritten } from './names'
-import {
-  populateOf,
-  serialiseData,
-  toTimestamp,
-  type Attributes,
-  type SerialiseContext,
-  type StoredFile,
-} from './serialise'
+import { attributesOf, compare, documentsOf, exportedTypes, siteRowsOf, type Row } from './model'
+import { populateOf, type Attributes, type SerialiseContext, type StoredFile } from './serialise'
 import { tarChunks, type TarFile } from './tar'
-import type {
-  ContentFile,
-  ExportDocument,
-  ExportVersion,
-  FileDigest,
-  Manifest,
-  MediaEntry,
-  MediaRef,
-} from './types'
+import type { ContentFile, FileDigest, Manifest, MediaEntry, MediaRef } from './types'
 
 /** What to export. */
 export interface ExportRequest {
@@ -46,14 +30,6 @@ export interface ExportRequest {
   /** When the export is made; the only value that differs between two exports of a site. */
   now?: Date
 }
-
-interface ExportedType {
-  uid: string
-  name: string
-  attributes: Attributes
-}
-
-type Row = Record<string, unknown> & { documentId: string; locale?: string | null }
 
 interface SiteRow extends Row {
   slug: string
@@ -108,7 +84,7 @@ export async function exportSite(
   const contents: ContentFile[] = []
   for (const type of types) {
     const rows = type.uid === SITE_UID ? siteRows : await siteRowsOf(strapi, type, site, context)
-    contents.push({ type: type.name, documents: documentsOf(strapi, type, rows, context) })
+    contents.push({ type: type.name, documents: documentsOf(type, rows, context) })
   }
 
   const index = await mediaIndex(strapi, media)
@@ -161,79 +137,6 @@ export async function exportSite(
   )
   await pipeline(Readable.from(tarChunks(ordered)), createGzip(), output)
   return manifest
-}
-
-/** The site type and every site-scoped type the archive writes, in byte order of export name. */
-function exportedTypes(strapi: Core.Strapi, personal: boolean): ExportedType[] {
-  const types: ExportedType[] = []
-  for (const [uid, schema] of Object.entries(strapi.contentTypes)) {
-    if (uid !== SITE_UID && !isSiteScoped(schema)) continue
-    if (!isWritten(exportPolicyOf(schema as never), personal)) continue
-    types.push({
-      uid,
-      name: exportNameOf(uid, schema as never),
-      attributes: attributesOf(strapi, uid),
-    })
-  }
-  return types.sort((a, b) => compare(a.name, b.name))
-}
-
-// Every row of the documents that belong to the site. A document belongs to the site when one of
-// its rows does: a row in a locale the site itself lacks can be stored without the relation.
-async function siteRowsOf(
-  strapi: Core.Strapi,
-  type: ExportedType,
-  site: SiteRow,
-  context: SerialiseContext
-): Promise<Row[]> {
-  const query = strapi.db.query(type.uid as UID.ContentType)
-  const owned = (await query.findMany({
-    select: ['documentId'],
-    where: { [SITE_ATTRIBUTE]: { documentId: site.documentId } },
-  })) as Row[]
-  const documentIds = [...new Set(owned.map((row) => row.documentId))]
-  if (documentIds.length === 0) return []
-  return (await query.findMany({
-    where: { documentId: { $in: documentIds } },
-    populate: populateOf(type.attributes, context, new Set([SITE_ATTRIBUTE])),
-  })) as Row[]
-}
-
-function attributesOf(strapi: Core.Strapi, uid: string): Attributes {
-  return strapi.contentType(uid as UID.ContentType).attributes as unknown as Attributes
-}
-
-function documentsOf(
-  strapi: Core.Strapi,
-  type: ExportedType,
-  rows: Row[],
-  context: SerialiseContext
-): ExportDocument[] {
-  const schema = strapi.contentType(type.uid as UID.ContentType)
-  const isLocalized =
-    strapi.plugin('i18n')?.service('content-types').isLocalizedContentType(schema) === true
-  const hasDrafts = schema.options?.draftAndPublish === true
-  const skip = new Set(type.uid === SITE_UID ? [] : [SITE_ATTRIBUTE])
-  const documents = new Map<string, ExportVersion[]>()
-  for (const row of rows) {
-    const version: ExportVersion = {
-      locale: isLocalized ? (row.locale ?? null) : null,
-      status: hasDrafts && !row.publishedAt ? 'draft' : 'published',
-      createdAt: toTimestamp(row.createdAt),
-      updatedAt: toTimestamp(row.updatedAt),
-      publishedAt: toTimestamp(row.publishedAt),
-      data: serialiseData(type.attributes, row, context, skip),
-    }
-    documents.set(row.documentId, [...(documents.get(row.documentId) ?? []), version])
-  }
-  return [...documents.entries()]
-    .sort(([a], [b]) => compare(a, b))
-    .map(([documentId, versions]) => ({
-      documentId,
-      versions: versions.sort(
-        (a, b) => compare(a.locale ?? '', b.locale ?? '') || compare(a.status, b.status)
-      ),
-    }))
 }
 
 async function mediaIndex(
@@ -337,9 +240,4 @@ function jsonFile(path: string, value: unknown): TarFile {
 
 function digestOf(body: Buffer): FileDigest {
   return { sha256: createHash('sha256').update(body).digest('hex'), bytes: body.length }
-}
-
-// Byte order of UTF-8, which for the ASCII of the archive is code unit order.
-function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0
 }

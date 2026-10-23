@@ -7,6 +7,7 @@
 //   docs/operate/host-check.md has more.
 // - `micelio export <site> [--personal] [--output <file>]` writes the archive of one site
 //   (docs/export-format.md) and prints where.
+// - `micelio import <file> [--replace] [--into <site>]` imports an archive and prints what it did.
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -14,6 +15,7 @@ const path = require('node:path')
 const USAGE = [
   'Usage: micelio doctor',
   '       micelio export <site slug> [--personal] [--output <file>]',
+  '       micelio import <file> [--replace] [--into <site slug>]',
 ].join('\n')
 
 /**
@@ -83,6 +85,36 @@ async function exportCommand(args) {
   })
 }
 
+async function importCommand(args) {
+  const options = parseImportArgs(args)
+  if (!options) {
+    process.stderr.write(`${USAGE}\n`)
+    return 2
+  }
+  // Opened before Strapi loads, so a wrong path fails fast.
+  fs.accessSync(options.file, fs.constants.R_OK)
+  return withStrapi(async (app) => {
+    const report = await app
+      .plugin('micelio')
+      .service('siteExport')
+      .import(fs.createReadStream(options.file), { mode: options.mode, into: options.into })
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+    return 0
+  })
+}
+
+function parseImportArgs(args) {
+  const options = { mode: 'merge' }
+  for (let position = 0; position < args.length; position += 1) {
+    const arg = args[position]
+    if (arg === '--replace') options.mode = 'replace'
+    else if (arg === '--into' && args[position + 1]) options.into = args[++position]
+    else if (!arg.startsWith('--') && !options.file) options.file = path.resolve(arg)
+    else return undefined
+  }
+  return options.file ? options : undefined
+}
+
 function parseExportArgs(args) {
   const options = { personal: false }
   for (let position = 0; position < args.length; position += 1) {
@@ -109,6 +141,7 @@ async function main(args) {
   try {
     if (command === 'doctor') return await doctor()
     if (command === 'export') return await exportCommand(rest)
+    if (command === 'import') return await importCommand(rest)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     const code = error && typeof error === 'object' && 'code' in error ? ` (${error.code})` : ''
