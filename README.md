@@ -28,6 +28,7 @@ module.exports = {
   micelio: {
     config: {
       // When the scheduler publishes the scheduled entries that are due, as a cron rule.
+      // `false` turns it off: scheduled entries then wait for `transitions.publishDue()`.
       scheduledPublishRule: '* * * * *', // the default: every minute
     },
   },

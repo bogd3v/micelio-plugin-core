@@ -3,6 +3,7 @@ import type { Core, UID } from '@strapi/strapi'
 import config from '../../server/src/config'
 import { SITE_UID } from '../../server/src/constants/site'
 import type { Actor } from '../../server/src/editorial/machine'
+import { registerScheduler, SCHEDULER_JOB } from '../../server/src/editorial/scheduler'
 import type { TransitionsService } from '../../server/src/services/transitions'
 import { cleanupStrapi, setupStrapi } from './harness'
 
@@ -81,6 +82,22 @@ describe('the scheduler', () => {
   })
 
   it('validates its rule', () => {
-    expect(() => config.validator({ scheduledPublishRule: '' })).toThrow(/cron rule/)
+    expect(() => config.validator({ scheduledPublishRule: '' })).toThrow(/cron rule or false/)
+    expect(() => config.validator({ scheduledPublishRule: false })).not.toThrow()
+  })
+
+  it('registers no job when the rule is false', () => {
+    const jobNames = () =>
+      (strapi.cron as unknown as { jobs: { name: string }[] }).jobs.map((job) => job.name)
+    expect(jobNames()).toContain(SCHEDULER_JOB)
+    const previous = strapi.config.get('plugin::micelio.scheduledPublishRule')
+    strapi.cron.remove(SCHEDULER_JOB)
+    strapi.config.set('plugin::micelio.scheduledPublishRule', false)
+    try {
+      expect(registerScheduler(strapi)).toBe(false)
+      expect(jobNames()).not.toContain(SCHEDULER_JOB)
+    } finally {
+      strapi.config.set('plugin::micelio.scheduledPublishRule', previous)
+    }
   })
 })
