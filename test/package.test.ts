@@ -96,6 +96,13 @@ describe('the packed package', () => {
     }
   })
 
+  it('publishes the JSON Schema of the block catalogue', () => {
+    const schema = requireFromHost(`${packageJson.name}/blocks.schema.json`) as {
+      $defs: Record<string, unknown>
+    }
+    expect(Object.keys(schema.$defs)).toContain('hero')
+  })
+
   it('loads strapi-admin.js and its export', async () => {
     const fromFile = defaultOf<AdminEntry>(requireFromHost(path.join(INSTALLED, 'strapi-admin.js')))
     const fromImport = (await import(

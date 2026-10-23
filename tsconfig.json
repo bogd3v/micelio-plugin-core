@@ -1,6 +1,6 @@
 {
-  // The tests and the configuration files. The plugin's own code is checked by
-  // server/tsconfig.json and admin/tsconfig.json, which `strapi-plugin build` uses.
+  // The block contract, the scripts, the tests and the configuration files. The plugin's own code
+  // is checked by server/tsconfig.json and admin/tsconfig.json, which `strapi-plugin build` uses.
   "extends": "@micelio/tsconfig",
   "compilerOptions": {
     "module": "Preserve",
@@ -8,5 +8,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["test", "vitest.config.mts"]
+  "include": ["contract", "scripts", "test", "vitest.config.mts"]
 }
