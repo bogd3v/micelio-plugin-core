@@ -31,5 +31,11 @@ export default (): Core.RouterInput => ({
       handler: 'status.runHostCheck',
       config: { policies: ['admin::isAuthenticatedAdmin'] },
     },
+    {
+      method: 'POST',
+      path: '/preview/token',
+      handler: 'preview.token',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
   ],
 })

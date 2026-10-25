@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [{ "$ref": "#/$defs/ready" }, { "$ref": "#/$defs/load-draft" }],
+  "$defs": {
+    "ready": {
+      "type": "object",
+      "properties": {
+        "v": { "type": "number", "const": 1 },
+        "type": { "type": "string", "const": "ready" },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "v": {
+              "minItems": 1,
+              "type": "array",
+              "items": { "type": "integer", "exclusiveMinimum": 0, "maximum": 9007199254740991 }
+            },
+            "documentId": { "type": "string", "minLength": 1 },
+            "locale": { "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }] },
+            "version": { "type": "string", "minLength": 1 }
+          },
+          "required": ["v", "documentId", "locale", "version"]
+        }
+      },
+      "required": ["v", "type", "payload"],
+      "title": "ready",
+      "description": "Frame → admin: the frame has loaded a draft."
+    },
+    "load-draft": {
+      "type": "object",
+      "properties": {
+        "v": { "type": "number", "const": 1 },
+        "type": { "type": "string", "const": "load-draft" },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "documentId": { "type": "string", "minLength": 1 },
+            "locale": { "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }] }
+          },
+          "required": ["documentId", "locale"]
+        }
+      },
+      "required": ["v", "type", "payload"],
+      "title": "load-draft",
+      "description": "Admin → frame: reload the draft after a save."
+    }
+  },
+  "title": "Micelio preview messages",
+  "description": "The phase 1 messages between the admin and the preview frame, in the envelope { v, type, payload }. Generated from contract/preview.ts of @micelio/strapi-plugin-core (ADR-0019); do not edit."
+}

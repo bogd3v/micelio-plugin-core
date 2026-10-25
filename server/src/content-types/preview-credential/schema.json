@@ -1,0 +1,73 @@
+{
+  "kind": "collectionType",
+  "collectionName": "micelio_preview_credentials",
+  "info": {
+    "singularName": "preview-credential",
+    "pluralName": "preview-credentials",
+    "displayName": "Preview credential",
+    "description": "A preview token or grant of ADR-0019, stored as the hash of its value and bound to one admin user and one draft"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    },
+    "i18n": {
+      "localized": false
+    },
+    "micelio": {
+      "export": "never"
+    }
+  },
+  "attributes": {
+    "kind": {
+      "type": "enumeration",
+      "enum": ["token", "grant"],
+      "required": true
+    },
+    "hash": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "private": true
+    },
+    "adminUser": {
+      "type": "integer",
+      "required": true
+    },
+    "adminOrigin": {
+      "type": "string",
+      "required": true
+    },
+    "siteDocumentId": {
+      "type": "string",
+      "required": true
+    },
+    "contentType": {
+      "type": "string",
+      "required": true
+    },
+    "entryDocumentId": {
+      "type": "string",
+      "required": true
+    },
+    "entryLocale": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "usedAt": {
+      "type": "datetime"
+    },
+    "revokedAt": {
+      "type": "datetime"
+    }
+  }
+}

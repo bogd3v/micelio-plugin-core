@@ -51,6 +51,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-}
       # The frontend's read-only token: the seed creates it with this key.
       FRONTEND_API_TOKEN: ${FRONTEND_API_TOKEN:-}
+      # A custom token that may exchange preview tokens and read drafts by grant (docs/operate/preview.md).
+      PREVIEW_API_TOKEN: ${PREVIEW_API_TOKEN:-}
       FRONTEND_ORIGIN: http://localhost:3000
     volumes:
       # The plugin's sources, edited on the host. Its node_modules and dist stay in the image and the
