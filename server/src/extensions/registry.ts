@@ -1,5 +1,5 @@
 import type { Core, UID } from '@strapi/strapi'
-import { SITE_SECTION_ATTRIBUTE_PREFIX } from '../constants/extensions'
+import { RESERVED_PAGE_PATHS, SITE_SECTION_ATTRIBUTE_PREFIX } from '../constants/extensions'
 import { SITE_UID } from '../constants/site'
 import type { PluginChecksResult } from '../types/status'
 import type {
@@ -58,6 +58,9 @@ export function createExtensionRegistry(strapi: Core.Strapi): ExtensionRegistry 
     registerAdminPage(value) {
       const page = parseAdminPage(value)
       taken('registerAdminPage', pages, page.id)
+      if ((RESERVED_PAGE_PATHS as readonly string[]).includes(page.to)) {
+        throw new TypeError(`micelio: registerAdminPage: to "${page.to}" is reserved by the core`)
+      }
       if (pages.some(({ to }) => to === page.to)) {
         throw new TypeError(`micelio: registerAdminPage: to "${page.to}" is already taken`)
       }

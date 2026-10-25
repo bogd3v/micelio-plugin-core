@@ -33,7 +33,7 @@ export interface AdminPageRegistration {
   label: LocalisedText
   /**
    * The page's path under `/plugins/micelio/`, such as `fediverse`: lower case letters, digits,
-   * hyphens and `/`.
+   * hyphens and `/`. `about` is the core's own page and is refused.
    */
   to: string
   /**
@@ -184,7 +184,8 @@ export interface MicelioExtensions {
    * is provided by your plugin's admin with `apis.registerPage` of the Micelio admin plugin; do
    * not add a menu link of your own.
    *
-   * @throws `TypeError` when the registration is malformed or its `id` or `to` is taken.
+   * @throws `TypeError` when the registration is malformed, its `id` or `to` is taken, or `to` is a path
+   * the core reserves.
    *
    * @example
    * ```ts
