@@ -1,6 +1,8 @@
 import type { Core } from '@strapi/strapi'
 import type { Context } from 'koa'
 import { STATUS_READ_PERMISSION } from '../constants/status'
+import { extensionsOf } from '../extensions'
+import type { StatusReport } from '../types/status'
 import { sendProblem } from '../utils/problem'
 
 interface UserAbility {
@@ -20,7 +22,8 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<'find' | 'runHostCh
   return {
     async find(ctx) {
       if (!isAllowed(ctx)) return
-      ctx.body = { data: await status().read() }
+      const report = await status().read()
+      ctx.body = { data: { ...report, plugins: visiblePlugins(strapi, ctx, report.plugins) } }
     },
     async runHostCheck(ctx) {
       if (!isAllowed(ctx)) return
@@ -41,4 +44,20 @@ function isAllowed(ctx: Context): boolean {
     code: 'statusForbidden',
   })
   return false
+}
+
+/** The plugins' checks of the registrations whose permission the caller has. */
+function visiblePlugins(
+  strapi: Core.Strapi,
+  ctx: Context,
+  plugins: StatusReport['plugins']
+): StatusReport['plugins'] {
+  const ability = ctx.state.userAbility as UserAbility | undefined
+  const allowed = new Set(
+    extensionsOf(strapi)
+      .statusChecks()
+      .filter(({ permission }) => ability?.can(permission) === true)
+      .map(({ id }) => id)
+  )
+  return Object.fromEntries(Object.entries(plugins).filter(([id]) => allowed.has(id)))
 }

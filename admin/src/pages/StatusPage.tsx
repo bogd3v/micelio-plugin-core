@@ -14,22 +14,32 @@ import {
 } from '@strapi/design-system'
 import { Layouts, Page } from '@strapi/strapi/admin'
 import type { ReactNode } from 'react'
+import { useIntl } from 'react-intl'
 
 import type { HostCheckReport, HostCheckStatus } from '../../../server/src/types/host-check'
-import type { StatusFrontend, StatusReport, StatusSite } from '../../../server/src/types/status'
+import type {
+  PluginChecksResult,
+  StatusFrontend,
+  StatusReport,
+  StatusSite,
+} from '../../../server/src/types/status'
 import { hasMessage, useMessages } from '../messages'
 import { STATUS_READ_PERMISSION } from '../permissions'
 import { useHostCheckRun } from '../hooks/useHostCheckRun'
 import { useStatus } from '../hooks/useStatus'
 import { checkText, type Text } from '../utils/checkText'
+import { diagnosticsText } from '../utils/diagnostics'
+import { localised } from '../utils/localised'
 
-type Tone = 'success' | 'danger' | 'neutral'
+type Tone = 'success' | 'danger' | 'warning' | 'neutral'
 
 // Token pairs instead of the Badge variants: the `danger` variant's text is 3.9:1 on its
 // background, below the 4.5:1 of WCAG AA for its size.
 const TONES: Record<Tone, { backgroundColor: string; textColor: string }> = {
   success: { backgroundColor: 'success100', textColor: 'success700' },
   danger: { backgroundColor: 'danger100', textColor: 'danger700' },
+  // warning700 on warning100 is 4.0:1, below the 4.5:1 of WCAG AA.
+  warning: { backgroundColor: 'warning100', textColor: 'neutral800' },
   neutral: { backgroundColor: 'neutral150', textColor: 'neutral700' },
 }
 
@@ -57,7 +67,7 @@ export default function StatusPage() {
 
 function StatusContent() {
   const { t } = useMessages()
-  const { resource, reload } = useStatus()
+  const { resource, reload, refresh } = useStatus()
   if (resource.kind === 'loading') return <Page.Loading>{t('status.loading')}</Page.Loading>
   if (resource.kind === 'error') {
     return (
@@ -75,9 +85,11 @@ function StatusContent() {
   return (
     <Flex direction="column" alignItems="stretch" gap={6}>
       <PluginSection report={report} />
-      <HostCheckSection initial={report.hostCheck} />
+      <HostCheckSection initial={report.hostCheck} onRan={refresh} />
+      <PluginChecksSections report={report} />
       <FrontendsSection frontends={report.frontends} />
       <SitesSection sites={report.sites} />
+      <DiagnosticsButton report={report} />
     </Flex>
   )
 }
@@ -124,7 +136,13 @@ function PluginSection({ report }: { report: StatusReport }) {
   )
 }
 
-function HostCheckSection({ initial }: { initial: HostCheckReport | null }) {
+function HostCheckSection({
+  initial,
+  onRan,
+}: {
+  initial: HostCheckReport | null
+  onRan: () => Promise<void>
+}) {
   const { t, date } = useMessages()
   const { notifyStatus, notifyAlert } = useNotifyAT()
   const { report, isRunning, hasFailed, run } = useHostCheckRun(initial)
@@ -138,6 +156,8 @@ function HostCheckSection({ initial }: { initial: HostCheckReport | null }) {
   const runAgain = async () => {
     const answer = await run()
     // The table changes without a focus move: say what the run found.
+    // The plugins' checks ran with it: load their results.
+    if (answer) await onRan()
     if (answer) notifyStatus(verdict(answer))
     else notifyAlert(t('status.hostCheck.runFailed'))
   }
@@ -331,5 +351,114 @@ function SitesSection({ sites }: { sites: StatusSite[] }) {
         </Tbody>
       </Table>
     </Section>
+  )
+}
+
+const PLUGIN_TONES: Record<'ok' | 'warn' | 'fail', Tone> = {
+  ok: 'success',
+  warn: 'warning',
+  fail: 'danger',
+}
+
+/** One card per sibling plugin that registered status checks (`registerStatusChecks`). */
+function PluginChecksSections({ report }: { report: StatusReport }) {
+  return (
+    <>
+      {Object.entries(report.plugins).map(([id, result]) => (
+        <PluginChecksCard key={id} result={result} sites={report.sites} />
+      ))}
+    </>
+  )
+}
+
+function PluginChecksCard({ result, sites }: { result: PluginChecksResult; sites: StatusSite[] }) {
+  const { t, date } = useMessages()
+  const { locale } = useIntl()
+  const slugOf = (documentId: string) =>
+    sites.find((site) => site.documentId === documentId)?.slug ?? documentId
+  return (
+    <Section title={localised(result.label, locale)}>
+      <Typography textColor="neutral600">
+        {result.ranAt === null
+          ? t('status.plugins.notRun')
+          : t('status.plugins.ranAt', { date: date(result.ranAt) })}
+      </Typography>
+      {result.ranAt !== null && result.checks.length === 0 ? (
+        <Typography textColor="neutral600">{t('status.plugins.empty')}</Typography>
+      ) : null}
+      {result.checks.length > 0 ? (
+        <Table colCount={4} rowCount={result.checks.length + 1}>
+          <Thead>
+            <Tr>
+              <Th>
+                <Typography variant="sigma">{t('status.plugins.column.site')}</Typography>
+              </Th>
+              <Th>
+                <Typography variant="sigma">{t('status.plugins.column.check')}</Typography>
+              </Th>
+              <Th>
+                <Typography variant="sigma">{t('status.plugins.column.status')}</Typography>
+              </Th>
+              <Th>
+                <Typography variant="sigma">{t('status.plugins.column.found')}</Typography>
+              </Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {result.checks.map((check) => (
+              <Tr key={`${check.site}:${check.id}`}>
+                <Td>
+                  <Typography>{slugOf(check.site)}</Typography>
+                </Td>
+                <Td>
+                  <Typography fontWeight="bold">{localised(check.title, locale)}</Typography>
+                </Td>
+                <Td>
+                  <StatusBadge tone={PLUGIN_TONES[check.status]}>
+                    {t(`status.plugins.status.${check.status}`)}
+                  </StatusBadge>
+                </Td>
+                <Td>
+                  <Flex direction="column" alignItems="flex-start" gap={1}>
+                    {check.detail ? (
+                      <Typography textColor="neutral800">
+                        {localised(check.detail, locale)}
+                      </Typography>
+                    ) : null}
+                    {check.fix ? (
+                      <Typography variant="pi" textColor="neutral800">
+                        <strong>{t('status.plugins.fix')}:</strong> {localised(check.fix, locale)}
+                      </Typography>
+                    ) : null}
+                  </Flex>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      ) : null}
+    </Section>
+  )
+}
+
+/** Copies the diagnostics of the page for a support request. */
+function DiagnosticsButton({ report }: { report: StatusReport }) {
+  const { t } = useMessages()
+  const { notifyStatus, notifyAlert } = useNotifyAT()
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(diagnosticsText(report))
+      notifyStatus(t('status.diagnostics.copied'))
+    } catch {
+      // Clipboard access can be refused (an insecure origin, a browser setting): say so.
+      notifyAlert(t('status.diagnostics.failed'))
+    }
+  }
+  return (
+    <Flex>
+      <Button variant="tertiary" size="S" onClick={copy}>
+        {t('status.diagnostics.copy')}
+      </Button>
+    </Flex>
   )
 }

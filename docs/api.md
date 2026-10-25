@@ -99,17 +99,35 @@ One entry per block of the catalogue, in its order. `schema` is the block's JSON
 
 Admin API routes, behind the status page of the admin ([docs/operate/status-page.md](operate/status-page.md)). It needs the admin permission `plugin::micelio.status.read` (Settings → Roles → Plugins → Micelio); the super admin has it.
 
-| Method | Path                         | Answers                                                       |
-| ------ | ---------------------------- | ------------------------------------------------------------- |
-| `GET`  | `/micelio/status`            | `{ "data": { plugin, sites, frontends, hostCheck, blocks } }` |
-| `POST` | `/micelio/status/host-check` | `{ "data": HostCheckReport }`                                 |
+| Method | Path                         | Answers                                                                |
+| ------ | ---------------------------- | ---------------------------------------------------------------------- |
+| `GET`  | `/micelio/status`            | `{ "data": { plugin, sites, frontends, hostCheck, blocks, plugins } }` |
+| `POST` | `/micelio/status/host-check` | `{ "data": HostCheckReport }`                                          |
 
 - `plugin`: `version` (the package's) and `coreLine` (`micelio` in its `package.json`).
 - `sites`: `documentId`, `name` (in the default locale when the site has it), `slug`, `hosts`, `isDefault` and `origin`, the origin of the site's `url` or `null`. The default site comes first.
 - `frontends`: one per distinct `origin`, with the `sites` (slugs) behind it, `health` and `version`. The route asks each one for `GET <origin>/_health` on every call, at most two seconds each: `reachable` with the `version` of its answer when it gave one, `unavailable` when it answered outside `2xx` or not at all. `unavailable` is not an error: a frontend may not serve the endpoint yet.
 - `hostCheck`: the latest run of the host check (`HostCheckReport`, [docs/operate/host-check.md](operate/host-check.md)), `null` if it has not run since the boot. `GET` does not run it again.
 - `blocks`: `count`, the number of blocks in the catalogue.
+- `plugins`: by plugin `id`, the latest checks of each sibling plugin that registered some (`registerStatusChecks`, [extension points](plugins/extension-points.md)) and whose `permission` the caller has: `label`, `ranAt` (ISO 8601, `null` until the checks first run) and `checks`, each a `Check` with the `site` (`documentId`) it ran for. `GET` never runs them.
 
-`POST /micelio/status/host-check` runs the host check again, keeps its report as the latest (what `GET` answers afterwards) and answers it. It takes no body. It runs the check as `micelio doctor` reports it: a failed required check is in the report, and nothing is logged or stopped. A request made while a run is in progress gets that run's report instead of starting another.
+`POST /micelio/status/host-check` runs the host check again and the checks of sibling plugins for every site, keeps their results as the latest (what `GET` answers afterwards) and answers the host check's report. The checks also run every day (`statusRefreshRule`, README). It takes no body. It runs the check as `micelio doctor` reports it: a failed required check is in the report, and nothing is logged or stopped. A request made while a run is in progress gets that run's report instead of starting another.
 
 The shape is `StatusReport` in `server/src/types/status.ts`. On both routes, a role without the permission gets `403` with the `code` `statusForbidden`, as `application/problem+json`; a request without an admin token gets Strapi's `401`.
+
+## Extension points
+
+Admin API routes behind the [extension points](plugins/extension-points.md); both need an admin token.
+
+| Method | Path                   | Answers                                                                        |
+| ------ | ---------------------- | ------------------------------------------------------------------------------ |
+| `GET`  | `/micelio/admin-pages` | `{ "data": [{ id, group, label, to }] }`                                       |
+| `GET`  | `/micelio/sites`       | `{ "data": [{ documentId, name, slug, hosts, isDefault, origin, sections }] }` |
+
+### Sites in the admin
+
+`GET /micelio/sites` needs the Content Manager permission to read the `Site` type; without it the answer is `403` with the `code` `sitesForbidden`. Each site has `sections`, an object keyed by the `id` of every site section whose `permission` the caller has, holding that site's instance of the section's component (`null` if it has none); a section the caller may not read is not a key. The default site comes first, then by slug.
+
+### Pages
+
+`GET /micelio/admin-pages` lists the pages sibling plugins registered whose `permission` the caller has, in registration order. The `to` is relative to `/plugins/micelio/`.

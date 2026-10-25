@@ -1,5 +1,6 @@
 import { factories, type UID } from '@strapi/strapi'
 import { SITE_UID } from '../constants/site'
+import extensions from './extensions'
 import hooks from './hooks'
 import hostCheck from './host-check'
 import siteExport from './site-export'
@@ -11,6 +12,7 @@ export default {
   transitions,
   hostCheck,
   hooks,
+  extensions,
   status,
   siteExport,
 }

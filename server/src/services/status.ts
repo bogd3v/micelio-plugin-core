@@ -1,5 +1,6 @@
 import type { Core } from '@strapi/strapi'
-import { readStatus } from '../status/read'
+import { extensionsOf } from '../extensions'
+import { readSites, readStatus } from '../status/read'
 import type { HostCheckReport } from '../types/host-check'
 import type { StatusReport } from '../types/status'
 
@@ -8,7 +9,8 @@ export interface StatusService {
   /** What the status page shows; asks each site's frontend for `/_health` on every call. */
   read(): Promise<StatusReport>
   /**
-   * Runs the host check again and keeps its report as the latest, for the status page.
+   * Runs the host check and the checks of sibling plugins again and keeps their results as the
+   * latest, for the status page. Answers the host check's report.
    *
    * @remarks
    * One run at a time: a call made while a run is in progress answers that run's report. It calls
@@ -22,7 +24,12 @@ export default ({ strapi }: { strapi: Core.Strapi }): StatusService => {
 
   const runOnce = async (): Promise<HostCheckReport> => {
     try {
-      return (await strapi.plugin('micelio').service('hostCheck').run()) as HostCheckReport
+      const report = (await strapi.plugin('micelio').service('hostCheck').run()) as HostCheckReport
+      const sites = await readSites(strapi)
+      await extensionsOf(strapi).runStatusChecks(
+        sites.map(({ documentId, slug }) => ({ documentId, slug }))
+      )
+      return report
     } finally {
       running = undefined
     }

@@ -1,0 +1,10 @@
+{
+  "name": "extension-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A fixture plugin that registers one of each extension point of @micelio/strapi-plugin-core.",
+  "strapi": {
+    "kind": "plugin",
+    "name": "extension-fixture"
+  }
+}

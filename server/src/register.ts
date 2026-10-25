@@ -1,6 +1,7 @@
 import type { Core } from '@strapi/strapi'
 import { registerComponents } from './components'
 import { editorialGuard } from './editorial/guard'
+import { siteSectionInstances } from './extensions/site-sections'
 import { hooksOf } from './hooks'
 import { siteCreatedHook } from './sites/hooks'
 import { siteScopeDocuments } from './site-scope/documents'
@@ -12,6 +13,7 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   // Outermost, so the hook runs once `siteRules` has finished, the default switch included.
   strapi.documents.use(siteCreatedHook(strapi))
   strapi.documents.use(siteRules(strapi))
+  strapi.documents.use(siteSectionInstances(strapi))
   strapi.documents.use(siteScopeDocuments(strapi))
   strapi.documents.use(editorialGuard(strapi))
   // `strapi.plugin('micelio').hooks`: the `hooks` service under the name the API documents.

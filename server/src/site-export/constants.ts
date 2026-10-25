@@ -2,7 +2,7 @@
 export const EXPORT_FORMAT = 'micelio-site-export'
 
 /** The format version this release writes and reads, `major.minor`. */
-export const EXPORT_FORMAT_VERSION = '1.0'
+export const EXPORT_FORMAT_VERSION = '1.1'
 
 /** Where the manifest lives in the archive. */
 export const MANIFEST_PATH = 'manifest.json'

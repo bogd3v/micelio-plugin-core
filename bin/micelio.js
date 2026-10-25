@@ -5,8 +5,8 @@
 // - `micelio doctor` runs the host check of @micelio/strapi-plugin-core and prints every check. It
 //   exits with 1 when a required check fails, so a deploy script can stop on it.
 //   docs/operate/host-check.md has more.
-// - `micelio export <site> [--personal] [--output <file>]` writes the archive of one site
-//   (docs/export-format.md) and prints where.
+// - `micelio export <site> [--personal] [--include <section>]... [--output <file>]` writes the
+//   archive of one site (docs/export-format.md) and prints where.
 // - `micelio import <file> [--replace] [--into <site>]` imports an archive and prints what it did.
 
 const fs = require('node:fs')
@@ -14,7 +14,7 @@ const path = require('node:path')
 
 const USAGE = [
   'Usage: micelio doctor',
-  '       micelio export <site slug> [--personal] [--output <file>]',
+  '       micelio export <site slug> [--personal] [--include <section id>]... [--output <file>]',
   '       micelio import <file> [--replace] [--into <site slug>]',
 ].join('\n')
 
@@ -68,14 +68,17 @@ async function exportCommand(args) {
         .plugin('micelio')
         .service('siteExport')
         .export(
-          { site: options.site, personal: options.personal, now },
+          { site: options.site, personal: options.personal, include: options.include, now },
           fs.createWriteStream(partial)
         )
       fs.renameSync(partial, output)
       const documents = manifest.types.reduce((sum, type) => sum + type.documents, 0)
       const personal = manifest.personal ? ', with personal data' : ''
+      const sections = manifest.plugins.length
+        ? `, sections: ${manifest.plugins.map(({ id }) => id).join(', ')}`
+        : ''
       process.stdout.write(
-        `${output}\n${documents} documents, ${manifest.media.count} media files${personal}.\n`
+        `${output}\n${documents} documents, ${manifest.media.count} media files${sections}${personal}.\n`
       )
       return 0
     } catch (error) {
@@ -116,10 +119,11 @@ function parseImportArgs(args) {
 }
 
 function parseExportArgs(args) {
-  const options = { personal: false }
+  const options = { personal: false, include: [] }
   for (let position = 0; position < args.length; position += 1) {
     const arg = args[position]
     if (arg === '--personal') options.personal = true
+    else if (arg === '--include' && args[position + 1]) options.include.push(args[++position])
     else if (arg === '--output' && args[position + 1]) options.output = args[++position]
     else if (!arg.startsWith('--') && !options.site) options.site = arg
     else return undefined

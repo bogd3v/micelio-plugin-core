@@ -65,6 +65,15 @@ export interface FileDigest {
   bytes: number
 }
 
+/** An entry of `manifest.plugins`: a section a sibling plugin added. */
+export interface ManifestPlugin {
+  id: string
+  version: string
+  personalData: boolean
+  /** Files under `plugins/<id>/`. */
+  entries: number
+}
+
 /** `manifest.json`. */
 export interface Manifest {
   format: string
@@ -78,6 +87,8 @@ export interface Manifest {
   theme: { id: string; version: string | null; digest: string | null } | null
   fediverse: { actorId: string; handle: string } | null
   personal: boolean
+  /** The sections of sibling plugins, by `id`; empty when none is registered. */
+  plugins: ManifestPlugin[]
   types: ManifestType[]
   media: { file: string; count: number; bytes: number }
   files: Record<string, FileDigest>
