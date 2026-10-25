@@ -3,6 +3,7 @@ import { SITE_UID } from '../constants/site'
 import extensions from './extensions'
 import hooks from './hooks'
 import hostCheck from './host-check'
+import preview from './preview'
 import siteExport from './site-export'
 import status from './status'
 import transitions from './transitions'
@@ -14,5 +15,6 @@ export default {
   hooks,
   extensions,
   status,
+  preview,
   siteExport,
 }
