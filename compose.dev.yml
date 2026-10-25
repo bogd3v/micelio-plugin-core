@@ -1,0 +1,98 @@
+# A stack for testing the plugin by hand: a clean Strapi 5 with the plugin linked from this working tree,
+# PostgreSQL and the published frontend. Start it with `npm run dev:docker` (it writes .env.docker first);
+# docs/operate/manual-testing.md has the rest. Not for production.
+
+name: micelio-plugin-core-dev
+
+services:
+  db:
+    # The major micelio-cms pins (it matches production). From 18 the image keeps its data under
+    # /var/lib/postgresql/<major>, so the volume mounts the parent.
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: strapi
+      POSTGRES_USER: strapi
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-}
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U strapi -d strapi']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  cms:
+    build:
+      context: .
+      dockerfile: docker/cms/Dockerfile
+      args:
+        # npm run dev:docker sets it from .nvmrc.
+        NODE_VERSION: ${NODE_VERSION:-22}
+    # The host user, so the files Strapi writes in docker/cms/ are yours (npm run dev:docker sets both).
+    user: '${HOST_UID:-1000}:${HOST_GID:-1000}'
+    command: ['node', '/plugin/docker/cms/dev.mjs']
+    # A source that does not build or boot stops Strapi; fixing it and saving starts it again.
+    restart: on-failure
+    ports:
+      - '127.0.0.1:1337:1337'
+    environment:
+      NODE_ENV: development
+      SERVE_ADMIN_PANEL: 'true'
+      STRAPI_TELEMETRY_DISABLED: 'true'
+      HOST: 0.0.0.0
+      PORT: 1337
+      DATABASE_HOST: db
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-}
+      APP_KEYS: ${APP_KEYS:-}
+      API_TOKEN_SALT: ${API_TOKEN_SALT:-}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-}
+      # The frontend's read-only token: the seed creates it with this key.
+      FRONTEND_API_TOKEN: ${FRONTEND_API_TOKEN:-}
+      FRONTEND_ORIGIN: http://localhost:3000
+    volumes:
+      # The plugin's sources, edited on the host. Its node_modules and dist stay in the image and the
+      # container; dev.mjs rebuilds dist when a source changes and restarts Strapi.
+      - ./server:/plugin/server:z
+      - ./admin:/plugin/admin:z
+      - ./contract:/plugin/contract:z
+      - ./package.json:/plugin/package.json:ro,z
+      - ./strapi-server.js:/plugin/strapi-server.js:ro,z
+      - ./strapi-admin.js:/plugin/strapi-admin.js:ro,z
+      # The Strapi project that loads it.
+      - ./docker/cms:/plugin/docker/cms:z
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:1337/_health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  frontend:
+    # The published frontend, built from the main branch of micelio (no image of a release line is
+    # published yet); FRONTEND_IMAGE swaps it for a local build. It runs in production mode, so it needs
+    # its three runtime settings.
+    image: ${FRONTEND_IMAGE:-ghcr.io/bogd3v/micelio:edge}
+    ports:
+      - '127.0.0.1:3000:8080'
+    environment:
+      NUXT_PUBLIC_STRAPI_URL: http://cms:1337
+      NUXT_STRAPI_API_TOKEN: ${FRONTEND_API_TOKEN:-}
+      NUXT_PUBLIC_SITE_URL: http://localhost:3000
+    depends_on:
+      cms:
+        condition: service_healthy
+
+volumes:
+  db-data:
