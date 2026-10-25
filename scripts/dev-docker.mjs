@@ -27,6 +27,7 @@ function ensureEnvFile() {
     `ENCRYPTION_KEY=${secret()}`,
     `JWT_SECRET=${secret()}`,
     `FRONTEND_API_TOKEN=${randomBytes(64).toString('hex')}`,
+    `PREVIEW_API_TOKEN=${randomBytes(64).toString('hex')}`,
   ]
   writeFileSync(ENV_FILE, `${lines.join('\n')}\n`, { mode: 0o600 })
   console.warn('Wrote .env.docker with new throwaway secrets.')

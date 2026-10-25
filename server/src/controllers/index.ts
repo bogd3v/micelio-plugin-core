@@ -1,6 +1,7 @@
 import { factories, type UID } from '@strapi/strapi'
 import { SITE_UID } from '../constants/site'
 import blocks from './blocks'
+import preview from './preview'
 import extensions from './extensions'
 import status from './status'
 import transitions from './transitions'
@@ -10,5 +11,6 @@ export default {
   blocks,
   transitions,
   status,
+  preview,
   extensions,
 }

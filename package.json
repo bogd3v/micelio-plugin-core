@@ -26,6 +26,7 @@
   "exports": {
     "./package.json": "./package.json",
     "./blocks.schema.json": "./contract/blocks.schema.json",
+    "./preview.schema.json": "./contract/preview.schema.json",
     "./strapi-admin": {
       "types": "./dist/admin/src/index.d.ts",
       "source": "./admin/src/index.ts",
@@ -48,6 +49,7 @@
     "bin",
     "dist",
     "contract/blocks.schema.json",
+    "contract/preview.schema.json",
     "strapi-admin.js",
     "strapi-server.js",
     "THIRD-PARTY.md",
@@ -58,9 +60,11 @@
     "dev:docker": "node scripts/dev-docker.mjs",
     "build": "strapi-plugin build",
     "blocks:generate": "jiti scripts/blocks/generate.ts",
+    "preview:generate": "jiti scripts/preview/generate.ts",
     "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p admin/tsconfig.json --noEmit && tsc -p tsconfig.json --noEmit",
-    "lint": "eslint . && npm run lint:blocks",
+    "lint": "eslint . && npm run lint:blocks && npm run lint:preview",
     "lint:blocks": "jiti scripts/blocks/generate.ts --check",
+    "lint:preview": "jiti scripts/preview/generate.ts --check",
     "lint:fix": "eslint . --fix",
     "lint:licenses": "node scripts/check-licenses.mjs",
     "lint:standard": "micelio-lint-standard",

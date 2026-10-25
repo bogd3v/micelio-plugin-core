@@ -17,9 +17,55 @@ The first run writes `.env.docker` (gitignored) with new throwaway secrets, buil
 | Admin    | `http://localhost:1337/admin` | Strapi asks for the first admin's name, email and password on the first visit; use any values. |
 | Frontend | `http://localhost:3000`       | The published image `ghcr.io/bogd3v/micelio:edge`.                                             |
 
-The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site" and the host `localhost`, and creates a read-only API token for the frontend. Nothing else is created: no content, and no content type of `micelio-cms`.
+The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site" and the host `localhost`, and creates a read-only API token for the frontend. Nothing else is created: no content, and no content type of `micelio-cms`. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview.
 
 The frontend answers, but until the content types of `micelio-cms` move into the plugin (the cut-over of release line 0.7) its requests for the site settings and the categories fail with a 404, and it shows an empty site. Its log says so (`docker compose -f compose.dev.yml logs frontend`). Use the admin to see what the plugin does: the **Micelio** status page, the Content Manager and the Content-Type Builder.
+
+## Try the preview
+
+The frontend image does not exchange preview tokens yet (bogd3v/micelio#729), so you play the frontend with `curl`. The seed gives you a custom API token for it, `PREVIEW_API_TOKEN` in `.env.docker`; load it without printing the file. A `.env.docker` written before the preview existed lacks it: run `npm run dev:docker -- down`, delete `.env.docker` and start again.
+
+1. Open `http://localhost:1337/admin` and create the first admin.
+2. In Content Manager → Site, open the default site and set **url** to `http://localhost:3000`. Save. (Without a `url` the token route answers `previewUnavailable`.)
+3. In Content Manager → Note, create a note with any title; the site is the default one. Copy its `documentId` from the URL.
+4. Log in on the API, ask for a preview token and read it from the URL (the password is the one you chose; nothing here is written to a file):
+
+   ```bash
+   export PREVIEW_API_TOKEN=$(grep '^PREVIEW_API_TOKEN=' .env.docker | cut -d= -f2)
+   ADMIN=$(curl -s -X POST localhost:1337/admin/login -H 'Content-Type: application/json' \
+     -d '{"email":"<your email>","password":"<your password>"}' | jq -r .data.token)
+   URL=$(curl -s -X POST localhost:1337/micelio/preview/token -H "Authorization: Bearer $ADMIN" \
+     -H 'Origin: http://localhost:1337' -H 'Content-Type: application/json' \
+     -d '{"uid":"api::note.note","documentId":"<documentId>"}' | jq -r .data.url)
+   echo "${URL%%\?*}"          # http://localhost:3000/_preview
+   TOKEN=${URL#*token=}
+   ```
+
+5. Exchange it once, as the frontend would, and keep the grant:
+
+   ```bash
+   EXCHANGE() { curl -s -X POST localhost:1337/api/micelio/preview/exchange \
+     -H "Authorization: Bearer $PREVIEW_API_TOKEN" -H 'Content-Type: application/json' -d "{\"token\":\"$TOKEN\"}"; }
+   ANSWER=$(EXCHANGE)
+   echo "$ANSWER" | jq 'del(.data.grant)'
+   GRANT=$(echo "$ANSWER" | jq -r .data.grant)
+   ```
+
+   It answers `200` with `{ "data": { "grant", "expiresAt", "adminOrigin": "http://localhost:1337", "contentType": "api::note.note", "documentId": …, "locale": null } }`.
+
+6. Run `EXCHANGE` again: `404` with the `code` `previewRefused`. The token is used up.
+7. Read the draft by grant: it answers the note, and only that note.
+
+   ```bash
+   curl -s "localhost:1337/api/micelio/preview/draft?documentId=<documentId>" \
+     -H "Authorization: Bearer $PREVIEW_API_TOKEN" -H "X-Micelio-Preview-Grant: $GRANT" | jq .data.title
+   ```
+
+   With the `documentId` of another note the answer is the same `404` `previewRefused`.
+
+8. Log out of the admin (`curl -s -X POST localhost:1337/admin/logout -H "Authorization: Bearer $ADMIN"`) and repeat step 7: `404`. Remove the **url** of the site and repeat step 4 with a new login: `409` `previewUnavailable`.
+9. In Settings → Administration Panel → Roles, the **Editor** role shows **Preview drafts on the frontend** under Plugins → Micelio; without it, the editor's request in step 4 gets `403` `previewForbidden`.
+10. Look for the token and the grant in the CMS log: `docker compose -f compose.dev.yml logs cms | grep -c "$TOKEN"` prints `0`.
 
 ## Edit the plugin
 
