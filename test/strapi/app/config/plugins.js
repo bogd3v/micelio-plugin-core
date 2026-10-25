@@ -9,6 +9,12 @@ module.exports = {
     enabled: true,
     resolve: './src/plugins/hook-recorder',
   },
+  // A fixture plugin that registers one of each extension point. Declared first for the same
+  // reason: its `register` uses the core's `extensions` service.
+  'extension-fixture': {
+    enabled: true,
+    resolve: './src/plugins/extension-fixture',
+  },
   micelio: {
     enabled: true,
     resolve: path.resolve(__dirname, '../../../..'),

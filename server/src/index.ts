@@ -15,8 +15,22 @@ export { SITE_ATTRIBUTE, SITE_SCOPE_MIDDLEWARE, withSiteScope } from './site-sco
 export { SITE_UID } from './constants/site'
 export { withEditorial } from './editorial'
 export { EDITORIAL_STATES, type EditorialState } from './constants/editorial'
+export { missingLocales } from './extensions'
 export { formatHostCheckReport } from './host-check/report'
 export type { HostCheckReport, HostCheckResult, HostCheckStatus } from './types/host-check'
+export type {
+  AdminPageGroup,
+  AdminPageRegistration,
+  Check,
+  ExportEntry,
+  ExportSectionRegistration,
+  ExtensionSite,
+  LocalisedText,
+  MicelioExtensions,
+  SectionImportReport,
+  SiteSectionRegistration,
+  StatusChecksRegistration,
+} from './types/extensions'
 export type {
   BlockCatalogueChangedPayload,
   EntryPayload,

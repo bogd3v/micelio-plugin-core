@@ -31,5 +31,17 @@ export default (): Core.RouterInput => ({
       handler: 'status.runHostCheck',
       config: { policies: ['admin::isAuthenticatedAdmin'] },
     },
+    {
+      method: 'GET',
+      path: '/admin-pages',
+      handler: 'extensions.pages',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
+      path: '/sites',
+      handler: 'extensions.sites',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
   ],
 })

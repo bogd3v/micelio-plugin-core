@@ -1,6 +1,6 @@
 # Site export format
 
-**Kind:** reference. Format version `1.0`. The archive that carries one whole site out of a Micelio CMS and into another: its layout, how every content type is written, what is never in it, how an import behaves, and how the format itself changes. It is the source of truth of the site export contract (section 6 of the engineering standard): a release whose archive the previous release can no longer import is a breaking change.
+**Kind:** reference. Format version `1.1`. The archive that carries one whole site out of a Micelio CMS and into another: its layout, how every content type is written, what is never in it, how an import behaves, and how the format itself changes. It is the source of truth of the site export contract (section 6 of the engineering standard): a release whose archive the previous release can no longer import is a breaking change.
 
 Exporting and importing a whole site is what the preservation network, a move between hosting plans and a client's right to leave rest on (ADR-0017). No exporter or importer exists yet; this document comes first so the content types of the cut-over (release line `0.7`) are designed to serialise. It names every content type of `micelio-cms` at `v0.4.0`, and `test/export-format.test.ts` fails when one of them is missing from [Content types](#content-types).
 
@@ -18,6 +18,7 @@ content/page.json
 …                        one file per export name of the content types below
 media/index.json
 media/sha256/<hex>       the bytes of each media file, named by their SHA-256
+plugins/<id>/…           the files of a sibling plugin's section, when there are any
 ```
 
 - Entries are regular files and directories only: no symbolic or hard links, no device files, no absolute paths, no `..` segment. Paths are lower case ASCII.
@@ -30,7 +31,7 @@ media/sha256/<hex>       the bytes of each media file, named by their SHA-256
 ```json
 {
   "format": "micelio-site-export",
-  "formatVersion": "1.0",
+  "formatVersion": "1.1",
   "exportedAt": "2026-10-23T12:00:00.000Z",
   "generator": { "name": "@micelio/strapi-plugin-core", "version": "0.2.0" },
   "micelio": "0.7",
@@ -46,6 +47,7 @@ media/sha256/<hex>       the bytes of each media file, named by their SHA-256
     "handle": "@blog@cms.example.com"
   },
   "personal": false,
+  "plugins": [{ "id": "fediverse", "version": "1.0", "personalData": true, "entries": 1 }],
   "types": [
     {
       "name": "article",
@@ -61,21 +63,22 @@ media/sha256/<hex>       the bytes of each media file, named by their SHA-256
 }
 ```
 
-| Field           | Meaning                                                                                                                                                                              |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `format`        | Always `micelio-site-export`                                                                                                                                                         |
-| `formatVersion` | `major.minor` of this document. See [Versions of the format](#versions-of-the-format)                                                                                                |
-| `generator`     | The package and version that wrote the archive                                                                                                                                       |
-| `micelio`       | The core release line of the instance that exported it (section 7 of the standard)                                                                                                   |
-| `strapi`        | The Strapi version of that instance, for diagnosis only                                                                                                                              |
-| `site`          | The site's `documentId` and `slug`                                                                                                                                                   |
-| `locales`       | The i18n locales the archive's entries use, with the instance default                                                                                                                |
-| `theme`         | The theme pin of the site (`themeId`, `themeVersion`, `themeDigest` of its `theme` component), or `null`. The theme package itself is not in the archive: it comes from the registry |
-| `fediverse`     | The id and handle of the site's fediverse actor, or `null` when it has none. See [Fediverse](#fediverse)                                                                             |
-| `personal`      | Whether the archive holds the personal data that is not shown on the site. See [What is never exported](#what-is-never-exported)                                                     |
-| `types`         | Each content type written: its export name, the UID it had on the exporting instance, its file and its number of documents                                                           |
-| `media`         | The media index, the number of media files and their total bytes                                                                                                                     |
-| `files`         | Every file of the archive except the manifest, with its SHA-256 (lower case hex) and its size in bytes                                                                               |
+| Field           | Meaning                                                                                                                                                                                                           |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `format`        | Always `micelio-site-export`                                                                                                                                                                                      |
+| `formatVersion` | `major.minor` of this document. See [Versions of the format](#versions-of-the-format)                                                                                                                             |
+| `generator`     | The package and version that wrote the archive                                                                                                                                                                    |
+| `micelio`       | The core release line of the instance that exported it (section 7 of the standard)                                                                                                                                |
+| `strapi`        | The Strapi version of that instance, for diagnosis only                                                                                                                                                           |
+| `site`          | The site's `documentId` and `slug`                                                                                                                                                                                |
+| `locales`       | The i18n locales the archive's entries use, with the instance default                                                                                                                                             |
+| `theme`         | The theme pin of the site (`themeId`, `themeVersion`, `themeDigest` of its `theme` component), or `null`. The theme package itself is not in the archive: it comes from the registry                              |
+| `fediverse`     | The id and handle of the site's fediverse actor, or `null` when it has none. See [Fediverse](#fediverse)                                                                                                          |
+| `personal`      | Whether the archive holds the personal data that is not shown on the site. See [What is never exported](#what-is-never-exported)                                                                                  |
+| `plugins`       | The sections of sibling plugins written, each with the `id` that names its folder, its `version`, whether it holds personal data and its number of files. `[]` when none. See [Plugin sections](#plugin-sections) |
+| `types`         | Each content type written: its export name, the UID it had on the exporting instance, its file and its number of documents                                                                                        |
+| `media`         | The media index, the number of media files and their total bytes                                                                                                                                                  |
+| `files`         | Every file of the archive except the manifest, with its SHA-256 (lower case hex) and its size in bytes                                                                                                            |
 
 ## Integrity
 
@@ -216,6 +219,15 @@ The site's fediverse actor is an identity on other servers: remote servers key i
 - The `federatedArticles` entry of the plugin store (which articles the old actor already sent) is not exported: the new actor has sent nothing.
 - The site's actor profile (the `fediverse` component of `site`) is exported with the site.
 
+## Plugin sections
+
+A sibling plugin adds files to the archive with `registerExportSection` ([docs/plugins/extension-points.md](plugins/extension-points.md)). Each section has a folder, `plugins/<id>/`, and a `plugins` entry in the manifest.
+
+- Paths inside the folder follow the layout rules above and are listed in `files` like any other file. The format does not say what the files hold: the section's `version` (`major.minor`) does, and its plugin owns it.
+- A section with `personalData: true` is **off by default**: an exporter writes it only when asked for by its `id`, and then sets `personal` to `true`. Exporting it is logged.
+- An importer **must** hand the files of a section to the plugin that registered it, after the site's content is written and in the same transaction. It **must** skip, and list in its report (`skippedPlugins`, with `unknown` or `version` as the reason), a section no plugin registered or whose major differs from the registered one. A skipped section is not an error.
+- A manifest without `plugins` (format `1.0`) has no sections.
+
 ## What is never exported
 
 Data is sorted by the levels of `micelio-cms` `docs/security/data.md`. An archive holds:
@@ -241,7 +253,7 @@ A content type of a Micelio plugin is in the archive when it is made with `withS
 | The type     | `export`     | `personal`: the type is written only with `personal`. `never`: never written                                                                                                                                 |
 | An attribute | `export`     | The same, for one attribute, at any depth of its components                                                                                                                                                  |
 
-An attribute that declares nothing is written, except a `private` attribute, which is never written unless it declares `personal`, and a `password`, which is never written whatever it declares. The rows of [Content types](#content-types) are what these declarations must give for each type.
+An attribute that declares nothing is written, except a `private` attribute, which is never written unless it declares `personal` or `always` (the site sections of [plugin extension points](plugins/extension-points.md) declare `always`: private for the content API, they still travel with the site), and a `password`, which is never written whatever it declares. The rows of [Content types](#content-types) are what these declarations must give for each type.
 
 ## Content types
 
@@ -331,7 +343,7 @@ Errors are problem details (section 4 of the standard) with these codes. The fir
 
 ## Conformance checklist
 
-An exporter conforms to format `1.0` when:
+An exporter conforms to format `1.1` when:
 
 - [ ] It writes one site per archive, with the layout, the manifest and the checksums above.
 - [ ] Every content type of the site is written under its export name, as [Content types](#content-types) says, with `documentId`s and no numeric ids.
@@ -340,8 +352,9 @@ An exporter conforms to format `1.0` when:
 - [ ] Media is written once per SHA-256, as the library stores it, with its index entry.
 - [ ] Nothing of [What is never exported](#what-is-never-exported) is in the archive, and personal data only with `personal: true`.
 - [ ] Two exports of an unchanged site differ only in `exportedAt`.
+- [ ] A plugin section is written under `plugins/<id>/` with its manifest entry, and only when it has no personal data or is asked for by `id`.
 
-An importer conforms to format `1.0` when:
+An importer conforms to format `1.1` when:
 
 - [ ] It checks every size and hash, the layout and every document before it writes anything.
 - [ ] It refuses an unknown major and accepts a higher minor, reporting what it skipped.

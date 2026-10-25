@@ -28,7 +28,9 @@ import {
   type Row,
 } from './model'
 import { populateOf, type Attributes, type SerialiseContext, type StoredFile } from './serialise'
+import { readSections } from './sections'
 import { removeMedia, storeMedia } from './store-media'
+import type { SectionImportReport } from '../types/extensions'
 import type { ExportDocument, ExportVersion } from './types'
 
 /** How to import. */
@@ -67,6 +69,10 @@ export interface ImportReport {
   /** References to documents neither the archive nor the target holds: left out. */
   missingReferences: number
   media: { stored: number; reused: number }
+  /** What each plugin section's `read` did, by section `id`. */
+  plugins: Record<string, SectionImportReport>
+  /** Sections of the archive that were not read: no plugin registered them, or another major. */
+  skippedPlugins: { id: string; reason: 'unknown' | 'version' }[]
 }
 
 /**
@@ -111,6 +117,8 @@ async function importStaged(
     unknownRoles: [],
     missingReferences: 0,
     media: { stored: 0, reused: 0 },
+    plugins: {},
+    skippedPlugins: [],
   }
 
   const plan = await planImport(strapi, staged, types, request)
@@ -122,7 +130,15 @@ async function importStaged(
   report.media = { stored: media.uploaded.length, reused: media.reused }
   try {
     await strapi.db.transaction(() =>
-      runAsTransition(() => writeContent(strapi, plan, media.files, request, report))
+      runAsTransition(async () => {
+        await writeContent(strapi, plan, media.files, request, report)
+        const sections = await readSections(strapi, staged.manifest.plugins, staged.sections, {
+          documentId: plan.site.documentId,
+          slug: plan.site.slug,
+        })
+        report.plugins = sections.sections
+        report.skippedPlugins = sections.skipped
+      })
     )
   } catch (error) {
     await removeMedia(strapi, media.uploaded)

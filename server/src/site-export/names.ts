@@ -42,7 +42,9 @@ export function exportPolicyOf(
   const policy = declared.pluginOptions?.micelio?.export
   if (declared.type === 'password') return 'never'
   if (policy === 'personal' || policy === 'never') return policy
-  // A private attribute is never returned by an API; it leaves the CMS only when it says so.
+  // A private attribute is never returned by an API; it leaves the CMS only when it says so
+  // (`always` is how the site sections, private for the content API, travel in the archive).
+  if (policy === 'always') return 'always'
   return declared.private === true ? 'never' : 'always'
 }
 

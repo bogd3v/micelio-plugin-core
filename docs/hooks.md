@@ -1,6 +1,6 @@
 # Hooks
 
-<!-- Generated from server/src/types/hooks.ts by `npm run reference`. Do not edit by hand. -->
+<!-- Generated from server/src/types/hooks.ts and server/src/types/extensions.ts by `npm run reference`. Do not edit by hand. -->
 
 The hooks other plugins use to react to content without touching the core (ADR-0017, section 5): react to an editorial transition, a publication or a new site here, not to `publishedAt`, Strapi lifecycles or the `entry.publish` event.
 
@@ -190,3 +190,203 @@ A function that handles a hook; Micelio awaits it.
 ```ts
 export type HookHandler<K extends HookName> = (payload: Readonly<HookPayloads[K]>) => unknown
 ```
+
+## Extension points
+
+How a plugin appears in the Micelio admin and in the site archive (ADR-0017): a page in the sub-navigation, a section on every site, checks in the Status page and files in the archive. The how-to for plugin authors is [plugins/extension-points.md](plugins/extension-points.md).
+
+The extension points: `strapi.plugin('micelio').service('extensions')`.
+
+Adding an extension point is a MINOR of the core; removing or renaming one, or changing what a
+registration means, is a MAJOR (section 6 of the standard).
+
+- Register in your plugin's `register`, with `strapi.plugin('micelio').service('extensions')`: the
+  service exists from the start, whatever the order Strapi registers plugins in. Status checks,
+  admin pages and export sections may also be registered in `bootstrap`; a site section may
+  not, because the database models are built after `register`.
+- Every registration is keyed by `id` and refused when the `id` is taken, with a `TypeError`
+  that says so. A registration is validated when it is made, so the plugin fails at boot, not
+  in front of an editor.
+- Everything is visible only with the registering plugin's `permission`, and nothing runs when
+  an admin page loads.
+
+### `registerAdminPage`
+
+```ts
+registerAdminPage(page: AdminPageRegistration): void
+```
+
+Adds a page of your plugin to the Micelio sub-navigation.
+
+The core lists the item in its group for admin users who have `permission`. The page itself
+is provided by your plugin's admin with `apis.registerPage` of the Micelio admin plugin; do
+not add a menu link of your own.
+
+Throws `TypeError` when the registration is malformed or its `id` or `to` is taken.
+
+```ts
+strapi
+  .plugin('micelio')
+  .service('extensions')
+  .registerAdminPage({
+    id: 'fediverse',
+    group: 'site',
+    label: { en: 'Fediverse', es: 'Fediverso' },
+    to: 'fediverse',
+    permission: 'plugin::fediverse.read',
+  })
+```
+
+### `registerSiteSection`
+
+```ts
+registerSiteSection(section: SiteSectionRegistration): void
+```
+
+Attaches your plugin's component to every site.
+
+The core adds `component` to `plugin::micelio.site` as a non-repeatable component, creates its
+instance when a site is created (and for the sites that exist when the section is first
+registered), and answers it with the site in `GET /micelio/sites` for callers who have
+`permission`.
+
+Throws `TypeError` when the registration is malformed, its `id` is taken, the component is
+not in Strapi's registry or the database models are already built.
+
+### `registerStatusChecks`
+
+```ts
+registerStatusChecks(checks: StatusChecksRegistration): void
+```
+
+Adds checks of your plugin to the Status page.
+
+The core runs them for every site on "Run again" and on the daily refresh
+(`statusRefreshRule`), keeps the latest results, and answers them under
+`plugins[<id>].checks` of `GET /micelio/status` for callers who have `permission`. They are
+part of "Copy diagnostics" as one line per plugin.
+
+Throws `TypeError` when the registration is malformed or its `id` is taken.
+
+### `registerExportSection`
+
+```ts
+registerExportSection(section: ExportSectionRegistration): void
+```
+
+Adds a section of your plugin to the site archive.
+
+An export writes its files under `plugins/<id>/` with `version` in the manifest; an import
+hands them to `read`. An import of a section nobody registered, or of another major, reports
+it as skipped.
+
+Throws `TypeError` when the registration is malformed or its `id` is taken.
+
+### Extension types
+
+#### `LocalisedText`
+
+A text in every locale the admin supports.
+
+The core shows the locale of the admin user and falls back to `en`. A locale left out is
+accepted at runtime; `missingLocales` finds it, for the registering plugin's own tests.
+
+| Field | Type     | Description |
+| ----- | -------- | ----------- |
+| `en`  | `string` |             |
+| `es`  | `string` |             |
+
+#### `ExtensionSite`
+
+The site an extension point runs for: plain data, never a Strapi entity.
+
+| Field        | Type     | Description                                               |
+| ------------ | -------- | --------------------------------------------------------- |
+| `documentId` | `string` | The site's `documentId`, as the `site` of a hook payload. |
+| `slug`       | `string` |                                                           |
+
+#### `AdminPageGroup`
+
+Where a sub-navigation item sits.
+
+```ts
+export type AdminPageGroup = 'site' | 'content' | 'overview'
+```
+
+#### `AdminPageRegistration`
+
+A page of a sibling plugin in the Micelio sub-navigation.
+
+| Field        | Type             | Description                                                                                                                                      |
+| ------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`         | `string`         | Unique among pages: lower case letters, digits and hyphens, such as `fediverse`.                                                                 |
+| `group`      | `AdminPageGroup` |                                                                                                                                                  |
+| `label`      | `LocalisedText`  |                                                                                                                                                  |
+| `to`         | `string`         | The page's path under `/plugins/micelio/`, such as `fediverse`: lower case letters, digits, hyphens and `/`.                                     |
+| `permission` | `string`         | The admin permission that shows the item, such as `plugin::fediverse.read`. The core never widens it: the item is hidden from a role without it. |
+
+#### `SiteSectionRegistration`
+
+A per-site settings section of a sibling plugin.
+
+| Field        | Type            | Description                                                                                                                                                                                                         |
+| ------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | `string`        | Unique among sections: lower case letters, digits and hyphens.                                                                                                                                                      |
+| `component`  | `string`        | The UID of the plugin's component, `<category>.<name>`, already in Strapi's registry when this is called. The core adds it to `plugin::micelio.site` as a non-repeatable component, so every site has one instance. |
+| `label`      | `LocalisedText` |                                                                                                                                                                                                                     |
+| `panel`      | `string`        | The name of the panel the plugin's admin offers for the site view. The core keeps and answers it with the section; the Sites view that renders it under the core fields is a separate piece of the admin.           |
+| `permission` | `string`        | The admin permission that reads the section: the section travels with the site in `GET /micelio/sites` only for a caller who has it.                                                                                |
+
+#### `Check`
+
+The result of one status check.
+
+| Field    | Type                       | Description                                     |
+| -------- | -------------------------- | ----------------------------------------------- |
+| `id`     | `string`                   | Unique within the plugin's checks for one site. |
+| `title`  | `LocalisedText`            |                                                 |
+| `status` | `'ok' \| 'warn' \| 'fail'` |                                                 |
+| `detail` | `LocalisedText`            | What was found.                                 |
+| `fix`    | `LocalisedText`            | What to do about a `warn` or a `fail`.          |
+
+#### `StatusChecksRegistration`
+
+A group of status checks of a sibling plugin, shown as one card in the Status page.
+
+| Field        | Type                                                    | Description                                                                                                                                                                                                                                                                                               |
+| ------------ | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | `string`                                                | Unique among status checks: lower case letters, digits and hyphens.                                                                                                                                                                                                                                       |
+| `label`      | `LocalisedText`                                         |                                                                                                                                                                                                                                                                                                           |
+| `permission` | `string`                                                | The admin permission that shows the card and its results in the status response.                                                                                                                                                                                                                          |
+| `run`        | `run(site: ExtensionSite): Promise<Check[]> \| Check[]` | Runs the plugin's checks for one site. Called for every site, on "Run again" and on the daily refresh, never when the page loads. A call that throws or takes more than 10 seconds is reported as a failed check of the plugin and logged. It runs outside any request: it must not assume an admin user. |
+
+#### `ExportEntry`
+
+A file of a plugin's section of the archive.
+
+| Field  | Type                   | Description                                                                                                       |
+| ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `path` | `string`               | The path under `plugins/<id>/`: lower case ASCII letters, digits, `.`, `_` and `-`, in segments separated by `/`. |
+| `body` | `Uint8Array \| string` | The file's bytes; a string is written as UTF-8.                                                                   |
+
+#### `SectionImportReport`
+
+What a section's `read` did, for the import report.
+
+| Field      | Type     | Description          |
+| ---------- | -------- | -------------------- |
+| `imported` | `number` | Entries it wrote.    |
+| `skipped`  | `number` | Entries it left out. |
+
+#### `ExportSectionRegistration`
+
+A plugin's section of the site archive (`docs/export-format.md`, "Plugin sections").
+
+| Field          | Type                                                                              | Description                                                                                                                                                                                                                                                                                                                  |
+| -------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | `string`                                                                          | Unique among sections: lower case letters, digits and hyphens. The archive folder is `plugins/<id>/`.                                                                                                                                                                                                                        |
+| `version`      | `string`                                                                          | The section's format, `major.minor`, written in the manifest. An import skips a section whose major differs from the registered one.                                                                                                                                                                                         |
+| `personalData` | `boolean`                                                                         | Whether the section holds personal data that the site does not show. Such a section is left out of an export unless it is asked for by `id` (`micelio export --include <id>`), and every export that includes it is logged.                                                                                                  |
+| `permission`   | `string`                                                                          | The admin permission that manages the section. A caller that has an admin user (the export dialog) must check it before it asks for the section; the CLI has no user.                                                                                                                                                        |
+| `write`        | `write(site: ExtensionSite): AsyncIterable<ExportEntry>`                          | Writes the section's files for one site, in any order; the archive sorts them. Called while the archive is built, only when the section is included. The core adds the files to the manifest with their sizes and SHA-256.                                                                                                   |
+| `read`         | `read(site: ExtensionSite, entries: ExportEntry[]): Promise<SectionImportReport>` | Reads the section's files into the target site. Called by an import of an archive that holds the section, inside the import's database transaction and after the core's content is written: a throw refuses the whole import (`exportSectionFailed`) and rolls everything back. `entries` are verified against the manifest. |
