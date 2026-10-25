@@ -10,6 +10,8 @@ import { z } from 'zod'
 import { EXPORT_FORMAT, MANIFEST_PATH, MEDIA_FOLDER, MEDIA_INDEX_PATH } from './constants'
 import { ExportError } from './errors'
 import { readTar, type TarSink } from './tar'
+import { PLUGIN_SECTIONS_FOLDER } from '../constants/extensions'
+import type { ExportEntry } from '../types/extensions'
 import type { ContentFile, Manifest, MediaEntry } from './types'
 
 /** An archive read and checked: what an import works from. */
@@ -20,6 +22,8 @@ export interface StagedArchive {
   media: MediaEntry[]
   /** Where each media file was staged, by SHA-256. */
   mediaFiles: Map<string, string>
+  /** The files of each section of a sibling plugin, by section `id`, paths relative to its folder. */
+  sections: Map<string, ExportEntry[]>
 }
 
 // The JSON files of an archive are held in memory: their total is bounded.
@@ -46,6 +50,16 @@ const manifestSchema = z.looseObject({
   theme: z.looseObject({ id: z.string() }).nullable(),
   fediverse: z.looseObject({ actorId: z.string(), handle: z.string() }).nullable(),
   personal: z.boolean(),
+  plugins: z
+    .array(
+      z.looseObject({
+        id: z.string().min(1),
+        version: z.string(),
+        personalData: z.boolean(),
+        entries: z.number(),
+      })
+    )
+    .default([]),
   types: z.array(
     z.looseObject({ name: z.string(), uid: z.string(), file: z.string(), documents: z.number() })
   ),
@@ -176,7 +190,15 @@ export async function stageArchive(source: Readable, directory: string): Promise
     if (!mediaFiles.has(entry.sha256))
       throw corrupt(`Media file ${entry.sha256} is not in the archive`)
   }
-  return { manifest, contents, media, mediaFiles }
+  const sections = new Map<string, ExportEntry[]>(manifest.plugins.map(({ id }) => [id, []]))
+  for (const [name, body] of json) {
+    if (!name.startsWith(`${PLUGIN_SECTIONS_FOLDER}/`)) continue
+    const [, id, ...rest] = name.split('/')
+    const entries = sections.get(id ?? '')
+    if (!entries) throw corrupt(`${name} belongs to a section the manifest does not list`)
+    entries.push({ path: rest.join('/'), body })
+  }
+  return { manifest, contents, media, mediaFiles, sections }
 }
 
 function parseManifest(body: Buffer): Manifest {

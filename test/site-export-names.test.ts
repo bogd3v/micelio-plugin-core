@@ -33,6 +33,7 @@ describe('exportPolicyOf', () => {
       'personal',
     ],
     [{ type: 'string', pluginOptions: { micelio: { export: 'never' } } }, 'never'],
+    [{ type: 'string', private: true, pluginOptions: { micelio: { export: 'always' } } }, 'always'],
     [{ type: 'password', pluginOptions: { micelio: { export: 'personal' } } }, 'never'],
   ])('reads %j as %s', (declared, policy) => {
     expect(exportPolicyOf(declared)).toBe(policy)

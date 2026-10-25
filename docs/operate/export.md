@@ -18,6 +18,10 @@ Without options the archive holds the site's content and media, and the personal
 
 No archive holds passwords, tokens, keys, admin users, reader accounts or the instance's configuration, with or without `--personal`.
 
+## Sections of other plugins
+
+A plugin may add its own files to the archive ([extension points](../plugins/extension-points.md)). A section without personal data is always in it. One with personal data is left out unless you name it: `npx micelio export <site slug> --include <section id>` (repeat the option for more). The archive then says `"personal": true`, handle it like one written with `--personal`, and the export is logged. `--include` with an id no plugin registered fails with `exportSectionUnknown`. On import, a section whose plugin is not installed, or whose version has another major, is listed under `skippedPlugins` of the report and left out.
+
 ## Import an archive
 
 On the target CMS, in the Strapi project's folder, with its environment:

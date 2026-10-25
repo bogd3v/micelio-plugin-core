@@ -17,6 +17,7 @@ import {
 import { ExportError } from './errors'
 import { digestFile, openFile, type LocatedFile } from './media'
 import { attributesOf, compare, documentsOf, exportedTypes, siteRowsOf, type Row } from './model'
+import { selectSections, writeSections } from './sections'
 import { populateOf, type Attributes, type SerialiseContext, type StoredFile } from './serialise'
 import { tarChunks, type TarFile } from './tar'
 import type { ContentFile, FileDigest, Manifest, MediaEntry, MediaRef } from './types'
@@ -27,6 +28,11 @@ export interface ExportRequest {
   site: string
   /** Whether to add the personal data that is not shown on the site. @defaultValue false */
   personal?: boolean
+  /**
+   * The `id` of every section with personal data to include; a section without personal data is
+   * always included. The caller who has an admin user checks the section's `permission` first.
+   */
+  include?: string[]
   /** When the export is made; the only value that differs between two exports of a site. */
   now?: Date
 }
@@ -57,6 +63,7 @@ export async function exportSite(
   output: Writable
 ): Promise<Manifest> {
   const personal = request.personal ?? false
+  const sections = selectSections(strapi, request.include ?? [])
   const types = exportedTypes(strapi, personal)
   const names = new Map(types.map((type) => [type.uid, type.name]))
   const media = new Map<number, { file: LocatedFile; refs: MediaRef[] }>()
@@ -88,9 +95,14 @@ export async function exportSite(
   }
 
   const index = await mediaIndex(strapi, media)
-  const files: TarFile[] = contents.map((content) =>
-    jsonFile(`${CONTENT_FOLDER}/${content.type}.json`, content)
-  )
+  const written = await writeSections(strapi, sections, {
+    documentId: site.documentId,
+    slug: site.slug,
+  })
+  const files: TarFile[] = [
+    ...contents.map((content) => jsonFile(`${CONTENT_FOLDER}/${content.type}.json`, content)),
+    ...written.files,
+  ]
   const indexFile = jsonFile(MEDIA_INDEX_PATH, { media: index })
   const digests: Record<string, FileDigest> = {}
   for (const file of [...files, indexFile]) digests[file.path] = digestOf(file.body as Buffer)
@@ -116,7 +128,8 @@ export async function exportSite(
       : null,
     // The actor belongs to the fediverse plugin, which this core does not know yet.
     fediverse: null,
-    personal,
+    personal: personal || written.plugins.some((plugin) => plugin.personalData),
+    plugins: written.plugins,
     types: types.map((type, position) => ({
       name: type.name,
       uid: type.uid,

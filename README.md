@@ -30,6 +30,9 @@ module.exports = {
       // When the scheduler publishes the scheduled entries that are due, as a cron rule.
       // `false` turns it off: scheduled entries then wait for `transitions.publishDue()`.
       scheduledPublishRule: '* * * * *', // the default: every minute
+      // When the host check and the checks of other plugins run again on their own, as a cron rule.
+      // `false` turns it off: they then run only with "Run again" in the status page.
+      statusRefreshRule: '0 4 * * *', // the default: every day at 04:00 server time
     },
   },
 }

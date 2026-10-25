@@ -1,0 +1,11 @@
+{
+  "collectionName": "components_extension_fixture_profiles",
+  "info": {
+    "displayName": "Profile",
+    "description": "The component the extension-fixture plugin attaches to every site"
+  },
+  "options": {},
+  "attributes": {
+    "handle": { "type": "string", "default": "unset" }
+  }
+}

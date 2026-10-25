@@ -7,8 +7,13 @@ import type { StatusReport } from '../../../server/src/types/status'
 export type StatusResource =
   { kind: 'loading' } | { kind: 'ready'; data: StatusReport } | { kind: 'error' }
 
-/** Loads `GET /micelio/status`, and loads it again on `reload()`. */
-export function useStatus(): { resource: StatusResource; reload: () => void } {
+/** Loads `GET /micelio/status`, and loads it again on `reload()` or `refresh()`. */
+export function useStatus(): {
+  resource: StatusResource
+  reload: () => void
+  /** Loads it again and swaps the data in when it arrives, with no loading state in between. */
+  refresh: () => Promise<void>
+} {
   // The client is rebuilt on every render; the effect must not depend on it.
   const client = useFetchClient()
   const clientRef = useRef(client)
@@ -36,5 +41,13 @@ export function useStatus(): { resource: StatusResource; reload: () => void } {
     setResource({ kind: 'loading' })
     setCount((value) => value + 1)
   }, [])
-  return { resource, reload }
+  const refresh = useCallback(async () => {
+    try {
+      const response = await clientRef.current.get<{ data: StatusReport }>('/micelio/status')
+      setResource({ kind: 'ready', data: response.data.data })
+    } catch {
+      // The page keeps what it shows; a failed refresh is not worth replacing it with an error.
+    }
+  }, [])
+  return { resource, reload, refresh }
 }

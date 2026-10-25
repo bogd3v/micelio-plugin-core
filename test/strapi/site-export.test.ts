@@ -63,7 +63,7 @@ describe('the site exporter', () => {
     it('describes the format, the site and the locales', () => {
       expect(manifest).toMatchObject({
         format: 'micelio-site-export',
-        formatVersion: '1.0',
+        formatVersion: '1.1',
         exportedAt: NOW.toISOString(),
         micelio: expect.stringMatching(/^\d+\.\d+$/) as unknown,
         site: { documentId: site, slug: 'default' },

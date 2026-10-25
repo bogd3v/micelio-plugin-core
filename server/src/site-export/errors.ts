@@ -10,6 +10,8 @@ export type ExportErrorCode =
   | 'exportSiteSlugTaken'
   | 'exportHostTaken'
   | 'exportMediaRefused'
+  | 'exportSectionUnknown'
+  | 'exportSectionFailed'
 
 /** A refused export or import, with its code (`docs/export-format.md`). */
 export class ExportError extends Error {

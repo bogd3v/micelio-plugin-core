@@ -2,9 +2,10 @@ import type { Core } from '@strapi/strapi'
 import packageJson from '../../../package.json'
 import { BLOCKS } from '../../../contract/blocks'
 import { SITE_UID } from '../constants/site'
+import { extensionsOf } from '../extensions'
 import { readFrontend } from '../host-check/facts'
 import type { HostCheckReport } from '../types/host-check'
-import type { StatusFrontend, StatusReport, StatusSite } from '../types/status'
+import type { SiteWithSections, StatusFrontend, StatusReport, StatusSite } from '../types/status'
 
 interface SiteRow {
   documentId: string
@@ -14,13 +15,14 @@ interface SiteRow {
   hosts: unknown
   isDefault: boolean | null
   url: string | null
+  [attribute: string]: unknown
 }
 
 /**
  * Gathers what the status page shows.
  *
  * @remarks
- * The host check is the latest run (`hostCheck.latest()`), not a new one. The frontends are asked
+ * The host check and the plugins' checks are the latest run (`hostCheck.latest()`), not a new one. The frontends are asked
  * for `/_health` on every call, at most two seconds each and in parallel: at boot they are usually
  * not up yet, so the boot's answer would be stale.
  */
@@ -34,17 +36,46 @@ export async function readStatus(strapi: Core.Strapi): Promise<StatusReport> {
     frontends: await readFrontends(sites),
     hostCheck: latest ?? null,
     blocks: { count: BLOCKS.length },
+    plugins: extensionsOf(strapi).statusResults(),
   }
 }
 
 /** One entry per site, in the default locale when the site has it, the default site first. */
-async function readSites(strapi: Core.Strapi): Promise<StatusSite[]> {
+export async function readSites(strapi: Core.Strapi): Promise<StatusSite[]> {
+  return (await readSiteRows(strapi, {})).map(toSite)
+}
+
+/**
+ * The sites as `GET /micelio/sites` answers them: each with the instances of the site sections
+ * named in `sections` (by section `id`), keyed by that `id`.
+ */
+export async function readSitesWithSections(
+  strapi: Core.Strapi,
+  sections: string[]
+): Promise<SiteWithSections[]> {
+  const attributes = Object.fromEntries(
+    sections.map((id) => [extensionsOf(strapi).siteSectionAttribute(id), true])
+  )
+  const rows = await readSiteRows(strapi, attributes)
+  return rows.map((row) => ({
+    ...toSite(row),
+    sections: Object.fromEntries(
+      sections.map((id) => [id, row[extensionsOf(strapi).siteSectionAttribute(id)] ?? null])
+    ),
+  }))
+}
+
+async function readSiteRows(
+  strapi: Core.Strapi,
+  populate: Record<string, boolean>
+): Promise<SiteRow[]> {
   const locales = strapi.plugin('i18n').service('locales') as {
     getDefaultLocale: () => Promise<string>
   }
   const defaultLocale = await locales.getDefaultLocale()
   const rows = (await strapi.db.query(SITE_UID).findMany({
     select: ['documentId', 'locale', 'name', 'slug', 'hosts', 'isDefault', 'url'],
+    populate,
     orderBy: { slug: 'asc' },
   })) as SiteRow[]
   const byDocument = new Map<string, SiteRow>()
@@ -54,7 +85,7 @@ async function readSites(strapi: Core.Strapi): Promise<StatusSite[]> {
       byDocument.set(row.documentId, row)
     }
   }
-  const sites = [...byDocument.values()].map(toSite)
+  const sites = [...byDocument.values()]
   return [...sites.filter((site) => site.isDefault), ...sites.filter((site) => !site.isDefault)]
 }
 
