@@ -222,7 +222,8 @@ The core lists the item in its group for admin users who have `permission`. The 
 is provided by your plugin's admin with `apis.registerPage` of the Micelio admin plugin; do
 not add a menu link of your own.
 
-Throws `TypeError` when the registration is malformed or its `id` or `to` is taken.
+Throws `TypeError` when the registration is malformed, its `id` or `to` is taken, or `to` is a path
+the core reserves.
 
 ```ts
 strapi
@@ -317,13 +318,13 @@ export type AdminPageGroup = 'site' | 'content' | 'overview'
 
 A page of a sibling plugin in the Micelio sub-navigation.
 
-| Field        | Type             | Description                                                                                                                                      |
-| ------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`         | `string`         | Unique among pages: lower case letters, digits and hyphens, such as `fediverse`.                                                                 |
-| `group`      | `AdminPageGroup` |                                                                                                                                                  |
-| `label`      | `LocalisedText`  |                                                                                                                                                  |
-| `to`         | `string`         | The page's path under `/plugins/micelio/`, such as `fediverse`: lower case letters, digits, hyphens and `/`.                                     |
-| `permission` | `string`         | The admin permission that shows the item, such as `plugin::fediverse.read`. The core never widens it: the item is hidden from a role without it. |
+| Field        | Type             | Description                                                                                                                                                 |
+| ------------ | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | `string`         | Unique among pages: lower case letters, digits and hyphens, such as `fediverse`.                                                                            |
+| `group`      | `AdminPageGroup` |                                                                                                                                                             |
+| `label`      | `LocalisedText`  |                                                                                                                                                             |
+| `to`         | `string`         | The page's path under `/plugins/micelio/`, such as `fediverse`: lower case letters, digits, hyphens and `/`. `about` is the core's own page and is refused. |
+| `permission` | `string`         | The admin permission that shows the item, such as `plugin::fediverse.read`. The core never widens it: the item is hidden from a role without it.            |
 
 #### `SiteSectionRegistration`
 

@@ -1,10 +1,12 @@
 # Status page
 
-The **Micelio** entry of the admin's menu opens the status page: the operator's first view of an installation, what runs, what is reachable and what failed. It changes no content: besides reading, it can only run the host check again. It is in English and Spanish, as the admin is.
+The **Micelio** entry of the admin's menu, marked with the Micelio icon, opens the Micelio section, whose first page is the status page: the operator's first view of an installation, what runs, what is reachable and what failed. It changes no content: besides reading, it can only run the host check again. It is in English and Spanish, as the admin is.
 
 ## Who sees it
 
 A role with the permission **Read the Micelio status page** (`plugin::micelio.status.read`, in Settings → Roles → Plugins → Micelio). The super admin has it; the Editor and Author roles do not, since the page shows the host's configuration. Give it to another role there.
+
+The menu entry itself needs no permission: any admin user sees it. A role without the status permission does not see **Status** in the sub-navigation and lands on **About Micelio**, which shows no configuration; the pages of sibling plugins show to the roles that have their permission.
 
 ## What it shows
 
@@ -20,7 +22,7 @@ A role with the permission **Read the Micelio status page** (`plugin::micelio.st
 
 The checks of the plugins never run when the page loads: they run with **Run again** and once a day (`statusRefreshRule`, [README](../../README.md#configuration)). **Copy diagnostics**, at the end of the page, copies a few lines for a support request: the versions, whether the host check passes and one line per plugin with how many of its checks are ok, warn or failing. It copies no finding, site name or address.
 
-A sub-navigation on the left lists the Micelio pages; sibling plugins add theirs to it ([extension points](../plugins/extension-points.md)).
+A sub-navigation on the left lists the Micelio pages in groups (Overview, Content, Site, About); a group with no page the user may see is left out. Sibling plugins add pages to the first three ([extension points](../plugins/extension-points.md)). The status page keeps its address, `/admin/plugins/micelio`.
 
 The host check runs when Strapi starts, before the frontends are usually up. **Run again**, in the Host check section, runs it now: use it after fixing a failure, or once the frontends are up. It never stops Strapi, even in production when a required check fails; restarting does. Without access to the page, `npx micelio doctor` in the Strapi project's folder runs the same checks.
 

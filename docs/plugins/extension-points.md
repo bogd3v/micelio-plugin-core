@@ -33,6 +33,8 @@ extensions.registerAdminPage({
 })
 ```
 
+`to` cannot be `about`: the core's About page uses it, and the registration throws a `TypeError`. The index (Status) is the empty path, which `to` never matches.
+
 The item appears in its group of the Micelio sub-navigation (`GET /micelio/admin-pages` lists those the admin user's permissions allow). Provide the page itself from your admin, in `bootstrap` (the Micelio admin plugin is registered by then, whatever the order):
 
 ```js
@@ -49,7 +51,7 @@ export default {
 
 The first argument is the registration's `id`; the loader returns a module whose default export is the page component. Do not call `addMenuLink`: your plugin has no menu entry of its own. A path with no page provided shows a notice, not an error.
 
-A role needs `plugin::micelio.status.read` to reach the Micelio menu at all until the shell of the sub-navigation (#43) gives it its own entry.
+The Micelio menu entry needs no permission, so a role that has only your plugin's permission reaches the sub-navigation and sees your item, with About Micelio.
 
 ## A section on every site
 

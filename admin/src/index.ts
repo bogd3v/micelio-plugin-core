@@ -3,9 +3,8 @@
 import type { StrapiApp } from '@strapi/strapi/admin'
 
 import { Initializer } from './components/Initializer'
-import { StatusIcon } from './components/StatusIcon'
+import { MicelioIcon } from './components/MicelioIcon'
 import { registerPage } from './pageRegistry'
-import { STATUS_READ_PERMISSION } from './permissions'
 import { PLUGIN_ID } from './pluginId'
 import { getTranslation } from './utils/getTranslation'
 
@@ -13,12 +12,13 @@ type Translations = Record<string, string>
 
 const plugin: StrapiApp['appPlugins'][string] = {
   register(app) {
-    // The sub-navigation and, in it, the status page, shown only to a role with its permission (the super admin has it).
+    // The entry has no permission of its own: every admin user sees it, and the sub-navigation
+    // shows each item only to a role that has the item's permission (About needs none).
     app.addMenuLink({
       to: `plugins/${PLUGIN_ID}`,
-      icon: StatusIcon,
+      icon: MicelioIcon,
       intlLabel: { id: getTranslation('plugin.name'), defaultMessage: 'Micelio' },
-      permissions: [STATUS_READ_PERMISSION],
+      permissions: [],
       Component: () => import('./pages/MicelioLayout'),
     })
     app.registerPlugin({

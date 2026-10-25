@@ -140,6 +140,12 @@ describe('the extension points', () => {
       )
     })
 
+    it('refuses a path the core uses for its own pages', () => {
+      expect(() => extensions().registerAdminPage({ ...page, id: 'other', to: 'about' })).toThrow(
+        /to "about" is reserved by the core/
+      )
+    })
+
     it('refuses a site section once the models are built, and one with an unknown component', () => {
       const section = {
         id: 'late',

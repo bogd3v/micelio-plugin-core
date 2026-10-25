@@ -15,3 +15,9 @@ export const CHECK_TIMEOUT_MS = 10_000
 
 /** The cron job that runs the status checks every day. */
 export const STATUS_REFRESH_JOB = 'micelio-refresh-status'
+
+/**
+ * The `to` paths the core's own pages use under `/plugins/micelio/`, which a sibling plugin cannot
+ * register: the core's route answers first. The index (Status) is the empty path.
+ */
+export const RESERVED_PAGE_PATHS = ['about'] as const
