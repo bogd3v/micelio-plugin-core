@@ -54,6 +54,43 @@ jobs:
       - name: Test the admin pages
         run: npm run test:admin
 
+  # The stack of compose.dev.yml (`npm run dev:docker`): it must build, boot, seed and answer on both
+  # services. The CMS has `/_health`; the frontend has none, so it is asked for `/`, as its image's own
+  # health check does.
+  compose:
+    name: Compose stack
+    if: ${{ github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Bring the stack up
+        run: npm run dev:docker
+
+      - name: Check the CMS
+        run: curl --fail --silent --show-error --output /dev/null --write-out 'cms /_health %{http_code}\n' http://localhost:1337/_health
+
+      - name: Check the frontend
+        run: curl --fail --silent --show-error --output /dev/null --write-out 'frontend / %{http_code}\n' http://localhost:3000/
+
+      - name: Show the logs
+        if: ${{ failure() }}
+        run: docker compose -f compose.dev.yml logs --no-color
+
+      - name: Bring the stack down
+        if: ${{ always() }}
+        run: npm run dev:docker -- down
+
   dco:
     if: ${{ github.event_name == 'pull_request' }}
     permissions:

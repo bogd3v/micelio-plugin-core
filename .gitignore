@@ -13,3 +13,16 @@ test/strapi/app/.strapi-updater.json
 test/strapi/app/build/
 test/strapi/app/.strapi/
 test/strapi/app/node_modules/
+
+# compose.dev.yml: the secrets npm run dev:docker writes, and what Strapi creates in docker/cms/
+.env.docker
+docker/cms/.tmp/
+docker/cms/.strapi/
+docker/cms/build/
+docker/cms/dist/
+docker/cms/public/
+docker/cms/.strapi-updater.json
+docker/cms/reload.txt
+docker/cms/database/
+docker/cms/types/
+docker/cms/node_modules/
