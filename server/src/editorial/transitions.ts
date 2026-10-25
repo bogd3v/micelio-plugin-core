@@ -77,12 +77,15 @@ interface EditorialEntry {
  * The transition must exist in the state machine, the actor must be allowed by the policy of the
  * entry's site, and `isPermitted` must agree. Moving to `published` is the one call that publishes
  * the entry in Strapi, and moving from `published` to `draft` the one that unpublishes it: the
- * editorial state never contradicts `publishedAt`. `reviewedBy` records the user who moved the
+ * editorial state never contradicts `publishedAt`. `published -> published` (republish) puts the
+ * entry's current draft live over the published version with one `publish`, never unpublishing
+ * first, so a reader of the content API always gets a published version; it sets `publishedBy` to
+ * the republisher and leaves `reviewedBy` alone. `reviewedBy` records the user who moved the
  * entry out of `in_review`, and `publishedBy` the one who published it (empty for the scheduler).
  *
  * It runs the hooks of the transition (`docs/hooks.md`): `beforeTransition` once every check has
  * passed and before anything is written, then `afterTransition` and, when the entry was published
- * or unpublished, `afterPublish` or `afterUnpublish`. Every caller, the scheduler included, fires
+ * (a republish included) or unpublished, `afterPublish` or `afterUnpublish`. Every caller, the scheduler included, fires
  * them by calling this function.
  *
  * @throws {@link TransitionError} when the transition is refused, with its status and code.
@@ -174,7 +177,10 @@ export async function performTransition(
   }
 
   await runAsTransition(async () => {
-    if (transition.from === 'published') await documents.unpublish(target as never)
+    // A republish never unpublishes: the live version stays until the one `publish` replaces it.
+    if (transition.from === 'published' && transition.to !== 'published') {
+      await documents.unpublish(target as never)
+    }
     await documents.update({ ...target, data: { [EDITORIAL_ATTRIBUTE]: editorial } } as never)
     if (transition.to === 'published') await documents.publish(target as never)
   })

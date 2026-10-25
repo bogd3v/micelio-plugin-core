@@ -51,14 +51,14 @@ strapi
 
 ## Hooks
 
-| Hook                                              | Payload                                                         | When                                                                                                                                       |
-| ------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`beforeTransition`](#beforetransition)           | [`TransitionPayload`](#transitionpayload)                       | Runs before an editorial transition writes anything, once the transition exists, the site's policy allows it and its `publishAt` is valid. |
-| [`afterTransition`](#aftertransition)             | [`TransitionPayload`](#transitionpayload)                       | Runs after every editorial transition, the scheduler's included, once the entry is saved in its new state.                                 |
-| [`afterPublish`](#afterpublish)                   | [`EntryPayload`](#entrypayload)                                 | Runs after an entry's version goes live: today, after `in_review → published` and `scheduled → published`, following `afterTransition`.    |
-| [`afterUnpublish`](#afterunpublish)               | [`EntryPayload`](#entrypayload)                                 | Runs after an entry's published version is taken down (`published → draft`), following `afterTransition`.                                  |
-| [`siteCreated`](#sitecreated)                     | [`SiteCreatedPayload`](#sitecreatedpayload)                     | Runs after a site is created, by the admin, the document service or the boot step that creates the default site on an empty instance.      |
-| [`blockCatalogueChanged`](#blockcataloguechanged) | [`BlockCatalogueChangedPayload`](#blockcataloguechangedpayload) | Runs at boot when the block catalogue differs from the one the instance last booted with.                                                  |
+| Hook                                              | Payload                                                         | When                                                                                                                                                                         |
+| ------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`beforeTransition`](#beforetransition)           | [`TransitionPayload`](#transitionpayload)                       | Runs before an editorial transition writes anything, once the transition exists, the site's policy allows it and its `publishAt` is valid.                                   |
+| [`afterTransition`](#aftertransition)             | [`TransitionPayload`](#transitionpayload)                       | Runs after every editorial transition, the scheduler's included, once the entry is saved in its new state.                                                                   |
+| [`afterPublish`](#afterpublish)                   | [`EntryPayload`](#entrypayload)                                 | Runs after an entry's version goes live: today, after `in_review → published`, `scheduled → published` and `published → published` (republish), following `afterTransition`. |
+| [`afterUnpublish`](#afterunpublish)               | [`EntryPayload`](#entrypayload)                                 | Runs after an entry's published version is taken down (`published → draft`), following `afterTransition`.                                                                    |
+| [`siteCreated`](#sitecreated)                     | [`SiteCreatedPayload`](#sitecreatedpayload)                     | Runs after a site is created, by the admin, the document service or the boot step that creates the default site on an empty instance.                                        |
+| [`blockCatalogueChanged`](#blockcataloguechanged) | [`BlockCatalogueChangedPayload`](#blockcataloguechangedpayload) | Runs at boot when the block catalogue differs from the one the instance last booted with.                                                                                    |
 
 ### `beforeTransition`
 
@@ -80,11 +80,12 @@ Payload: [`TransitionPayload`](#transitionpayload).
 
 ### `afterPublish`
 
-Runs after an entry's version goes live: today, after `in_review → published` and
-`scheduled → published`, following `afterTransition`.
+Runs after an entry's version goes live: today, after `in_review → published`,
+`scheduled → published` and `published → published` (republish), following `afterTransition`.
 
-Treat it as "this version is now live", not "first publication": bogd3v/micelio#699 adds a
-transition that puts the edits of a published entry live, and this hook fires for it too. A
+Treat it as "this version is now live", not "first publication": `published → published`
+puts the edits of a published entry live (ADR-0017, amendment of 2026-10-25), and this hook
+fires for it too, with `afterTransition` carrying `published` as both `from` and `to`. A
 handler that publishes elsewhere (the fediverse, a static rebuild) must be idempotent per
 `documentId` and `locale`.
 
