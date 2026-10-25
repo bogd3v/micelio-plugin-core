@@ -124,6 +124,8 @@ describe('editorial transitions', () => {
       ['draft', 'scheduled', 'strapi-editor', false],
       ['scheduled', 'draft', 'strapi-editor', false],
       ['published', 'draft', 'strapi-editor', false],
+      ['published', 'published', 'strapi-editor', true],
+      ['published', 'published', 'strapi-super-admin', true],
     ])('lets %s -> %s by %s, published afterwards: %s', async (from, to, role, published) => {
       const documentId = await articleIn(from)
       const response = await move(role, documentId, to, to === 'scheduled' ? inAnHour() : undefined)
@@ -137,6 +139,7 @@ describe('editorial transitions', () => {
       ['draft', 'scheduled', 'strapi-author'],
       ['scheduled', 'draft', 'strapi-author'],
       ['published', 'draft', 'strapi-author'],
+      ['published', 'published', 'strapi-author'],
       ['scheduled', 'published', 'strapi-editor'],
       ['scheduled', 'published', 'strapi-super-admin'],
     ])('forbids %s -> %s by %s with editorialTransitionForbidden', async (from, to, role) => {
@@ -226,6 +229,172 @@ describe('editorial transitions', () => {
     it('needs an admin user', async () => {
       const response = await fetch(`${base}/micelio/transitions`, { method: 'POST' })
       expect(response.status).toBe(401)
+    })
+  })
+
+  describe('a republish (published -> published)', () => {
+    let slowUpdates = false
+
+    beforeAll(() => {
+      strapi.documents.use(async (context, next) => {
+        if (slowUpdates && context.uid === ARTICLE_UID && context.action === 'update') {
+          await new Promise((resolve) => setTimeout(resolve, 150))
+        }
+        return next()
+      })
+    })
+
+    /** The published version as the content API serves it, with the API token's status. */
+    async function live(
+      documentId: string,
+      token: string
+    ): Promise<{ status: number; title?: string }> {
+      const response = await fetch(`${base}/api/articles/${documentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const body = (await response.json()) as { data?: { title?: string } }
+      return { status: response.status, title: body.data?.title }
+    }
+
+    async function readToken(): Promise<string> {
+      const created = (await strapi.service('admin::api-token').create({
+        name: `republish-${Date.now()}`,
+        type: 'read-only',
+        lifespan: null,
+      })) as { accessKey: string }
+      return created.accessKey
+    }
+
+    it('never leaves the content API without a published version between the edit and the republish', async () => {
+      const documentId = await articleIn('published')
+      const token = await readToken()
+      await articles().update({ documentId, data: { title: 'first' } } as never)
+      expect((await move('strapi-editor', documentId, 'published')).status).toBe(200)
+      const before = await live(documentId, token)
+      expect(before).toEqual({ status: 200, title: 'first' })
+
+      // The edit sits in the draft: readers still get the live version.
+      await articles().update({ documentId, data: { title: 'second' } } as never)
+      expect(await live(documentId, token)).toEqual({ status: 200, title: 'first' })
+
+      // Holds the transition's write for a moment: an unpublish before it would leave the entry
+      // without a published version for that long, where the poller cannot miss it.
+      slowUpdates = true
+      let polling = true
+      const seen: { status: number; title?: string }[] = []
+      const poller = (async () => {
+        while (polling) seen.push(await live(documentId, token))
+      })()
+      while (seen.length < 5) await new Promise((resolve) => setTimeout(resolve, 5))
+      const republished = await move('strapi-super-admin', documentId, 'published')
+      expect(republished.status).toBe(200)
+      const afterRepublish = seen.length
+      while (seen.length < afterRepublish + 5)
+        await new Promise((resolve) => setTimeout(resolve, 5))
+      polling = false
+      slowUpdates = false
+      await poller
+
+      expect(seen.every(({ status }) => status === 200)).toBe(true)
+      const titles = seen.map(({ title }) => title)
+      expect(new Set(titles)).toEqual(new Set(['first', 'second']))
+      // Old content, then new: it never goes back.
+      expect(titles.indexOf('second')).toBe(titles.lastIndexOf('first') + 1)
+      expect(seen.length).toBeGreaterThan(10)
+    })
+
+    it('keeps the state, moves publishedAt and publishedBy, and leaves reviewedBy alone', async () => {
+      const documentId = await articleIn('published')
+      const record = async () =>
+        (await articles().findOne({
+          documentId,
+          status: 'published',
+          populate: { editorial: { populate: ['reviewedBy', 'publishedBy'] } },
+        } as never)) as unknown as {
+          publishedAt: string
+          editorial: {
+            state: string
+            reviewedBy: { id: number }
+            publishedBy: { id: number }
+          }
+        }
+      const first = await record()
+      expect(first.editorial.publishedBy.id).toBe(userIds['strapi-editor'])
+      await new Promise((resolve) => setTimeout(resolve, 20))
+
+      expect((await move('strapi-super-admin', documentId, 'published')).status).toBe(200)
+
+      const second = await record()
+      expect(second.editorial.state).toBe('published')
+      expect(new Date(second.publishedAt).getTime()).toBeGreaterThan(
+        new Date(first.publishedAt).getTime()
+      )
+      expect(second.editorial.publishedBy.id).toBe(userIds['strapi-super-admin'])
+      expect(second.editorial.reviewedBy.id).toBe(first.editorial.reviewedBy.id)
+      expect(await stateOf(documentId)).toEqual({ state: 'published', published: true })
+    })
+
+    it('leaves the live version as it was when an author is refused', async () => {
+      const documentId = await articleIn('published')
+      const token = await readToken()
+      await articles().update({ documentId, data: { title: 'draft only' } } as never)
+      const before = await live(documentId, token)
+
+      const response = await move('strapi-author', documentId, 'published')
+
+      expect(response.status).toBe(403)
+      expect(await response.json()).toMatchObject({ code: 'editorialTransitionForbidden' })
+      expect(await live(documentId, token)).toEqual(before)
+      expect(before.title).not.toBe('draft only')
+    })
+
+    it('stays closed in the Content Manager for an entry that is already published', async () => {
+      const documentId = await articleIn('published')
+      const token = await readToken()
+      await articles().update({ documentId, data: { title: 'not yet' } } as never)
+      const before = await live(documentId, token)
+
+      const response = await adminRequest(
+        'strapi-super-admin',
+        `/content-manager/collection-types/${ARTICLE_UID}/${documentId}/actions/publish`,
+        {}
+      )
+
+      expect(response.status).toBe(403)
+      expect(await live(documentId, token)).toEqual(before)
+      expect(await stateOf(documentId)).toEqual({ state: 'published', published: true })
+    })
+
+    it("honours a site's policy that removes the transition for a role", async () => {
+      const sites = strapi.documents(SITE_UID as UID.ContentType)
+      await sites.update({
+        documentId: site,
+        data: { editorialPolicy: { 'published->published': ['strapi-super-admin'] } },
+      })
+      try {
+        const documentId = await articleIn('published')
+        const refused = await move('strapi-editor', documentId, 'published')
+        expect(refused.status).toBe(403)
+        expect(await refused.json()).toMatchObject({ code: 'editorialTransitionForbidden' })
+        expect((await move('strapi-super-admin', documentId, 'published')).status).toBe(200)
+      } finally {
+        await sites.update({ documentId: site, data: { editorialPolicy: null } })
+      }
+    })
+
+    it("does not let a site's policy replace the Strapi publish permission", async () => {
+      const sites = strapi.documents(SITE_UID as UID.ContentType)
+      await sites.update({
+        documentId: site,
+        data: { editorialPolicy: { 'published->published': ['strapi-author'] } },
+      })
+      try {
+        const documentId = await articleIn('published', 'strapi-author')
+        // The Author role cannot publish in Strapi, so the policy alone is not enough.
+        expect((await move('strapi-author', documentId, 'published')).status).toBe(403)
+      } finally {
+        await sites.update({ documentId: site, data: { editorialPolicy: null } })
+      }
     })
   })
 

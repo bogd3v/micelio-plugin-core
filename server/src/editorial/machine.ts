@@ -17,7 +17,8 @@ export type EditorialPolicy = Partial<Record<string, string[]>>
 /** Who asks for a transition: an admin user with their role codes, or the plugin itself. */
 export type Actor = { kind: 'user'; id: number; roles: string[] } | { kind: 'system' }
 
-// ADR-0017, section 5. `scheduled -> published` belongs to the scheduler alone.
+// ADR-0017, section 5 and its 2026-10-25 amendment (`published -> published`, republish).
+// `scheduled -> published` belongs to the scheduler alone.
 const TRANSITIONS: readonly Transition[] = [
   { from: 'draft', to: 'in_review' },
   { from: 'in_review', to: 'draft' },
@@ -26,6 +27,7 @@ const TRANSITIONS: readonly Transition[] = [
   { from: 'scheduled', to: 'draft' },
   { from: 'scheduled', to: 'published' },
   { from: 'published', to: 'draft' },
+  { from: 'published', to: 'published' },
 ]
 
 const SYSTEM_TRANSITIONS = new Set(['scheduled->published'])
@@ -47,6 +49,7 @@ export const DEFAULT_EDITORIAL_POLICY: Readonly<Record<string, readonly string[]
   'draft->scheduled': [EDITOR, SUPER_ADMIN],
   'scheduled->draft': [EDITOR, SUPER_ADMIN],
   'published->draft': [EDITOR, SUPER_ADMIN],
+  'published->published': [EDITOR, SUPER_ADMIN],
 }
 
 /** The key of a transition in a policy: `from->to`. */

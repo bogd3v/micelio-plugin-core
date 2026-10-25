@@ -127,6 +127,26 @@ describe('the hooks API', () => {
       expect(recorded).toMatchSnapshot()
     })
 
+    it('fires afterTransition and afterPublish once each for a republish, and no afterUnpublish', async () => {
+      const documentId = await draftArticle()
+      await move(documentId, 'in_review', AUTHOR)
+      await move(documentId, 'published', EDITOR)
+      await articles().update({ documentId, data: { title: 'edited while live' } } as never)
+      calls().length = 0
+
+      await move(documentId, 'published', EDITOR)
+
+      expect(calls().map(({ hook }) => hook)).toEqual([
+        'beforeTransition',
+        'afterTransition',
+        'afterPublish',
+      ])
+      const [, after, live] = calls()
+      expect(after!.payload).toMatchObject({ documentId, from: 'published', to: 'published' })
+      expect(live!.payload).toMatchObject({ documentId, site })
+      expect(await stateOf(documentId)).toEqual({ state: 'published', published: true })
+    })
+
     it('is told when a site is created', async () => {
       const created = await strapi.documents(SITE_UID as UID.ContentType).create({
         data: { name: 'Second', slug: 'second', hosts: [], isDefault: false, modules: {} },

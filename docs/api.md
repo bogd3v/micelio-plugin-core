@@ -64,10 +64,15 @@ Entries of a type made with `withEditorial` move through these transitions (ADR-
 | `scheduled → draft`     | Editor, Super Admin                         | update                          |
 | `scheduled → published` | The plugin's scheduler only, at `publishAt` |                                 |
 | `published → draft`     | Editor, Super Admin                         | publish                         |
+| `published → published` | Editor, Super Admin                         | publish                         |
 
 A site replaces the default for a transition with its `editorialPolicy`, a map from `from->to` to role codes: `{ "draft->in_review": ["strapi-editor"] }`. The Strapi permission is checked as the Content Manager checks it, so an Author moves only their own entries.
 
-`in_review → published` and `scheduled → published` are the transitions that publish the entry in Strapi, and `published → draft` the one that unpublishes it. The scheduler, a cron job of the plugin, performs `scheduled → published` for every entry whose `publishAt` has passed: every minute by default (`scheduledPublishRule`, README; `false` turns it off), with an empty `publishedBy`. An entry it cannot publish is logged and stays scheduled for the next run. Leaving `in_review` records the user in `reviewedBy`; publishing records them in `publishedBy`.
+`in_review → published`, `scheduled → published` and `published → published` are the transitions that publish the entry in Strapi, and `published → draft` the one that unpublishes it.
+
+`published → published` is the republish: an edit of a live entry sits in Strapi's draft while the published version stays live, and the republish puts it live with one `publish` of the document service, never an unpublish first, so the content API answers the previous version until the republish and the new one after it, with no moment in between when it answers none. `state` stays `published`, `publishedAt` becomes the time of the republish, `publishedBy` becomes the person who republished and `reviewedBy` is not touched: a republish skips review, so whoever may republish decides alone. Publishing an already published entry in the Content Manager stays refused. It fires `afterTransition` with `published` as `from` and `to`, and `afterPublish`.
+
+The scheduler, a cron job of the plugin, performs `scheduled → published` for every entry whose `publishAt` has passed: every minute by default (`scheduledPublishRule`, README; `false` turns it off), with an empty `publishedBy`. An entry it cannot publish is logged and stays scheduled for the next run. Leaving `in_review` records the user in `reviewedBy`; publishing records them in `publishedBy`.
 
 Every transition, the scheduler's included, runs the hooks of [docs/hooks.md](hooks.md): other plugins react to it there, and a `beforeTransition` handler may refuse it.
 
