@@ -34,10 +34,12 @@ jobs:
       pull-requests: read
       actions: read
       id-token: write
-    uses: bogd3v/micelio-engineering/.github/workflows/release.yml@3693c82f3ed517705c4db27180662d28458f0458 # main
+    uses: bogd3v/micelio-engineering/.github/workflows/release.yml@a5952e1b8e4a977ae4901db04bb34da66a78adea # main
     with:
       dry-run: ${{ inputs.dry_run }}
       release-candidate: ${{ inputs.release_candidate }}
       compatibility: ${{ inputs.compatibility }}
       upgrade-notes: ${{ inputs.upgrade_notes }}
+      # The package is at the root of this repository, not a workspace.
+      npm-root: true
     secrets: inherit

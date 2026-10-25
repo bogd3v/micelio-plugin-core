@@ -40,7 +40,30 @@ module.exports = {
 
 ## Releases
 
-The Release workflow (`.github/workflows/release.yml`) is started by the maintainer from the Actions tab. It defaults to a dry run that prints the version and the notes. Publishing needs a `release` environment with required reviewers (Settings → Environments), and a pull request title with a conventional prefix decides the version (section 7 of the standard).
+The Release workflow (`.github/workflows/release.yml`) is started by the maintainer from the Actions tab. It defaults to a dry run that prints the version and the notes and names the package it would publish (`@micelio/strapi-plugin-core`), and changes nothing. A pull request title with a conventional prefix decides the version (section 7 of the standard). Publishing needs a `release` environment (Settings → Environments) with the maintainer as required reviewer and deployments limited to `main`, which gate the publish job, and the `NPM_TOKEN` secret of an npm account that can publish under `@micelio`. `NPM_TOKEN` is a repository secret, not a secret of the environment: the plan job checks that it is passed before the approval and cannot see an environment secret. Set it with `gh secret set NPM_TOKEN -R bogd3v/micelio-plugin-core`.
+
+The first release is `v0.1.0`, the `version` in `package.json`: with no earlier tag there is no bump, so no `chore(release)` pull request comes before it. To cut it:
+
+1. Run the workflow on `main` with `dry_run` on (the default) and `compatibility` filled in, and read the plan: tag `v0.1.0`, the notes, `npm: would publish @micelio/strapi-plugin-core`.
+2. Run it again with `dry_run` off and the same `compatibility`. The publish job waits for the maintainer's approval in the `release` environment, then publishes to npm with provenance and creates the tag and the GitHub release with an SBOM.
+3. Check it: `npm view @micelio/strapi-plugin-core@0.1.0` answers. Then verify the provenance in an empty project, not in this repository (`npm audit signatures` checks the dependencies of the project it runs in, and this package is not one of its own):
+
+   ```bash
+   mkdir verify-core && cd verify-core && npm init -y
+   npm install @micelio/strapi-plugin-core@0.1.0
+   npm audit signatures
+   ```
+
+   The output says the package has a verified registry signature and a verified attestation.
+
+`compatibility` is required to publish. Every release states the release line of the core it supports (`micelio` in `package.json`) and the minimum Node (`engines`):
+
+```
+- Micelio release line: 0.6
+- Node: 22.12 or later
+```
+
+A release candidate (`release_candidate`) is published under the `next` tag and moves neither `0.1` nor `latest`.
 
 ## License
 

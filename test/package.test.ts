@@ -43,10 +43,16 @@ describe('the packed package', () => {
   beforeAll(() => {
     fs.rmSync(PACK_DIR, { recursive: true, force: true })
     fs.mkdirSync(INSTALLED, { recursive: true })
-    const output = execFileSync('npm', ['pack', '--json', '--pack-destination', PACK_DIR], {
-      cwd: ROOT,
-      encoding: 'utf8',
-    })
+    // `--ignore-scripts`: the global setup has built `dist/`, and `prepack` would rebuild it under
+    // the suites that are loading it. That `prepack` builds is the next test's job.
+    const output = execFileSync(
+      'npm',
+      ['pack', '--ignore-scripts', '--json', '--pack-destination', PACK_DIR],
+      {
+        cwd: ROOT,
+        encoding: 'utf8',
+      }
+    )
     const results = JSON.parse(output) as PackResult[]
     packed = results[0]
     execFileSync('tar', [
@@ -61,6 +67,11 @@ describe('the packed package', () => {
   it('declares the core release line it supports', () => {
     expect(packageJson.micelio).toMatch(/^\d+\.\d+$/)
     expect(packageJson.strapi).toMatchObject({ kind: 'plugin', name: 'micelio' })
+  })
+
+  it('builds the plugin before npm packs it, because the publish job runs no build', () => {
+    expect(packageJson.scripts.prepack).toBe('npm run build')
+    expect(packageJson.scripts.build).toBe('strapi-plugin build')
   })
 
   it('ships the built entry points and the licences', () => {

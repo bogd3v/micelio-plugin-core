@@ -59,6 +59,7 @@
     "dev": "strapi-plugin watch",
     "dev:docker": "node scripts/dev-docker.mjs",
     "build": "strapi-plugin build",
+    "prepack": "npm run build",
     "blocks:generate": "jiti scripts/blocks/generate.ts",
     "preview:generate": "jiti scripts/preview/generate.ts",
     "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p admin/tsconfig.json --noEmit && tsc -p tsconfig.json --noEmit",
