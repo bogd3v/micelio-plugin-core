@@ -623,11 +623,84 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
         body: '{}',
       })
       expect(logout.status).toBe(200)
-      await vi.waitFor(async () => {
-        expect((await draftOf(grant, { documentId: own })).status).toBe(404)
-      })
+      expect((await draftOf(grant, { documentId: own })).status).toBe(404)
       expect((await exchange(unused)).status).toBe(404)
     })
+
+    it.each(['/admin/logout', '/admin/logout/', '/ADMIN/logout'])(
+      'has revoked the grants when the logout answers, even when the revocation is slow (%s)',
+      async (path) => {
+        const reader = await newReader()
+        const own = await createArticle(admin)
+        const grant = await grantFor(reader.token, body(own))
+        const service = strapi.plugin('micelio').service('preview') as PreviewService
+        const revoke = service.revoke.bind(service)
+        const slow = vi.spyOn(service, 'revoke').mockImplementation(async (...args) => {
+          await new Promise((resolve) => setTimeout(resolve, 300))
+          await revoke(...args)
+        })
+        try {
+          const logout = await fetch(`${base}${path}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${reader.token}`,
+            },
+            body: '{}',
+          })
+          expect(logout.status).toBe(200)
+          expect(slow).toHaveBeenCalled()
+          expect((await draftOf(grant, { documentId: own })).status).toBe(404)
+        } finally {
+          slow.mockRestore()
+        }
+      }
+    )
+
+    it('does not revoke the grants on another admin route', async () => {
+      const reader = await newReader()
+      const own = await createArticle(admin)
+      const grant = await grantFor(reader.token, body(own))
+      const other = await fetch(`${base}/admin/users/me`, {
+        headers: { Authorization: `Bearer ${reader.token}` },
+      })
+      expect(other.status).toBe(200)
+      expect((await draftOf(grant, { documentId: own })).status).toBe(200)
+    })
+
+    it('refuses a draft request sent right after each of 200 logouts has answered', async () => {
+      const reader = await newReader()
+      const own = await createArticle(admin)
+      const service = strapi.plugin('micelio').service('preview') as PreviewService
+      const served: number[] = []
+      for (let round = 0; round < 200; round += 1) {
+        // A user of its own for each round: the admin login is rate limited per user.
+        const email = `logout-${counter}-${round}@example.com`
+        const userId = await createUser(email, reader.roleId)
+        const token = await signIn(email)
+        const { url } = await service.issueToken({
+          adminUser: userId,
+          adminOrigin: ADMIN_ORIGIN,
+          siteDocumentId: site,
+          contentType: ARTICLE_UID,
+          entryDocumentId: own,
+          entryLocale: null,
+        })
+        const answer = await service.exchange(new URL(url).searchParams.get('token')!, site)
+        const grant = answer!.grant
+        issued.push(grant)
+        const logout = await fetch(`${base}/admin/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: '{}',
+        })
+        expect(logout.status).toBe(200)
+        // No waiting: ADR-0019, section 3 holds from the moment the logout has answered.
+        const draft = await draftOf(grant, { documentId: own })
+        if (draft.status !== 404) served.push(round)
+      }
+      expect(served).toEqual([])
+    }, 300_000)
 
     it('refuses a grant whose admin user is deactivated', async () => {
       const reader = await newReader()
@@ -786,9 +859,7 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
         body: '{}',
       })
       expect(logout.status).toBe(200)
-      await vi.waitFor(async () => {
-        expect((await rowOf(adminGrant)).revokedAt).not.toBeNull()
-      })
+      expect((await rowOf(adminGrant)).revokedAt).not.toBeNull()
       expect((await rowOf(system)).revokedAt).toBeNull()
       expect((await draftOf(adminGrant, { documentId: own })).status).toBe(404)
       expect((await draftOf(system, { documentId: own })).status).toBe(200)

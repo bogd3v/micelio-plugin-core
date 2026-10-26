@@ -51,7 +51,7 @@ The page is `/admin/plugins/micelio/preview/<content type uid>/<documentId>` (fo
 
 ## What ends a grant
 
-- Logging out of the admin revokes every token and grant of the user, and no system grant.
+- Logging out of the admin revokes every token and grant of the user, and no system grant, before the logout answers: a draft request sent after it gets `404`.
 - Each exchange and each draft request checks again that the admin user is active and may read the draft. When they may not, every grant of that user and draft is revoked, and giving the permission back does not bring them back.
 
 ## What the frontend needs
