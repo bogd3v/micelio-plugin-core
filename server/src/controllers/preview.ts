@@ -1,4 +1,5 @@
 import type { Core, UID } from '@strapi/strapi'
+import { errors } from '@strapi/utils'
 import type { Context } from 'koa'
 import {
   PREVIEW_EXCHANGE_RATE_LIMIT,
@@ -8,6 +9,7 @@ import {
   PREVIEW_TOKEN_RATE_LIMIT,
 } from '../constants/preview'
 import { readableDraft, type UserAbility } from '../preview/access'
+import { readDraft, readDraftQuery } from '../preview/draft-query'
 import type { SiteScopeState } from '../site-scope'
 import { PreviewUnavailableError, type PreviewService } from '../services/preview'
 import type { PreviewResolvedGrant } from '../types/preview'
@@ -48,7 +50,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
 
   /**
    * Whether the draft is still the version a system grant was minted for. The version is read on
-   * its own, after the draft, because a `fields` parameter may leave `updatedAt` out of the entry.
+   * its own, after the draft, so what the answer holds never decides it.
    */
   async function isVersionOf(
     uid: UID.ContentType,
@@ -170,14 +172,30 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
       }
       const uid = binding.contentType as UID.ContentType
       const schema = strapi.contentType(uid)
+      const read = readDraftQuery(strapi, query, schema)
+      if ('problem' in read) {
+        refuse(ctx, 400, 'previewRequestInvalid', read.problem)
+        return
+      }
       const auth = ctx.state.auth
-      const params = await strapi.contentAPI.sanitize.query(query, schema, { auth })
-      const entry = await strapi.documents(uid).findOne({
-        ...params,
-        documentId: binding.entryDocumentId,
-        locale: binding.entryLocale ?? undefined,
-        status: 'draft',
-      } as never)
+      let entry
+      try {
+        entry = await readDraft(strapi, {
+          uid,
+          documentId: binding.entryDocumentId,
+          locale: binding.entryLocale ?? undefined,
+          populate: read.populate,
+          siteDocumentId: siteOf(ctx),
+          auth,
+        })
+      } catch (error) {
+        // The query passed the allowlist and Strapi still refuses it: that is the client's, not a 500.
+        if (!(error instanceof errors.ValidationError || error instanceof errors.PaginationError)) {
+          throw error
+        }
+        refuse(ctx, 400, 'previewRequestInvalid', error.message)
+        return
+      }
       if (!entry || (binding.actor === 'system' && !(await isVersionOf(uid, binding)))) {
         refuse(ctx, 404, 'previewRefused', REFUSED)
         return

@@ -1,6 +1,7 @@
 // The seed of compose.dev.yml: one neutral site with the frontend's url, the frontend's API token, a
-// custom token for trying the preview by hand and a draft landing page with an island. All are
-// idempotent. A new database (`down -v`, then `up`) is seeded again.
+// custom token for trying the preview by hand, a draft landing page with an island and a draft
+// article with a cover and an author. All are idempotent. A new database (`down -v`, then `up`) is
+// seeded again.
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -12,6 +13,8 @@ const SITE_HOSTS = ['localhost']
 const TOKEN_NAME = 'Frontend (compose.dev.yml)'
 const PREVIEW_TOKEN_NAME = 'Preview by hand (compose.dev.yml)'
 const LANDING_SLUG = 'landing'
+const AUTHOR_NAME = 'Ada Example'
+const ARTICLE_SLUG = 'a-draft-article'
 // A 320x180 PNG, the poster of the scene: the static alternative of the island.
 const POSTER = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAUAAAAC0CAIAAABqhmJGAAABk0lEQVR42u3TQQkAAAwDsZrbY/4FbToKgSg4uOwcUCoSgIEBAwMGBgMDBgYMDBgYDAwYGDAwGBgwMGBgwMBgYMDAgIEBA4OBAQMDBgYDAwYGDAwYGAwMGBgwMGBgMDBgYMDAYGDAwICBAQODgQEDAwYGA6sABgYMDBgYDAwYGDAwYGAwMGBgwMBgYMDAgIEBA4OBAQMDBgYMDAYGDAwYGAwMGBgwMGBgMDBgYMDAgIHBwICBAQODgQEDAwYGDAwGBgwMGBgMDBgYMDBgYDAwYGDAwICBwcCAgQEDg4EBAwMGBgwMBgYMDBgYMDAYGDAwYGAwMGBgwMCAgcHAgIEBAwMGBgMDBgYMDAYGDAwYGDAwGBgwMGBgMDBgYMDAgIHBwICBAQMDBgYDAwYGDAwGBgwMGBgwMBgYMDBgYMDAYGDAwICBwcCAgQEDAwYGAwMGBgwMBlYBDAwYGDAwGBgwMGBgwMBgYMDAgIHBwICBAQMDBgYDAwYGDAwYGAwMGBgwMBgYMDBgYMDAYGDAwICBAQNDtwdgFgF0mOcBewAAAABJRU5ErkJggg==',
@@ -196,6 +199,40 @@ async function seedLanding(strapi) {
   })
 }
 
+// The draft article of the preview pane: a cover and an author, which the frontend reads with its
+// `populate` (docs/operate/manual-testing.md). The type is the fixture of docker/cms/src/api/article/.
+async function seedArticle(strapi) {
+  const site = await strapi.db.query('plugin::micelio.site').findOne({ where: { slug: SITE_SLUG } })
+  if (!site) return
+  if (await strapi.db.query('api::article.article').findOne({ where: { slug: ARTICLE_SLUG } })) {
+    return
+  }
+  // A boot that stopped after the author must not leave a second one on the next.
+  const author =
+    (await strapi.db.query('api::author.author').findOne({
+      where: { name: AUTHOR_NAME, site: { documentId: site.documentId } },
+    })) ??
+    (await strapi.documents('api::author.author').create({
+      data: {
+        name: AUTHOR_NAME,
+        site: site.documentId,
+        avatar: await upload(strapi, 'avatar.png', 'image/png', POSTER),
+      },
+    }))
+  await strapi.documents('api::article.article').create({
+    locale: 'en',
+    data: {
+      title: 'A draft article',
+      slug: ARTICLE_SLUG,
+      description: 'An article that is still a draft: only the preview shows it.',
+      site: site.documentId,
+      cover: await upload(strapi, 'cover.png', 'image/png', POSTER),
+      author: author.documentId,
+      blocks: [{ __component: 'shared.rich-text', body: 'The body of the draft, in Markdown.' }],
+    },
+  })
+}
+
 module.exports = {
   register() {},
   async bootstrap({ strapi }) {
@@ -203,5 +240,6 @@ module.exports = {
     await seedFrontendToken(strapi)
     await seedPreviewToken(strapi)
     await seedLanding(strapi)
+    await seedArticle(strapi)
   },
 }

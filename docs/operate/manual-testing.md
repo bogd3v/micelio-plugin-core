@@ -39,6 +39,14 @@ The admin's preview page shows a draft beside its form, rendered by the real fro
 10. In `docker/cms/config/middlewares.js` remove the `frame-src` line, save, wait for Strapi to restart and reload the page: the pane does not show a broken frame; it says the admin does not allow `http://localhost:3000` in a frame and what to change. The **Micelio** status page says the same under the host check, `frame-src for the preview`. Put the line back.
 11. Safari and other WebKit browsers refuse the grant cookie in a frame from another site (bogd3v/micelio#744 is the fallback): the frame shows no draft and never says `ready`; the page keeps working, loading the preview again with a new token after each save.
 
+## Try the preview of an article
+
+The frontend reads an article draft with a `populate` of its cover, author, category, tags, blocks, references and translations (`ARTICLE_POPULATE` in `micelio`). The seed creates a draft article, "A draft article", with a cover and an author, of the fixture `docker/cms/src/api/article/`, which has the shape of the `article` of `micelio-cms`.
+
+1. Create the first admin, as above. In Content Manager → Article, open "A draft article" and copy its `documentId` from the URL.
+2. Open `http://localhost:1337/admin/plugins/micelio/preview/api::article.article/<documentId>`. The frame shows the draft in the frontend: the title, the description, the cover image, the author "Ada Example" and the body.
+3. The frontend's log (`docker compose -f compose.dev.yml logs frontend`) has no error for the draft.
+
 ## Try the preview with curl
 
 To see what the routes do, one by one, play the frontend with `curl`. The seed gives you a custom API token for it, `PREVIEW_API_TOKEN` in `.env.docker`; load it without printing the file. A `.env.docker` written before the preview existed lacks it: run `npm run dev:docker -- down`, delete `.env.docker` and start again.

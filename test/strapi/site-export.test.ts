@@ -83,6 +83,7 @@ describe('the site exporter', () => {
         ['label', LABEL, 1],
         ['note', NOTE, 1],
         ['page', 'api::page.page', 0],
+        ['post', 'api::post.post', 0],
         ['site', SITE_UID, 1],
         ['story', STORY, 1],
       ])

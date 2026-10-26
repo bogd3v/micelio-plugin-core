@@ -144,7 +144,16 @@ The plugin marks the token used, checks again that the admin user may read the d
 
 ### Draft by grant
 
-`GET /api/micelio/preview/draft?site=<slug>&documentId=<id>[&locale=<code>]` takes the frontend's API token (it must allow `plugin::micelio.preview.draft`) and the grant in the header `X-Micelio-Preview-Grant`. It serves the **draft** of the one document the grant names, in Strapi's content API format; `documentId` and `locale` must be the grant's. Other query parameters (`populate`, `fields`) work as on any content API route, within the API token's permissions.
+`GET /api/micelio/preview/draft?site=<slug>&documentId=<id>[&locale=<code>]` takes the frontend's API token (it must allow `plugin::micelio.preview.draft`) and the grant in the header `X-Micelio-Preview-Grant`. It serves the **draft** of the one document the grant names, in Strapi's content API format; `documentId` and `locale` must be the grant's. The only other parameter is `populate`: the route serves one document and nothing a query could use to learn about another, so `fields`, `filters`, `sort`, `pagination` and any other key answer `400` with the code `previewRequestInvalid`, and so does an invalid `populate`. The `populate`:
+
+- may name the attributes of the draft's type and, inside its components and dynamic zones, their attributes, at any depth; `*` is the first level, and cannot be mixed with names. A `populate` of a name that is not an attribute, of a private attribute, of an unknown dynamic zone component, or of a relation to an admin user or to no single type (a polymorphic relation) is refused.
+- goes one level through a relation: the `fields` of the related entry and, as its `populate`, the related entry's media attributes with `fields` only (`author: { fields: ['name'], populate: { avatar: { fields: ['url'] } } }`). A relation, a component or a dynamic zone under a relation, `*` under it, and `filters`, `sort`, `pagination`, `count` or `on` are refused.
+- goes no further than `fields` through a media attribute, so the file's `related` entries are never reached.
+- returns a related entry as its **published** version, with the `fields` asked for, never its draft: the grant serves the draft of the one document it names. A related entry that was never published is left out.
+- returns only entries of the grant's site: an entry of a site-scoped type that belongs to another site is left out.
+- is still within the API token's permissions: a populated relation to a type the token may not `find` is left out, as on any content API route. The token's permissions on other routes are not touched.
+
+The frontend's `populate` of an article (cover, author and its avatar, category, tags, blocks, references, localizations) and of a page is served whole.
 
 `meta.actor` says whose grant it was: `admin` for the grant of an admin user (above), `system` for a **system grant**, the credential the plugin mints for itself to measure one draft at publish (ADR-0019, amendment of 2026-10-25). No route mints a system grant, and no response carries one. It is bound to the site, content type, `documentId`, locale and the `updatedAt` of the draft at minting, lives 60 seconds and is used once: the first request that finds it unused claims it, and a second gets `previewRefused`, as does one that finds the draft saved since (another `updatedAt`). It has no admin user, so nothing is checked about one, logging out revokes nothing of it, and the exchange refuses it as a token. A frontend accepts `system` only on the route that measures a draft and refuses it everywhere else.
 
@@ -156,7 +165,7 @@ Every refusal is `application/problem+json`:
 
 | Status | `code`                  | When                                                                                                                                                                        |
 | ------ | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400    | `previewRequestInvalid` | The body, the grant header or `documentId` is missing or malformed                                                                                                          |
+| 400    | `previewRequestInvalid` | The body, the grant header or `documentId` is missing or malformed; on the draft route, a query the allowlist above refuses                                                 |
 | 400    | `previewTypeInvalid`    | The type does not belong to a site                                                                                                                                          |
 | 403    | `previewForbidden`      | The role lacks the preview permission, or may not read the entry                                                                                                            |
 | 404    | `previewEntryNotFound`  | The token route found no such entry                                                                                                                                         |
