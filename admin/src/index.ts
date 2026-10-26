@@ -31,6 +31,16 @@ const plugin: StrapiApp['appPlugins'][string] = {
     })
   },
 
+  async bootstrap(app) {
+    // The Content Manager registers after the plugins have registered, so its API is reached here.
+    // The action is imported when it is needed: it imports the admin, which `require` cannot load
+    // (`test/package.test.ts`), as the pages above are.
+    const add = app.getPlugin('content-manager').apis.addDocumentHeaderAction
+    if (typeof add !== 'function') return
+    const { PreviewHeaderAction } = await import('./components/PreviewHeaderAction')
+    add([PreviewHeaderAction])
+  },
+
   async registerTrads({ locales }) {
     return Promise.all(
       locales.map(async (locale) => {
