@@ -59,6 +59,13 @@ async function waitForFirstBuild() {
   }
 }
 
+// The fixture is micelio-cms v0.4.0, whose category and tag are `api::` types of the host. The core
+// owns them now, under the UIDs micelio-cms 0.5 stores, and `post-list` points at those.
+const TAXONOMY_UIDS = {
+  'api::category.category': 'plugin::micelio.category',
+  'api::tag.tag': 'plugin::micelio.tag',
+}
+
 /** Writes the fixture's components into the project's `src/components/` (gitignored), where Strapi loads them from. */
 function writeComponents() {
   const { components } = JSON.parse(readFileSync(COMPONENTS_FIXTURE, 'utf8'))
@@ -66,7 +73,10 @@ function writeComponents() {
     const [category, name] = uid.split('.')
     const folder = join(PROJECT, 'src', 'components', category)
     mkdirSync(folder, { recursive: true })
-    writeFileSync(join(folder, `${name}.json`), `${JSON.stringify(schema, null, 2)}\n`)
+    let text = `${JSON.stringify(schema, null, 2)}\n`
+    for (const [legacy, current] of Object.entries(TAXONOMY_UIDS))
+      text = text.replaceAll(legacy, current)
+    writeFileSync(join(folder, `${name}.json`), text)
   }
 }
 

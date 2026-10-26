@@ -4,6 +4,7 @@ import { registerStatusRefresh } from './status/refresh'
 import { registerScheduler } from './editorial/scheduler'
 import { syncBlockCatalogue } from './migrations/block-catalogue'
 import { ensureDefaultSite } from './migrations/default-site'
+import { backfillSite } from './migrations/site-backfill'
 import { registerPreviewPermission } from './preview/permissions'
 import { registerPreviewRevocation } from './preview/revocation'
 import { registerStatusPermission } from './status/permissions'
@@ -11,6 +12,9 @@ import { registerStatusPermission } from './status/permissions'
 /** Bootstrap phase: runs once the database and the other plugins are ready. */
 const bootstrap = async ({ strapi }: { strapi: Core.Strapi }): Promise<void> => {
   await ensureDefaultSite(strapi)
+  const backfilled = await backfillSite(strapi)
+  if (backfilled > 0)
+    strapi.log.info(`[micelio] gave the default site to ${backfilled} categories and tags`)
   await ensureSiteSections(strapi)
   // After the default site: the check reads the sites' origins.
   await strapi.plugin('micelio').service('hostCheck').enforce()

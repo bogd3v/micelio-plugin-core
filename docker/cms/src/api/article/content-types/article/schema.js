@@ -29,8 +29,20 @@ module.exports = withSiteScope(
         pluginOptions: localized,
       },
       author: { type: 'relation', relation: 'manyToOne', target: 'api::author.author' },
-      category: { type: 'relation', relation: 'manyToOne', target: 'api::category.category' },
-      tags: { type: 'relation', relation: 'manyToMany', target: 'api::tag.tag' },
+      // The core's types, with the inverse side the host adds (src/extensions/micelio/), as the
+      // article of micelio-cms has them.
+      category: {
+        type: 'relation',
+        relation: 'manyToOne',
+        target: 'plugin::micelio.category',
+        inversedBy: 'articles',
+      },
+      tags: {
+        type: 'relation',
+        relation: 'manyToMany',
+        target: 'plugin::micelio.tag',
+        inversedBy: 'articles',
+      },
       blocks: {
         type: 'dynamiczone',
         components: [

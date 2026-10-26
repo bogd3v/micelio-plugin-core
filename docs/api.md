@@ -9,7 +9,7 @@ How the plugin's content API routes behave. Routes keep Strapi's content API for
 | `GET`  | `/api/micelio/sites`     | The sites, in Strapi's list format (`data`, `meta`) |
 | `GET`  | `/api/micelio/sites/:id` | One site by `documentId`                            |
 
-The prefix `/micelio` is set explicitly, so a host's own `/api/sites` does not collide with it. The preview routes ([Preview](#preview)) are content API routes too.
+The prefix `/micelio` is set explicitly, so a host's own `/api/sites` does not collide with it. The preview routes ([Preview](#preview)) are content API routes too. The two taxonomy types answer at the paths `micelio-cms` already serves ([Category and tag](#category-and-tag)).
 
 ## Which site a request is for
 
@@ -22,6 +22,81 @@ Every content type of a Micelio plugin belongs to one site (ADR-0017, section 4)
 Reads answer only that site's entries; reading, changing or deleting another site's entry by its id answers `404`, as if it did not exist; and an entry created through the content API belongs to that site.
 
 A locale added to an entry (by the Content Manager, the content API or an import) that names no site, or leaves the relation as it is, takes the site of the entry's other locales, and is refused with `400` and `site is required` when those locales belong to different sites or none has one. A locale added to an entry that names another site than the one its other locales share is refused with `400` and `site must be the site of the other locales`, as a removal of the site is. The site of a locale that exists may change only when no other locale of the entry stays on another site; otherwise the update is refused with `400` and `site cannot change while other locales of the document stay on another site`, and an entry of a single locale moves freely. Publishing a locale, or discarding the changes of its draft, keeps the site on the version Strapi rebuilds. A request scoped to a site is answered `404` for an entry of another site before any of this.
+
+## Category and tag
+
+The plugin owns `plugin::micelio.category` and `plugin::micelio.tag`, under the UIDs, tables (`categories`, `tags`) and attributes that `micelio-cms` 0.5 already stores (ADR-0017, amendment of 2026-10-26). Their routes have no `/micelio` prefix, so the frontend's requests keep working:
+
+| Method                         | Path                    | Answers                                 |
+| ------------------------------ | ----------------------- | --------------------------------------- |
+| `GET`                          | `/api/categories`       | The categories of the site, localised   |
+| `GET`                          | `/api/categories/:id`   | One category by `documentId`            |
+| `POST`, `PUT`, `DELETE`        | `/api/categories[/:id]` | Create, update, delete, with the grants |
+| `GET`, `POST`, `PUT`, `DELETE` | `/api/tags[/:id]`       | The same for tags                       |
+
+Both types are site-scoped like any other ([Which site a request is for](#which-site-a-request-is-for)): `?site=<slug>` names the site, and an unknown one answers `unknownSite`. A row a database already holds with no site (the ones `micelio-cms` 0.5 wrote) is given the default site on boot.
+
+- **Grants.** The plugin grants nothing. `READ_ACTIONS` (`plugin::micelio.category.find` and `plugin::micelio.tag.find`), exported by `@micelio/strapi-plugin-core/strapi-server`, is what a host spreads into its token lists; the roles and tokens stay the host's, because plugins bootstrap in no fixed order (ADR-0017, amendment of 2026-10-23). `CATEGORY_UID` and `TAG_UID` are exported too.
+- **Older UIDs.** On boot, before any plugin bootstraps, the grants of roles and API tokens, the admin permissions and the Content Manager layouts stored under `api::category.category` and `api::tag.tag` move to the plugin's UIDs; a second boot changes nothing.
+- **A host with its own `/api/categories`** keeps its route: host routes register first, so the plugin's answers nothing on that path.
+- **The plugin owns the tables `categories` and `tags`.** A host type on either (a `collectionName` of `categories` or `tags`, which is the default of a type named `category` or `tag`) stops booting with `DB table "categories" already exists`, and changing its `collectionName` alone loses its data: Strapi moves no rows, so the plugin's type takes the old table and drops the columns it does not know. Back up and move the tables first ([below](#a-host-type-on-categories-or-tags)), or remove the type if it is `micelio-cms`' own. A host type that keeps the UID `api::category.category` or `api::tag.tag` keeps its grants and layouts: the migration leaves a UID that is still registered alone.
+- **The inverse `articles` relation** is not in the plugin: a plugin's type cannot target a type of the host. The distribution adds it to both types through `src/extensions/micelio/strapi-server` (ADR-0017, amendment of 2026-10-26, D5).
+
+### A host type on `categories` or `tags`
+
+Before the first boot with this version, with the host stopped:
+
+1. Back up the database (`pg_dump -Fc`).
+2. Change the type's `collectionName` to a free name, here `host_categories`.
+3. Rename every table the type owns, and the indexes, constraints and sequences that carry the old name, in one transaction. A table renamed alone fails the boot with `relation "categories_documents_idx" already exists`. Strapi 5 gives a collection type its own table (`<collectionName>`) and these, all starting with `<collectionName>_` (`@strapi/database` 5.58, `utils/identifiers/index.js` and `metadata/relations.js`; `@strapi/core` `utils/transform-content-types-to-models.js`):
+   - `<collectionName>_<attribute>_lnk`, one per relation the type owns.
+   - `<collectionName>_cmps`, for all its components and dynamic zones.
+   - `<collectionName>_<attribute>_mph`, one per `morphToMany` attribute. A `morphToOne` attribute is two columns of the type's own table.
+   - Media is a row of `files_related_mph` keyed by the type's UID, which does not change. A localised type has no table of its own: its locales are rows of the same table.
+
+   The SQL renames every table that starts with `categories_`, so it covers all of them. Before the first boot with this version they are all the host's; check with `\dt categories*` that none belongs to another type. Set `old_name` and `new_name` at the top of the script.
+
+```sql
+BEGIN;
+DO $$
+DECLARE
+  old_name constant text := 'categories';
+  new_name constant text := 'host_categories';
+  schema_oid constant oid := (SELECT oid FROM pg_namespace WHERE nspname = current_schema());
+  r record;
+BEGIN
+  FOR r IN SELECT c.relname FROM pg_class c
+           WHERE c.relkind = 'r' AND c.relnamespace = schema_oid
+             AND (c.relname = old_name OR left(c.relname, length(old_name) + 1) = old_name || '_') LOOP
+    EXECUTE format('ALTER TABLE %I RENAME TO %I', r.relname, new_name || substr(r.relname, length(old_name) + 1));
+  END LOOP;
+  FOR r IN SELECT t.relname AS tbl, k.conname FROM pg_constraint k JOIN pg_class t ON t.oid = k.conrelid
+           WHERE t.relnamespace = schema_oid
+             AND (t.relname = new_name OR left(t.relname, length(new_name) + 1) = new_name || '_')
+             AND left(k.conname, length(old_name)) = old_name LOOP
+    EXECUTE format('ALTER TABLE %I RENAME CONSTRAINT %I TO %I', r.tbl, r.conname, new_name || substr(r.conname, length(old_name) + 1));
+  END LOOP;
+  FOR r IN SELECT indexname FROM pg_indexes
+           WHERE schemaname = current_schema()
+             AND (tablename = new_name OR left(tablename, length(new_name) + 1) = new_name || '_')
+             AND left(indexname, length(old_name)) = old_name LOOP
+    EXECUTE format('ALTER INDEX %I RENAME TO %I', r.indexname, new_name || substr(r.indexname, length(old_name) + 1));
+  END LOOP;
+  FOR r IN SELECT s.relname FROM pg_class s
+             JOIN pg_depend d ON d.objid = s.oid AND d.classid = 'pg_class'::regclass AND d.deptype IN ('a', 'i')
+             JOIN pg_class t ON t.oid = d.refobjid
+           WHERE s.relkind = 'S' AND t.relnamespace = schema_oid
+             AND (t.relname = new_name OR left(t.relname, length(new_name) + 1) = new_name || '_')
+             AND left(s.relname, length(old_name)) = old_name LOOP
+    EXECUTE format('ALTER SEQUENCE %I RENAME TO %I', r.relname, new_name || substr(r.relname, length(old_name) + 1));
+  END LOOP;
+END $$;
+COMMIT;
+```
+
+4. After the boot, `\dt host_categories*` lists the type's tables with their rows, and the plugin's `categories` and `categories_site_lnk` are new and empty.
+
+Repeat with `tags` and `host_tags` for a type on `tags`. The SQL is for PostgreSQL in the schema the connection uses (`current_schema()`); the steps were run on 18, with a link, a component, a dynamic zone, a media and a `morphToMany` attribute. MySQL and SQLite hosts are unproven: they move the same tables with their own tools, and on SQLite, where index names are global, drop the indexes that carry the old name and let Strapi recreate them. Strapi shortens a name over 55 characters with a hash, so check that a name longer than that, with `host_` added, is the one Strapi expects.
 
 ## Errors
 

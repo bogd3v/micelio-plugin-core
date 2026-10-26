@@ -13,6 +13,7 @@ import services from './services'
 
 export { SITE_ATTRIBUTE, SITE_SCOPE_MIDDLEWARE, withSiteScope } from './site-scope'
 export { SITE_UID } from './constants/site'
+export { CATEGORY_UID, READ_ACTIONS, TAG_UID } from './constants/taxonomy'
 export { withEditorial } from './editorial'
 export { EDITORIAL_STATES, type EditorialState } from './constants/editorial'
 export { missingLocales } from './extensions'
