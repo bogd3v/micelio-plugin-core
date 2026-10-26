@@ -60,7 +60,7 @@ The first release is `v0.1.0`, the `version` in `package.json`: with no earlier 
 
 ```
 - Micelio release line: 0.6
-- Node: 22.12 or later
+- Node: 22.19 or later
 ```
 
 A release candidate (`release_candidate`) is published under the `next` tag and moves neither `0.1` nor `latest`.
