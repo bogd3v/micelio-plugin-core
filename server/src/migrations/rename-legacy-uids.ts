@@ -129,8 +129,18 @@ async function renameSubjects(
 }
 
 /**
+ * Replaces `legacy` by `current` in a stored string only where it is the whole UID: a character
+ * that can continue a UID after it (`api::tag.tag-group`) means it is another type's.
+ */
+function replaceWholeUid(text: string, legacy: string, current: string): string {
+  const escaped = legacy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return text.replace(new RegExp(`${escaped}(?![A-Za-z0-9_-])`, 'g'), () => current)
+}
+
+/**
  * Rewrites the UID inside every stored content manager layout (the layout of an article also
  * names the category and tag it relates to) and renames the key of the layouts of the types.
+ * Only the whole UID is replaced: the layout of `api::tag.tag-group` is another type's.
  */
 async function renameLayouts(
   strapi: Core.Strapi,
@@ -145,8 +155,8 @@ async function renameLayouts(
 
   let changed = 0
   for (const row of rows) {
-    const key = row.key.split(legacy).join(current)
-    const value = row.value?.split(legacy).join(current) ?? row.value
+    const key = replaceWholeUid(row.key, legacy, current)
+    const value = row.value ? replaceWholeUid(row.value, legacy, current) : row.value
     if (key === row.key && value === row.value) continue
     changed += 1
     if (key !== row.key && (await strapi.db.query(uid).findOne({ where: { key } }))) {
