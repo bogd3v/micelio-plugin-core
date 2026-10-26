@@ -39,7 +39,8 @@ async function runDoctor(environment: string): Promise<{ code: number; stdout: s
   }
 }
 
-describe('the host check in production', () => {
+// The test boots Strapi, as long as a hook of the harness takes.
+describe('the host check in production', { timeout: 120_000 }, () => {
   afterAll(async () => {
     await cleanupStrapi()
   })
