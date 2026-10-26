@@ -2,7 +2,7 @@
 
 `@micelio/strapi-plugin-core` is Micelio's core as a Strapi 5 plugin. It will hold what a Micelio site needs from its CMS: several sites per CMS, the block catalogue, the editorial workflow, the hooks other Micelio plugins build on, and a host check that refuses to start in production when the host is missing what Micelio needs ([ADR-0017](https://github.com/bogd3v/micelio/blob/main/docs/adr/0017-distribution-plugins-multisite-editorial.md)).
 
-It is at `0.1.0` and alpha: it holds the `site` type (one row per site, with a default site created on an empty instance), site scoping for content types, the editorial workflow, the block catalogue ([docs/blocks.md](docs/blocks.md)), the [hooks](docs/hooks.md) other plugins subscribe to, the host check (`npx micelio doctor`, [docs/operate/host-check.md](docs/operate/host-check.md)), the site export and import (`npx micelio export` and `import`, [docs/operate/export.md](docs/operate/export.md)) and the status page in the admin (the **Micelio** entry of its menu, [docs/operate/status-page.md](docs/operate/status-page.md)), and the other capabilities arrive with the issues of the first milestone. Until then, install nothing from it on a site.
+It is at `0.2.0` and alpha: it holds the `site` type (one row per site, with a default site created on an empty instance), site scoping for content types, the editorial workflow, the block catalogue ([docs/blocks.md](docs/blocks.md)), the [hooks](docs/hooks.md) other plugins subscribe to, the host check (`npx micelio doctor`, [docs/operate/host-check.md](docs/operate/host-check.md)), the site export and import (`npx micelio export` and `import`, [docs/operate/export.md](docs/operate/export.md)), the status page in the admin (the **Micelio** entry of its menu, [docs/operate/status-page.md](docs/operate/status-page.md)), the preview of drafts on the frontend ([docs/operate/preview.md](docs/operate/preview.md)) and the `category` and `tag` types, and the other capabilities arrive with the issues of the first milestone. Until then, install nothing from it on a site.
 
 ## Plugin or distribution
 
@@ -63,7 +63,7 @@ The first release is `v0.1.0`, the `version` in `package.json`: with no earlier 
 - Node: 22.19 or later
 ```
 
-A release candidate (`release_candidate`) is published under the `next` tag and moves neither `0.1` nor `latest`.
+A release candidate (`release_candidate`) is published under the `next` tag and moves neither `X.Y` nor `latest`.
 
 ## License
 
