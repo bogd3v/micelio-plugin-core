@@ -82,6 +82,7 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
 
 - Hard limits: `.claude/TEAM.md`. Never push, merge, tag, release or deploy without the human's approval, and never read secrets.
 - `micelio` in `package.json` is the release line of the core this version supports (section 7). Raise it in the pull request that adopts a new line.
+- Regenerate `package-lock.json` with npm 11 (`npx npm@11 install --package-lock-only` in the `node:22` image), never by hand: the lockfile carries `libc` fields that npm 10, the npm of `node:22`, drops, and the diff fills with noise. `npm ci` with npm 10 reads it as is.
 - Content types are declared visible in the Content Manager and routes get an explicit prefix (ADR-0017, trade-offs); a test covers each. An internal store that holds no content and is never edited by hand (`preview-credential`, hashes only) is hidden instead, with `visible: false` tested.
 - Every content type is made with `withSiteScope`, and its content API routes carry the `plugin::micelio.site-scope` middleware (ADR-0017, section 4).
 - A publishable type is made with `withEditorial` and is published only through the `transitions` service. The states, the transitions and their default policy are a contract (section 6): adding one is a MINOR, renaming or removing one or changing a default is a MAJOR.
