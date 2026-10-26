@@ -1,0 +1,127 @@
+{
+  "_comment": "The schemas of plugin::micelio.category and plugin::micelio.tag exactly as micelio-cms v0.5.0 ships them (src/plugins/micelio/server/src/content-types/*/schema.json), with the inverse `articles` relation. test/strapi/taxonomy.test.ts compares the core's types with them.",
+  "category": {
+    "kind": "collectionType",
+    "collectionName": "categories",
+    "info": {
+      "singularName": "category",
+      "pluralName": "categories",
+      "displayName": "Category",
+      "description": "Organize your content into categories"
+    },
+    "options": {
+      "draftAndPublish": false
+    },
+    "pluginOptions": {
+      "i18n": {
+        "localized": true
+      }
+    },
+    "attributes": {
+      "name": {
+        "type": "string",
+        "pluginOptions": {
+          "i18n": {
+            "localized": true
+          }
+        }
+      },
+      "slug": {
+        "type": "uid",
+        "regex": "^(?!\\.{1,2}$)[A-Za-z0-9-_.~]*$",
+        "pluginOptions": {
+          "i18n": {
+            "localized": false
+          }
+        }
+      },
+      "articles": {
+        "type": "relation",
+        "relation": "oneToMany",
+        "target": "api::article.article",
+        "mappedBy": "category"
+      },
+      "description": {
+        "type": "text",
+        "pluginOptions": {
+          "i18n": {
+            "localized": true
+          }
+        }
+      },
+      "order": {
+        "type": "integer",
+        "pluginOptions": {
+          "i18n": {
+            "localized": false
+          }
+        }
+      },
+      "featured": {
+        "type": "boolean",
+        "default": false,
+        "pluginOptions": {
+          "i18n": {
+            "localized": false
+          }
+        }
+      },
+      "color": {
+        "type": "integer",
+        "min": 1,
+        "max": 5,
+        "pluginOptions": {
+          "i18n": {
+            "localized": false
+          }
+        }
+      }
+    }
+  },
+  "tag": {
+    "kind": "collectionType",
+    "collectionName": "tags",
+    "info": {
+      "singularName": "tag",
+      "pluralName": "tags",
+      "displayName": "Tag",
+      "description": "Topics an article covers, used to filter the blog"
+    },
+    "options": {
+      "draftAndPublish": false
+    },
+    "pluginOptions": {
+      "i18n": {
+        "localized": true
+      }
+    },
+    "attributes": {
+      "name": {
+        "type": "string",
+        "required": true,
+        "pluginOptions": {
+          "i18n": {
+            "localized": true
+          }
+        }
+      },
+      "slug": {
+        "type": "uid",
+        "regex": "^(?!\\.{1,2}$)[A-Za-z0-9-_.~]*$",
+        "targetField": "name",
+        "required": true,
+        "pluginOptions": {
+          "i18n": {
+            "localized": false
+          }
+        }
+      },
+      "articles": {
+        "type": "relation",
+        "relation": "manyToMany",
+        "target": "api::article.article",
+        "mappedBy": "tags"
+      }
+    }
+  }
+}

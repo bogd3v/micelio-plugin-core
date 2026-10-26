@@ -1,5 +1,6 @@
 import { factories, type UID } from '@strapi/strapi'
 import { SITE_UID } from '../constants/site'
+import { CATEGORY_UID, TAG_UID } from '../constants/taxonomy'
 import blocks from './blocks'
 import preview from './preview'
 import extensions from './extensions'
@@ -8,6 +9,8 @@ import transitions from './transitions'
 
 export default {
   site: factories.createCoreController(SITE_UID as UID.ContentType),
+  category: factories.createCoreController(CATEGORY_UID as UID.ContentType),
+  tag: factories.createCoreController(TAG_UID as UID.ContentType),
   blocks,
   transitions,
   status,

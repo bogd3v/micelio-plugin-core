@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest'
 
 // The content types of `micelio-cms` at `v0.4.0` (`git ls-tree v0.4.0` of its `src/api/` and
 // `src/plugins/`, and the plugins its `config/plugins.ts` installs), and the `site` type of this
-// plugin. `docs/export-format.md` must give each one a row: the acceptance criterion of #9.
+// plugin, and the `category` and `tag` types it took over (the legacy UIDs stay: the `v0.4.0` rows).
+// `docs/export-format.md` must give each one a row: the acceptance criterion of #9.
 const CONTENT_TYPES = [
   'plugin::micelio.site',
+  'plugin::micelio.category',
+  'plugin::micelio.tag',
   'api::about.about',
   'api::article.article',
   'api::article-stat.article-stat',

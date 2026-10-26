@@ -79,6 +79,7 @@ describe('the site exporter', () => {
     it('writes the site and every site-scoped type but the personal one, by export name', () => {
       expect(manifest.types.map(({ name, uid, documents }) => [name, uid, documents])).toEqual([
         ['article', 'api::article.article', 0],
+        ['category', 'plugin::micelio.category', 0],
         ['essay', 'api::essay.essay', 0],
         ['label', LABEL, 1],
         ['note', NOTE, 1],
@@ -86,6 +87,7 @@ describe('the site exporter', () => {
         ['post', 'api::post.post', 0],
         ['site', SITE_UID, 1],
         ['story', STORY, 1],
+        ['tag', 'plugin::micelio.tag', 0],
       ])
     })
 
