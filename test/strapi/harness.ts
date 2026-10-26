@@ -50,13 +50,18 @@ let instance: Core.Strapi | undefined
  * Boots Strapi on an empty database, once per test file.
  *
  * @param environment - `NODE_ENV` of the boot.
+ * @param options - `keepDatabase` boots on the file a previous run of this worker left, as a
+ * restart does, instead of on an empty one.
  * @returns The running instance; its HTTP server listens on a free port.
  * @throws What the boot threw, once the instance is cleaned up.
  */
-export async function setupStrapi(environment?: string): Promise<Core.Strapi> {
+export async function setupStrapi(
+  environment?: string,
+  options: { keepDatabase?: boolean } = {}
+): Promise<Core.Strapi> {
   if (instance) return instance
   Object.assign(process.env, testEnvironment(environment))
-  removeDatabase()
+  if (!options.keepDatabase) removeDatabase()
   // The local upload provider refuses to start without its folder, as in a new Strapi project.
   fs.mkdirSync(path.join(APP_DIR, 'public', 'uploads'), { recursive: true })
   instance = createStrapi({ appDir: APP_DIR, distDir: APP_DIR })
@@ -72,11 +77,15 @@ export async function setupStrapi(environment?: string): Promise<Core.Strapi> {
   return instance
 }
 
-/** Stops Strapi, closes the database and removes its file. */
-export async function cleanupStrapi(): Promise<void> {
+/**
+ * Stops Strapi, closes the database and removes its file.
+ *
+ * @param options - `keepDatabase` leaves the file for a restart (`setupStrapi`).
+ */
+export async function cleanupStrapi(options: { keepDatabase?: boolean } = {}): Promise<void> {
   if (!instance) return
   instance.server.httpServer.close()
   await instance.destroy()
   instance = undefined
-  removeDatabase()
+  if (!options.keepDatabase) removeDatabase()
 }

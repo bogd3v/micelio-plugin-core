@@ -13,6 +13,9 @@ import type {
   PreviewCredentialRecord,
   PreviewExpectation,
   PreviewGrantAnswer,
+  PreviewResolvedGrant,
+  PreviewSystemBinding,
+  PreviewTarget,
   PreviewTokenAnswer,
 } from '../types/preview'
 
@@ -38,15 +41,35 @@ export interface PreviewService {
   exchange(token: string, siteDocumentId: string): Promise<PreviewGrantAnswer | null>
 
   /**
-   * The binding of a usable grant for a draft of a site, or `null` for every refusal.
+   * Makes a system grant for one version of a draft, and returns its value once.
    *
    * @remarks
-   * Checks again that the admin user may read the draft. When they may not, every grant of that
-   * user and draft is revoked.
+   * For plugin code that measures a draft at publish (ADR-0019, amendment of 2026-10-25); no
+   * route mints one. The grant lives 60 s, is used once, is bound to the site, type, document,
+   * locale and `binding.entryVersion`, and has no admin user. It is stored hashed; expired
+   * credentials past their retention are removed on the way. The caller sends it to the
+   * frontend's weight route only, never to a browser, and never logs it.
    */
-  resolveGrant(grant: string, expected: PreviewExpectation): Promise<PreviewBinding | null>
+  issueSystemGrant(binding: PreviewSystemBinding): Promise<string>
 
-  /** Revokes every unexpired token and grant of an admin user, or only those of one draft. */
+  /**
+   * What a usable grant names and who it acts for, or `null` for every refusal.
+   *
+   * @remarks
+   * An `admin` grant checks again that the admin user may read the draft; when they may not,
+   * every grant of that user and draft is revoked. A `system` grant is claimed with one
+   * conditional update, so of two checks at once one finds it spent, and it has no user to ask.
+   * Whether the draft is still the version the system grant was minted for is for the caller to
+   * check (`entryVersion`).
+   */
+  resolveGrant(grant: string, expected: PreviewExpectation): Promise<PreviewResolvedGrant | null>
+
+  /**
+   * Revokes every unexpired token and grant of an admin user, or only those of one draft.
+   *
+   * @remarks
+   * System grants have no admin user, so this never touches one: 60 s and a single use bound them.
+   */
   revoke(adminUser: number, entryDocumentId?: string): Promise<void>
 }
 
@@ -78,11 +101,22 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewService => {
     await store().create({ data: { ...record, site: site?.id } })
   }
 
-  async function find(kind: PreviewCredentialKind, value: string): Promise<CredentialRow | null> {
+  async function find(
+    kinds: PreviewCredentialKind[],
+    value: string
+  ): Promise<CredentialRow | null> {
     const row = (await store().findOne({
-      where: { hash: hashCredential(value), kind },
+      where: { hash: hashCredential(value), kind: { $in: kinds } },
     })) as CredentialRow | null
     return row
+  }
+
+  async function removeExpired(): Promise<void> {
+    await store().deleteMany({
+      where: {
+        expiresAt: { $lt: new Date(Date.now() - PREVIEW_CREDENTIAL_RETENTION_SECONDS * 1000) },
+      },
+    })
   }
 
   async function revoke(adminUser: number, entryDocumentId?: string): Promise<void> {
@@ -117,11 +151,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewService => {
       } | null
       const url = previewUrlOf(site?.url)
       if (!url) throw new PreviewUnavailableError(binding.siteDocumentId)
-      await store().deleteMany({
-        where: {
-          expiresAt: { $lt: new Date(Date.now() - PREVIEW_CREDENTIAL_RETENTION_SECONDS * 1000) },
-        },
-      })
+      await removeExpired()
       const { value, record } = issueCredential('token', binding)
       await save(record)
       url.searchParams.set('token', value)
@@ -129,7 +159,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewService => {
     },
 
     async exchange(token, siteDocumentId) {
-      const row = await find('token', token)
+      const row = await find(['token'], token)
       if (!row || !mayUseCredential(toRecord(row), 'token', { siteDocumentId })) return null
       // The claim is one conditional update: of two exchanges at once, one finds no unused row.
       const claimed = (await store().updateMany({
@@ -137,23 +167,42 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewService => {
         data: { usedAt: new Date() },
       })) as { count: number }
       if (claimed.count !== 1) return null
-      if (!(await stillReadable(row))) return null
-      const { value, record } = issueCredential('grant', bindingOf(row))
+      const binding = adminBindingOf(row)
+      if (!binding || !(await stillReadable(binding))) return null
+      const { value, record } = issueCredential('grant', binding)
       await save(record)
       return {
         grant: value,
         expiresAt: record.expiresAt.toISOString(),
-        adminOrigin: row.adminOrigin,
+        adminOrigin: binding.adminOrigin,
         contentType: row.contentType,
         documentId: row.entryDocumentId,
         locale: row.entryLocale,
       }
     },
 
+    async issueSystemGrant(binding) {
+      await removeExpired()
+      const { value, record } = issueCredential('system', binding)
+      await save(record)
+      return value
+    },
+
     async resolveGrant(grant, expected) {
-      const row = await find('grant', grant)
-      if (!row || !mayUseCredential(toRecord(row), 'grant', expected)) return null
-      return (await stillReadable(row)) ? bindingOf(row) : null
+      const row = await find(['grant', 'system'], grant)
+      if (!row || !mayUseCredential(toRecord(row), row.kind, expected)) return null
+      if (row.kind === 'system') {
+        // The claim is one conditional update: of two checks at once, one finds no unused row.
+        const claimed = (await store().updateMany({
+          where: { id: row.id, usedAt: null, revokedAt: null },
+          data: { usedAt: new Date() },
+        })) as { count: number }
+        if (claimed.count !== 1) return null
+        return { ...targetOf(row), actor: 'system', entryVersion: row.entryVersion }
+      }
+      const binding = adminBindingOf(row)
+      if (!binding || !(await stillReadable(binding))) return null
+      return { ...targetOf(row), actor: 'admin', entryVersion: null }
     },
 
     revoke,
@@ -175,10 +224,8 @@ function previewUrlOf(url: string | null | undefined): URL | undefined {
   }
 }
 
-function bindingOf(row: PreviewBinding): PreviewBinding {
+function targetOf(row: PreviewTarget): PreviewTarget {
   return {
-    adminUser: row.adminUser,
-    adminOrigin: row.adminOrigin,
     siteDocumentId: row.siteDocumentId,
     contentType: row.contentType,
     entryDocumentId: row.entryDocumentId,
@@ -186,11 +233,20 @@ function bindingOf(row: PreviewBinding): PreviewBinding {
   }
 }
 
+/** The binding of a token or grant row; `null` for a row without an admin user or origin, which no token or grant is. */
+function adminBindingOf(row: CredentialRow): PreviewBinding | null {
+  if (row.adminUser === null || row.adminOrigin === null) return null
+  return { ...targetOf(row), adminUser: row.adminUser, adminOrigin: row.adminOrigin }
+}
+
 function toRecord(row: CredentialRow): PreviewCredentialRecord {
   return {
-    ...bindingOf(row),
+    ...targetOf(row),
     kind: row.kind,
     hash: row.hash,
+    adminUser: row.adminUser,
+    adminOrigin: row.adminOrigin,
+    entryVersion: row.entryVersion,
     expiresAt: new Date(row.expiresAt),
     usedAt: row.usedAt ? new Date(row.usedAt) : null,
     revokedAt: row.revokedAt ? new Date(row.revokedAt) : null,

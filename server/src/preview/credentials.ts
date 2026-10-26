@@ -1,15 +1,21 @@
 import { createHash, randomBytes } from 'node:crypto'
-import { PREVIEW_GRANT_TTL_SECONDS, PREVIEW_TOKEN_TTL_SECONDS } from '../constants/preview'
+import {
+  PREVIEW_GRANT_TTL_SECONDS,
+  PREVIEW_SYSTEM_GRANT_TTL_SECONDS,
+  PREVIEW_TOKEN_TTL_SECONDS,
+} from '../constants/preview'
 import type {
   PreviewBinding,
   PreviewCredentialKind,
   PreviewCredentialRecord,
   PreviewExpectation,
+  PreviewSystemBinding,
 } from '../types/preview'
 
 const LIFETIME_SECONDS: Record<PreviewCredentialKind, number> = {
   token: PREVIEW_TOKEN_TTL_SECONDS,
   grant: PREVIEW_GRANT_TTL_SECONDS,
+  system: PREVIEW_SYSTEM_GRANT_TTL_SECONDS,
 }
 
 /** The hash a credential is stored and looked up by: SHA-256 of its value, in hex. */
@@ -18,23 +24,28 @@ export function hashCredential(value: string): string {
 }
 
 /**
- * Makes a preview token or grant: a random, opaque value and the record to store for it.
+ * Makes a preview token, grant or system grant: a random, opaque value and the record to store for it.
  *
  * @remarks
  * The value is 256 random bits, not a JWT and not derived from the binding. The record holds only
  * its hash, so a read of the store cannot replay a credential. The caller hands out `value` once
  * and never logs it.
  *
- * @param now - The moment of issue; the credential expires 60 s later for a token and 15 min
- * later for a grant.
+ * @param binding - An admin user's binding for a token or grant; a system grant's for `system`,
+ * which has no admin user and holds the draft's version instead.
+ * @param now - The moment of issue; the credential expires 60 s later for a token or a system
+ * grant and 15 min later for a grant.
  */
 export function issueCredential(
   kind: PreviewCredentialKind,
-  binding: PreviewBinding,
+  binding: PreviewBinding | PreviewSystemBinding,
   now: Date = new Date()
 ): { value: string; record: PreviewCredentialRecord } {
   const value = randomBytes(32).toString('base64url')
   const record: PreviewCredentialRecord = {
+    adminUser: null,
+    adminOrigin: null,
+    entryVersion: null,
     ...binding,
     kind,
     hash: hashCredential(value),

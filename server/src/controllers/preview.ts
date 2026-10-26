@@ -10,6 +10,7 @@ import {
 import { readableDraft, type UserAbility } from '../preview/access'
 import type { SiteScopeState } from '../site-scope'
 import { PreviewUnavailableError, type PreviewService } from '../services/preview'
+import type { PreviewResolvedGrant } from '../types/preview'
 import { createRateLimiter } from '../utils/rate-limit'
 import { sendProblem } from '../utils/problem'
 
@@ -44,6 +45,24 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
   const previews = () => strapi.plugin('micelio').service('preview') as PreviewService
   const tokenLimit = createRateLimiter(PREVIEW_TOKEN_RATE_LIMIT, PREVIEW_RATE_WINDOW_SECONDS)
   const exchangeLimit = createRateLimiter(PREVIEW_EXCHANGE_RATE_LIMIT, PREVIEW_RATE_WINDOW_SECONDS)
+
+  /**
+   * Whether the draft is still the version a system grant was minted for. The version is read on
+   * its own, after the draft, because a `fields` parameter may leave `updatedAt` out of the entry.
+   */
+  async function isVersionOf(
+    uid: UID.ContentType,
+    binding: PreviewResolvedGrant
+  ): Promise<boolean> {
+    const current = (await strapi.documents(uid).findOne({
+      documentId: binding.entryDocumentId,
+      locale: binding.entryLocale ?? undefined,
+      status: 'draft',
+      fields: ['updatedAt'],
+    } as never)) as { updatedAt?: string | Date } | null
+    if (!current?.updatedAt || !binding.entryVersion) return false
+    return new Date(current.updatedAt).getTime() === new Date(binding.entryVersion).getTime()
+  }
 
   return {
     async token(ctx: Context): Promise<void> {
@@ -159,14 +178,14 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
         locale: binding.entryLocale ?? undefined,
         status: 'draft',
       } as never)
-      if (!entry) {
+      if (!entry || (binding.actor === 'system' && !(await isVersionOf(uid, binding)))) {
         refuse(ctx, 404, 'previewRefused', REFUSED)
         return
       }
       ctx.set('Cache-Control', 'private, no-store')
       ctx.body = {
         data: await strapi.contentAPI.sanitize.output(entry, schema, { auth }),
-        meta: {},
+        meta: { actor: binding.actor },
       }
     },
   }

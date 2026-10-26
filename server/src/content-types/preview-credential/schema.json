@@ -5,7 +5,7 @@
     "singularName": "preview-credential",
     "pluralName": "preview-credentials",
     "displayName": "Preview credential",
-    "description": "A preview token or grant of ADR-0019, stored as the hash of its value and bound to one admin user and one draft"
+    "description": "A preview token, grant or system grant of ADR-0019, stored as the hash of its value and bound to one draft (and, but for a system grant, to one admin user)"
   },
   "options": {
     "draftAndPublish": false
@@ -27,7 +27,7 @@
   "attributes": {
     "kind": {
       "type": "enumeration",
-      "enum": ["token", "grant"],
+      "enum": ["token", "grant", "system"],
       "required": true
     },
     "hash": {
@@ -37,12 +37,13 @@
       "private": true
     },
     "adminUser": {
-      "type": "integer",
-      "required": true
+      "type": "integer"
     },
     "adminOrigin": {
-      "type": "string",
-      "required": true
+      "type": "string"
+    },
+    "entryVersion": {
+      "type": "string"
     },
     "siteDocumentId": {
       "type": "string",

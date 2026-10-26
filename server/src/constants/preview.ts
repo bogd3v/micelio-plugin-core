@@ -16,6 +16,9 @@ export const PREVIEW_TOKEN_TTL_SECONDS = 60
 /** How long a preview grant is valid, in seconds. */
 export const PREVIEW_GRANT_TTL_SECONDS = 15 * 60
 
+/** How long a system grant is valid, in seconds (ADR-0019, amendment of 2026-10-25). */
+export const PREVIEW_SYSTEM_GRANT_TTL_SECONDS = 60
+
 /** How long an expired credential stays in the store before the next token request removes it. */
 export const PREVIEW_CREDENTIAL_RETENTION_SECONDS = 60 * 60
 

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import type { Core, UID } from '@strapi/strapi'
 import { PREVIEW_CREDENTIAL_UID, PREVIEW_PERMISSION } from '../../server/src/constants/preview'
+import type { PreviewService } from '../../server/src/services/preview'
 import { SITE_UID } from '../../server/src/constants/site'
 import { cleanupStrapi, setupStrapi } from './harness'
 
@@ -35,8 +36,9 @@ interface LogTransport {
 interface Credential {
   kind: string
   hash: string
-  adminUser: number
-  adminOrigin: string
+  adminUser: number | null
+  adminOrigin: string | null
+  entryVersion: string | null
   siteDocumentId: string
   contentType: string
   entryDocumentId: string
@@ -179,6 +181,44 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
     issued.push(grant)
     return grant
   }
+
+  /** The `updatedAt` of an article's draft, the version a system grant is minted for. */
+  async function versionOf(
+    documentId: string,
+    uid = ARTICLE_UID,
+    locale?: string
+  ): Promise<string> {
+    const draft = (await strapi
+      .documents(uid as UID.ContentType)
+      .findOne({ documentId, status: 'draft', locale } as never)) as unknown as {
+      updatedAt: string | Date
+    }
+    return new Date(draft.updatedAt).toISOString()
+  }
+
+  /** Mints a system grant as plugin code does, for an article's current draft unless told otherwise. */
+  async function systemGrantFor(
+    documentId = articleId,
+    overrides: Partial<Parameters<PreviewService['issueSystemGrant']>[0]> = {}
+  ): Promise<string> {
+    const grant = await (
+      strapi.plugin('micelio').service('preview') as PreviewService
+    ).issueSystemGrant({
+      siteDocumentId: site,
+      contentType: ARTICLE_UID,
+      entryDocumentId: documentId,
+      entryLocale: null,
+      ...overrides,
+      entryVersion: overrides.entryVersion ?? (await versionOf(documentId)),
+    })
+    issued.push(grant)
+    return grant
+  }
+
+  const rowOf = async (value: string) =>
+    (await credentials().findOne({
+      where: { hash: createHash('sha256').update(value).digest('hex') },
+    })) as Credential
 
   async function createArticle(userToken: string): Promise<string> {
     const created = await fetch(`${base}/content-manager/collection-types/${ARTICLE_UID}`, {
@@ -600,6 +640,167 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
     })
   })
 
+  describe('a system grant on GET /api/micelio/preview/draft', () => {
+    beforeAll(async () => {
+      admin = await freshSuperAdmin()
+    })
+
+    it('serves the draft it names once and then answers 404 previewRefused', async () => {
+      const grant = await systemGrantFor()
+      const first = await draftOf(grant, { documentId: articleId })
+      expect(first.status).toBe(200)
+      expect(first.headers.get('cache-control')).toBe('private, no-store')
+      expect(((await first.json()) as { data: { title: string } }).data.title).toBe('A draft')
+      const second = await draftOf(grant, { documentId: articleId })
+      expect(second.status).toBe(404)
+      expect((await second.json()) as Problem).toMatchObject({ code: 'previewRefused' })
+      expect((await rowOf(grant)).usedAt).not.toBeNull()
+    })
+
+    it('lets only one of two simultaneous checks win', async () => {
+      const grant = await systemGrantFor()
+      const answers = await Promise.all([
+        draftOf(grant, { documentId: articleId }),
+        draftOf(grant, { documentId: articleId }),
+      ])
+      expect(answers.map((answer) => answer.status).sort()).toEqual([200, 404])
+    })
+
+    it('tells the frontend who it acts for: system for a system grant, admin for an admin one', async () => {
+      const system = await draftOf(await systemGrantFor(), { documentId: articleId })
+      expect(((await system.json()) as { meta: unknown }).meta).toEqual({ actor: 'system' })
+      const admins = await draftOf(await grantFor(admin), { documentId: articleId })
+      expect(((await admins.json()) as { meta: unknown }).meta).toEqual({ actor: 'admin' })
+    })
+
+    it('is stored as a hash, with no admin user, and lives 60 seconds', async () => {
+      const before = Date.now()
+      const grant = await systemGrantFor()
+      const rows = (await credentials().findMany({})) as Credential[]
+      const row = await rowOf(grant)
+      expect(row).toMatchObject({
+        kind: 'system',
+        adminUser: null,
+        adminOrigin: null,
+        siteDocumentId: site,
+        contentType: ARTICLE_UID,
+        entryDocumentId: articleId,
+        entryLocale: null,
+        entryVersion: await versionOf(articleId),
+        usedAt: null,
+        revokedAt: null,
+      })
+      expect(new Date(row.expiresAt).getTime()).toBeGreaterThanOrEqual(before + 60_000)
+      expect(new Date(row.expiresAt).getTime()).toBeLessThanOrEqual(Date.now() + 60_000)
+      expect(JSON.stringify(rows)).not.toContain(grant)
+    })
+
+    it('is refused when expired', async () => {
+      const grant = await systemGrantFor()
+      await credentials().updateMany({
+        where: { hash: (await rowOf(grant)).hash },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      })
+      expect((await draftOf(grant, { documentId: articleId })).status).toBe(404)
+    })
+
+    it('is refused for another document, locale or site', async () => {
+      const another = await createArticle(adminTokens['strapi-editor'])
+      const essays = strapi.documents(ESSAY_UID as UID.ContentType)
+      const { documentId: essay } = await essays.create({
+        locale: 'en',
+        data: { title: 'Essay', site },
+      } as never)
+      const attempts: [string, Record<string, string>][] = [
+        [await systemGrantFor(), { documentId: another }],
+        [await systemGrantFor(), { documentId: articleId, site: 'other' }],
+        [await systemGrantFor(), { documentId: articleId, locale: 'es' }],
+      ]
+      const answers = await Promise.all(attempts.map(([grant, query]) => draftOf(grant, query)))
+      expect(answers.map((answer) => answer.status)).toEqual([404, 404, 404])
+      const texts = await Promise.all(answers.map((answer) => answer.text()))
+      expect(new Set(texts).size).toBe(1)
+      // A localised draft is served only in the locale it was minted for.
+      const version = await versionOf(essay, ESSAY_UID, 'en')
+      const minted = (overrides: object) =>
+        systemGrantFor(essay, {
+          contentType: ESSAY_UID,
+          entryLocale: 'en',
+          entryVersion: version,
+          ...overrides,
+        })
+      expect((await draftOf(await minted({}), { documentId: essay, locale: 'es' })).status).toBe(
+        404
+      )
+      expect((await draftOf(await minted({}), { documentId: essay, locale: 'en' })).status).toBe(
+        200
+      )
+    })
+
+    it('is refused when the draft was saved after it was minted', async () => {
+      const id = await createArticle(adminTokens['strapi-editor'])
+      const grant = await systemGrantFor(id)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      await strapi
+        .documents(ARTICLE_UID as UID.ContentType)
+        .update({ documentId: id, data: { title: 'Saved again' } } as never)
+      const answer = await draftOf(grant, { documentId: id })
+      expect(answer.status).toBe(404)
+      expect((await answer.json()) as Problem).toMatchObject({ code: 'previewRefused' })
+      // The same document, minted again for the new version, is served.
+      expect((await draftOf(await systemGrantFor(id), { documentId: id })).status).toBe(200)
+    })
+
+    it('compares the version even when the request leaves updatedAt out of the answer', async () => {
+      const id = await createArticle(adminTokens['strapi-editor'])
+      const grant = await systemGrantFor(id, { entryVersion: '2020-01-01T00:00:00.000Z' })
+      expect((await draftOf(grant, { documentId: id, 'fields[0]': 'title' })).status).toBe(404)
+    })
+
+    it('is refused by the exchange, whatever the site, and is not spent by it', async () => {
+      const grant = await systemGrantFor()
+      const answer = await exchange(grant)
+      expect(answer.status).toBe(404)
+      expect((await answer.json()) as Problem).toMatchObject({ code: 'previewRefused' })
+      expect((await rowOf(grant)).usedAt).toBeNull()
+      expect((await draftOf(grant, { documentId: articleId })).status).toBe(200)
+    })
+
+    it('is not a token or grant of an admin user: a token and a grant are refused as it', async () => {
+      const token = await tokenFor(admin)
+      expect((await draftOf(token, { documentId: articleId })).status).toBe(404)
+    })
+
+    it('is not revoked by logging an admin user out, while an admin grant is', async () => {
+      const reader = await newReader()
+      const own = await createArticle(admin)
+      const adminGrant = await grantFor(reader.token, body(own))
+      const system = await systemGrantFor(own)
+      const logout = await fetch(`${base}/admin/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${reader.token}` },
+        body: '{}',
+      })
+      expect(logout.status).toBe(200)
+      await vi.waitFor(async () => {
+        expect((await rowOf(adminGrant)).revokedAt).not.toBeNull()
+      })
+      expect((await rowOf(system)).revokedAt).toBeNull()
+      expect((await draftOf(adminGrant, { documentId: own })).status).toBe(404)
+      expect((await draftOf(system, { documentId: own })).status).toBe(200)
+    })
+
+    it('has no controller action or route that mints it', async () => {
+      const controller = strapi.plugin('micelio').controller('preview') as object
+      expect(Object.keys(controller).sort()).toEqual(['draft', 'exchange', 'token'])
+      const routes = Object.values(strapi.plugin('micelio').routes).flatMap(
+        (set) => (set as { routes: { path: string }[] }).routes
+      )
+      const previewPaths = routes.map((route) => route.path).filter((path) => /preview/.test(path))
+      expect(previewPaths.sort()).toEqual(['/preview/draft', '/preview/exchange', '/preview/token'])
+    })
+  })
+
   describe('the credential store', () => {
     beforeAll(async () => {
       admin = await freshSuperAdmin()
@@ -694,6 +895,10 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
         await exchange('not-a-token')
         await draftOf(grant, { documentId: own })
         await draftOf('not-a-grant', { documentId: own })
+        const system = await systemGrantFor(own)
+        const served = await draftOf(system, { documentId: own })
+        expect(await served.text()).not.toContain(system)
+        await exchange(system)
         await askToken(reader.token, { uid: 'admin::user', documentId: 'x' })
       } finally {
         strapi.log.level = level
@@ -705,7 +910,7 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
       // The run did log requests, so an empty log would prove nothing.
       expect(log).toContain('/micelio/preview/token')
       const secrets = issued.slice(first)
-      expect(secrets.length).toBeGreaterThanOrEqual(3)
+      expect(secrets.length).toBeGreaterThanOrEqual(4)
       for (const secret of secrets) expect(log).not.toContain(secret)
     })
   })
