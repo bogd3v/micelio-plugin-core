@@ -751,10 +751,14 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
       expect((await draftOf(await systemGrantFor(id), { documentId: id })).status).toBe(200)
     })
 
-    it('compares the version even when the request leaves updatedAt out of the answer', async () => {
+    it('refuses a query that leaves updatedAt out of the answer, so the version is never read from a trimmed one', async () => {
       const id = await createArticle(adminTokens['strapi-editor'])
       const grant = await systemGrantFor(id, { entryVersion: '2020-01-01T00:00:00.000Z' })
-      expect((await draftOf(grant, { documentId: id, 'fields[0]': 'title' })).status).toBe(404)
+      const answer = await draftOf(grant, { documentId: id, 'fields[0]': 'title' })
+      expect(answer.status).toBe(400)
+      expect((await answer.json()) as Problem).toMatchObject({ code: 'previewRequestInvalid' })
+      // With the whole answer the stale version is compared and refused.
+      expect((await draftOf(grant, { documentId: id, populate: '*' })).status).toBe(404)
     })
 
     it('is refused by the exchange, whatever the site, and is not spent by it', async () => {
