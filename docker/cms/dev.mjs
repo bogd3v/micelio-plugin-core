@@ -3,13 +3,16 @@
 // `reload.txt` here to restart it.
 
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const PLUGIN = '/plugin'
 const DIST = join(PLUGIN, 'dist')
 const PROJECT = join(PLUGIN, 'docker', 'cms')
 const RELOAD_FILE = join(PROJECT, 'reload.txt')
+// The components of micelio-cms the block catalogue is tested against (test/fixtures/). The page
+// fixture lists them all because the frontend populates every section it knows.
+const COMPONENTS_FIXTURE = join(PLUGIN, 'test', 'fixtures', 'micelio-cms-v0.4.0-components.json')
 const BUNDLES = [join(DIST, 'server', 'index.js'), join(DIST, 'admin', 'index.js')]
 
 // A rebuild writes `dist/` in several steps (bundles, then declarations): Strapi loads it only after this long without a write.
@@ -56,10 +59,22 @@ async function waitForFirstBuild() {
   }
 }
 
+/** Writes the fixture's components into the project's `src/components/` (gitignored), where Strapi loads them from. */
+function writeComponents() {
+  const { components } = JSON.parse(readFileSync(COMPONENTS_FIXTURE, 'utf8'))
+  for (const [uid, schema] of Object.entries(components)) {
+    const [category, name] = uid.split('.')
+    const folder = join(PROJECT, 'src', 'components', category)
+    mkdirSync(folder, { recursive: true })
+    writeFileSync(join(folder, `${name}.json`), `${JSON.stringify(schema, null, 2)}\n`)
+  }
+}
+
 const watcher = spawn('npm', ['run', 'dev'], { cwd: PLUGIN, stdio: 'inherit' })
 await waitForFirstBuild()
 
 mkdirSync(join(PROJECT, 'public', 'uploads'), { recursive: true })
+writeComponents()
 const strapi = spawn('npx', ['strapi', 'develop'], { cwd: PROJECT, stdio: 'inherit' })
 
 // Polls instead of `fs.watch`: a rebuild deletes folders, which makes a recursive watch throw.

@@ -88,6 +88,73 @@ describe('site scoping', () => {
     })
   })
 
+  describe('an update from the Content Manager form', () => {
+    async function note() {
+      return (await notes().findFirst({ filters: { title: 'default one' } }))!
+    }
+
+    it('keeps the site when the relation is sent unchanged', async () => {
+      const { documentId } = await note()
+      await notes().update({
+        documentId,
+        data: { title: 'default one', site: { connect: [], disconnect: [] } },
+      })
+      const after = await notes().findOne({ documentId, populate: ['site'] })
+      expect((after as unknown as { site: { documentId: string } }).site.documentId).toBe(
+        defaultSite
+      )
+    })
+
+    // Thunks: the ids of the sites exist only once the suite has booted.
+    it.each([
+      ['a null site', () => null],
+      ['an empty list', () => []],
+      ['an empty set', () => ({ set: [] })],
+      ['an empty document id', () => ({ documentId: '' })],
+      ['a disconnect of the site', () => ({ disconnect: [{ documentId: defaultSite }] })],
+      [
+        'a disconnect of the site with nothing to connect',
+        () => ({ connect: [], disconnect: [{ documentId: defaultSite }] }),
+      ],
+    ])('still refuses %s', async (_label, value) => {
+      const { documentId } = await note()
+      const data = { site: value() } as unknown as { title: string }
+      await expect(notes().update({ documentId, data })).rejects.toThrow(/site is required/)
+    })
+
+    it.each([
+      [
+        'connect and disconnect',
+        () => ({ connect: [{ documentId: otherSite }], disconnect: [{ documentId: defaultSite }] }),
+      ],
+      ['a bare document id', () => otherSite],
+      ['the longhand `documentId`', () => ({ documentId: otherSite })],
+    ])('lets the form move the entry to another site with %s', async (_label, value) => {
+      const { documentId } = await note()
+      await notes().update({
+        documentId,
+        data: { site: value() } as unknown as { title: string },
+      })
+      const after = await notes().findOne({ documentId, populate: ['site'] })
+      expect((after as unknown as { site: { documentId: string } }).site.documentId).toBe(otherSite)
+      await notes().update({
+        documentId,
+        data: { site: { connect: [{ documentId: defaultSite }] } } as unknown as { title: string },
+      })
+    })
+
+    it('keeps the site a create names with the longhand `documentId`', async () => {
+      const created = await notes().create({
+        data: { title: 'longhand', site: { documentId: otherSite } } as unknown as {
+          title: string
+        },
+      })
+      const after = await notes().findOne({ documentId: created.documentId, populate: ['site'] })
+      expect((after as unknown as { site: { documentId: string } }).site.documentId).toBe(otherSite)
+      await notes().delete({ documentId: created.documentId })
+    })
+  })
+
   describe('the content API', () => {
     it('answers the default site when the request names none', async () => {
       expect(await titles('/api/notes')).toEqual(['default one'])
@@ -144,6 +211,49 @@ describe('site scoping', () => {
       const saved = await notes().findOne({ documentId: data.documentId, populate: ['site'] })
       expect(saved).toMatchObject({ site: { documentId: otherSite } })
     })
+
+    // Thunks: the ids exist only once the suite has booted. Each names the site to keep out.
+    const shapes: [string, (site: { documentId: string; id: unknown }) => unknown][] = [
+      ['a longhand `documentId`', (site) => ({ documentId: site.documentId })],
+      ['a longhand `id`', (site) => ({ id: site.id })],
+      ['a bare document id', (site) => site.documentId],
+      ['a `connect`', (site) => ({ connect: [{ documentId: site.documentId }] })],
+      ['a `set`', (site) => ({ set: [{ documentId: site.documentId }] })],
+    ]
+
+    async function siteOf(documentId: string): Promise<string> {
+      const entry = await notes().findOne({ documentId, populate: ['site'] })
+      return (entry as unknown as { site: { documentId: string } }).site.documentId
+    }
+
+    it.each(shapes)(
+      'keeps a new entry in the site of the request when the body names another with %s',
+      async (_label, shape) => {
+        const site = (await sites().findOne({ documentId: defaultSite }))!
+        const response = await request('/api/notes?site=other', {
+          method: 'POST',
+          body: JSON.stringify({ data: { title: 'scoped create', site: shape(site) } }),
+        })
+        expect(response.status).toBe(201)
+        const { data } = (await response.json()) as { data: Note }
+        expect(await siteOf(data.documentId)).toBe(otherSite)
+        await notes().delete({ documentId: data.documentId })
+      }
+    )
+
+    it.each(shapes)(
+      'keeps an updated entry in the site of the request when the body names another with %s',
+      async (_label, shape) => {
+        const site = (await sites().findOne({ documentId: otherSite }))!
+        const note = await notes().findFirst({ filters: { title: 'default one' } })
+        const response = await request(`/api/notes/${note!.documentId}?site=default`, {
+          method: 'PUT',
+          body: JSON.stringify({ data: { title: 'default one', site: shape(site) } }),
+        })
+        expect(response.status).toBe(200)
+        expect(await siteOf(note!.documentId)).toBe(defaultSite)
+      }
+    )
 
     it("does not change or delete another site's entry", async () => {
       const note = await notes().findFirst({ filters: { title: 'default one' } })

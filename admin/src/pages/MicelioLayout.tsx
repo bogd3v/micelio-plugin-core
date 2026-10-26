@@ -12,6 +12,7 @@ import { STATUS_READ_PERMISSION } from '../permissions'
 import { PLUGIN_ID } from '../pluginId'
 import { localised } from '../utils/localised'
 import AboutPage from './AboutPage'
+import PreviewPage from './PreviewPage'
 import StatusPage from './StatusPage'
 
 /**
@@ -21,7 +22,8 @@ import StatusPage from './StatusPage'
  * The core's items (`navigation.ts`) show to a role that has their permission; the pages of
  * sibling plugins come from `GET /micelio/admin-pages`, which lists only those the admin user has
  * the permission for. A group with nothing to show is left out. A role without the Status
- * permission lands on About.
+ * permission lands on About. The preview page (`preview/:uid/:documentId`) has no item: the entry's edit view
+ * opens it, and its own permission protects it.
  */
 export default function MicelioLayout() {
   const { t } = useMessages()
@@ -78,6 +80,7 @@ export default function MicelioLayout() {
       <Routes>
         <Route index element={canReadStatus ? <StatusPage /> : <Navigate to="about" replace />} />
         <Route path="about" element={<AboutPage />} />
+        <Route path="preview/:uid/:documentId" element={<PreviewPage />} />
         <Route path="*" element={<ExtensionPage pages={pages} isLoading={isLoading} />} />
       </Routes>
     </Layouts.Root>

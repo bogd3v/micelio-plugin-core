@@ -25,4 +25,6 @@ docker/cms/.strapi-updater.json
 docker/cms/reload.txt
 docker/cms/database/
 docker/cms/types/
+# written by dev.mjs from test/fixtures/: the components of micelio-cms the page fixture lists
+docker/cms/src/components/
 docker/cms/node_modules/
