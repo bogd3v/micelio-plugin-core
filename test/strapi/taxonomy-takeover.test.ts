@@ -275,5 +275,99 @@ describe(
       expect((await renameLegacyUids(strapi)).actions).toBe(1)
       expect(await legacyGrants()).toBe(0)
     })
+
+    it('renames a legacy UID only where it is the whole UID', async () => {
+      const strapi = await setupStrapi(undefined, { keepDatabase: true })
+      const query = (uid: string) => strapi.db.query(uid as UID.ContentType)
+      const publicRole = (await query('plugin::users-permissions.role').findOne({
+        where: { type: 'public' },
+      })) as Row
+      const editor = (await query('admin::role').findOne({
+        where: { code: 'legacy-editor' },
+      })) as Row
+
+      // Host types whose UID starts with a legacy UID: they are the host's, not the takeover's.
+      const GROUP = 'api::tag.tag-group'
+      const IMAGE = 'api::category.category-image'
+      const ARTICLE = 'api::journal.journal'
+      const layout = (uid: string, value: unknown) =>
+        query('strapi::core-store').create({
+          data: {
+            key: `${LAYOUT_PREFIX}${uid}`,
+            value: JSON.stringify(value),
+            type: 'object',
+            environment: null,
+            tag: null,
+          },
+        })
+      const relations = {
+        uid: ARTICLE,
+        metadatas: {
+          tags: { edit: { mainField: 'name', targetModel: LEGACY_TAG } },
+          groups: { edit: { mainField: 'name', targetModel: GROUP } },
+          images: { edit: { mainField: 'name', targetModel: IMAGE } },
+          category: { edit: { mainField: 'name', targetModel: LEGACY_CATEGORY } },
+        },
+      }
+      // Strapi wrote the layout of the new tag type on the first boot: a row under the new key wins.
+      await query('strapi::core-store').delete({ where: { key: `${LAYOUT_PREFIX}${TAG_UID}` } })
+      await layout(LEGACY_TAG, { uid: LEGACY_TAG, settings: { pageSize: 10 } })
+      await layout(GROUP, { uid: GROUP, settings: { pageSize: 20 } })
+      await layout(IMAGE, { uid: IMAGE, settings: { pageSize: 30 } })
+      await layout(ARTICLE, relations)
+      await query('plugin::users-permissions.permission').create({
+        data: { action: `${IMAGE}.find`, role: publicRole.id },
+      })
+      await query('admin::permission').create({
+        data: {
+          action: 'plugin::content-manager.explorer.read',
+          subject: IMAGE,
+          properties: {},
+          conditions: [],
+          role: editor.id,
+        },
+      })
+
+      // The tag layout, and the article layout once for each legacy UID it names.
+      expect(await renameLegacyUids(strapi)).toEqual({ actions: 0, subjects: 0, layouts: 3 })
+
+      const stored = async (uid: string) =>
+        (await query('strapi::core-store').findOne({
+          where: { key: `${LAYOUT_PREFIX}${uid}` },
+        })) as (Row & { value: string }) | null
+      expect(await stored(LEGACY_TAG)).toBeNull()
+      expect(JSON.parse((await stored(TAG_UID))!.value)).toEqual({
+        uid: TAG_UID,
+        settings: { pageSize: 10 },
+      })
+      expect(JSON.parse((await stored(GROUP))!.value)).toEqual({
+        uid: GROUP,
+        settings: { pageSize: 20 },
+      })
+      expect(JSON.parse((await stored(IMAGE))!.value)).toEqual({
+        uid: IMAGE,
+        settings: { pageSize: 30 },
+      })
+      const metadatas = JSON.parse((await stored(ARTICLE))!.value).metadatas
+      expect(
+        Object.fromEntries(
+          Object.entries(metadatas).map(([name, meta]) => [
+            name,
+            (meta as { edit: { targetModel: string } }).edit.targetModel,
+          ])
+        )
+      ).toEqual({ tags: TAG_UID, groups: GROUP, images: IMAGE, category: CATEGORY_UID })
+
+      // The action and the subject of the longer UID are the host's too.
+      expect(
+        await query('plugin::users-permissions.permission').count({
+          where: { action: `${IMAGE}.find` },
+        })
+      ).toBe(1)
+      expect(await query('admin::permission').count({ where: { subject: IMAGE } })).toBe(1)
+
+      // A second run changes nothing.
+      expect(await renameLegacyUids(strapi)).toEqual({ actions: 0, subjects: 0, layouts: 0 })
+    })
   }
 )
