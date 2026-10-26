@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import {
   PREVIEW_GRANT_TTL_SECONDS,
+  PREVIEW_SYSTEM_GRANT_TTL_SECONDS,
   PREVIEW_TOKEN_TTL_SECONDS,
 } from '../server/src/constants/preview'
 import {
@@ -9,7 +10,7 @@ import {
   issueCredential,
   mayUseCredential,
 } from '../server/src/preview/credentials'
-import type { PreviewBinding } from '../server/src/types/preview'
+import type { PreviewBinding, PreviewSystemBinding } from '../server/src/types/preview'
 
 const BINDING: PreviewBinding = {
   adminUser: 7,
@@ -18,6 +19,13 @@ const BINDING: PreviewBinding = {
   contentType: 'api::article.article',
   entryDocumentId: 'doc-1',
   entryLocale: 'en',
+}
+const SYSTEM_BINDING: PreviewSystemBinding = {
+  siteDocumentId: 'site-a',
+  contentType: 'api::article.article',
+  entryDocumentId: 'doc-1',
+  entryLocale: 'en',
+  entryVersion: '2026-10-25T11:59:00.000Z',
 }
 const NOW = new Date('2026-10-25T12:00:00.000Z')
 const after = (seconds: number) => new Date(NOW.getTime() + seconds * 1000)
@@ -119,5 +127,59 @@ describe('using a preview credential', () => {
       mayUseCredential(record, 'token', { ...expected, entryDocumentId: 'doc-2' }, after(1)),
     ]
     expect(new Set(refusals)).toEqual(new Set([false]))
+  })
+})
+
+describe('a system grant', () => {
+  const expected = { siteDocumentId: 'site-a', entryDocumentId: 'doc-1', entryLocale: 'en' }
+
+  it('lives 60 seconds', () => {
+    expect(PREVIEW_SYSTEM_GRANT_TTL_SECONDS).toBe(60)
+    const { record } = issueCredential('system', SYSTEM_BINDING, NOW)
+    expect(record.expiresAt).toEqual(after(60))
+    expect(mayUseCredential(record, 'system', expected, after(59))).toBe(true)
+    expect(mayUseCredential(record, 'system', expected, after(60))).toBe(false)
+  })
+
+  it('has no admin user or origin, holds the version and is stored only as a hash', () => {
+    const { value, record } = issueCredential('system', SYSTEM_BINDING, NOW)
+    expect(record).toMatchObject({
+      kind: 'system',
+      adminUser: null,
+      adminOrigin: null,
+      entryVersion: SYSTEM_BINDING.entryVersion,
+      usedAt: null,
+      revokedAt: null,
+    })
+    expect(value).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(record.hash).toBe(hashCredential(value))
+    expect(JSON.stringify(record)).not.toContain(value)
+  })
+
+  it('keeps no version on a token or a grant', () => {
+    expect(issueCredential('grant', BINDING, NOW).record.entryVersion).toBeNull()
+  })
+
+  it('is refused as a token and as a grant, and they are refused as a system grant', () => {
+    const system = issueCredential('system', SYSTEM_BINDING, NOW).record
+    expect(mayUseCredential(system, 'token', expected, after(1))).toBe(false)
+    expect(mayUseCredential(system, 'grant', expected, after(1))).toBe(false)
+    for (const kind of ['token', 'grant'] as const) {
+      const record = issueCredential(kind, BINDING, NOW).record
+      expect(mayUseCredential(record, 'system', expected, after(1))).toBe(false)
+    }
+  })
+
+  it('is refused once used, and for another site, document or locale', () => {
+    const { record } = issueCredential('system', SYSTEM_BINDING, NOW)
+    const at = after(1)
+    expect(mayUseCredential({ ...record, usedAt: NOW }, 'system', expected, at)).toBe(false)
+    expect(mayUseCredential(record, 'system', { ...expected, siteDocumentId: 'site-b' }, at)).toBe(
+      false
+    )
+    expect(mayUseCredential(record, 'system', { ...expected, entryDocumentId: 'doc-2' }, at)).toBe(
+      false
+    )
+    expect(mayUseCredential(record, 'system', { ...expected, entryLocale: 'es' }, at)).toBe(false)
   })
 })

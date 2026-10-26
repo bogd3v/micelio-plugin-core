@@ -128,7 +128,7 @@ Three routes carry a draft from the admin to the frontend's iframe without a lon
 | ------ | ------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `POST` | `/micelio/preview/token`        | The admin page, with the admin's token         | `{ "data": { "url", "expiresAt" } }`                                                         |
 | `POST` | `/api/micelio/preview/exchange` | The frontend, with its API token               | `{ "data": { "grant", "expiresAt", "adminOrigin", "contentType", "documentId", "locale" } }` |
-| `GET`  | `/api/micelio/preview/draft`    | The frontend, with its API token and the grant | `{ "data": <the draft>, "meta": {} }`                                                        |
+| `GET`  | `/api/micelio/preview/draft`    | The frontend, with its API token and the grant | `{ "data": <the draft>, "meta": { "actor": "admin" \| "system" } }`                          |
 
 ### Preview token
 
@@ -146,21 +146,23 @@ The plugin marks the token used, checks again that the admin user may read the d
 
 `GET /api/micelio/preview/draft?site=<slug>&documentId=<id>[&locale=<code>]` takes the frontend's API token (it must allow `plugin::micelio.preview.draft`) and the grant in the header `X-Micelio-Preview-Grant`. It serves the **draft** of the one document the grant names, in Strapi's content API format; `documentId` and `locale` must be the grant's. Other query parameters (`populate`, `fields`) work as on any content API route, within the API token's permissions.
 
-Each use checks again that the admin user is active and may read the draft. Logging out of the admin revokes every token and grant of that user at once; losing the right to read a draft revokes the grants of that user and draft at the next exchange or draft request, and giving the right back does not bring them back.
+`meta.actor` says whose grant it was: `admin` for the grant of an admin user (above), `system` for a **system grant**, the credential the plugin mints for itself to measure one draft at publish (ADR-0019, amendment of 2026-10-25). No route mints a system grant, and no response carries one. It is bound to the site, content type, `documentId`, locale and the `updatedAt` of the draft at minting, lives 60 seconds and is used once: the first request that finds it unused claims it, and a second gets `previewRefused`, as does one that finds the draft saved since (another `updatedAt`). It has no admin user, so nothing is checked about one, logging out revokes nothing of it, and the exchange refuses it as a token. A frontend accepts `system` only on the route that measures a draft and refuses it everywhere else.
+
+Each use of an `admin` grant checks again that the admin user is active and may read the draft. Logging out of the admin revokes every token and grant of that user at once; losing the right to read a draft revokes the grants of that user and draft at the next exchange or draft request, and giving the right back does not bring them back.
 
 ### Errors
 
 Every refusal is `application/problem+json`:
 
-| Status | `code`                  | When                                                                                             |
-| ------ | ----------------------- | ------------------------------------------------------------------------------------------------ |
-| 400    | `previewRequestInvalid` | The body, the grant header or `documentId` is missing or malformed                               |
-| 400    | `previewTypeInvalid`    | The type does not belong to a site                                                               |
-| 403    | `previewForbidden`      | The role lacks the preview permission, or may not read the entry                                 |
-| 404    | `previewEntryNotFound`  | The token route found no such entry                                                              |
-| 404    | `previewRefused`        | A token or grant that is unknown, used, expired, revoked, or of another site, document or locale |
-| 409    | `previewUnavailable`    | The entry's site has no `url`, so there is no frontend to preview on                             |
-| 429    | `previewRateLimited`    | Over the rate limit; `Retry-After` says when to try again                                        |
+| Status | `code`                  | When                                                                                                                                                                        |
+| ------ | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400    | `previewRequestInvalid` | The body, the grant header or `documentId` is missing or malformed                                                                                                          |
+| 400    | `previewTypeInvalid`    | The type does not belong to a site                                                                                                                                          |
+| 403    | `previewForbidden`      | The role lacks the preview permission, or may not read the entry                                                                                                            |
+| 404    | `previewEntryNotFound`  | The token route found no such entry                                                                                                                                         |
+| 404    | `previewRefused`        | A token or grant that is unknown, used, expired, revoked, or of another site, document or locale; a system grant that is spent or whose draft was saved since it was minted |
+| 409    | `previewUnavailable`    | The entry's site has no `url`, so there is no frontend to preview on                                                                                                        |
+| 429    | `previewRateLimited`    | Over the rate limit; `Retry-After` says when to try again                                                                                                                   |
 
 `previewRefused` is one answer for every reason, so it names nothing. A request without an admin token (token route) or without a valid API token (the other two) gets Strapi's `401`.
 

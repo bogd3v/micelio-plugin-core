@@ -19,16 +19,26 @@ No shared secret is involved: the plugin needs no new variable, and the frontend
 4. The draft route fetches the draft from `GET /api/micelio/preview/draft?site=<slug>&documentId=<id>` with its API token and the grant in the header `X-Micelio-Preview-Grant`. It serves only the document the grant names.
 5. When the grant expires, the admin page asks for a new token and reloads the iframe.
 
-| Credential | Valid for | Use                      | Bound to                                                                        |
-| ---------- | --------- | ------------------------ | ------------------------------------------------------------------------------- |
-| Token      | 60 s      | Once                     | The admin user, site, content type, `documentId`, locale and the admin's origin |
-| Grant      | 15 min    | Until it expires or ends | The same as the token it came from                                              |
+| Credential   | Valid for | Use                      | Bound to                                                                                               |
+| ------------ | --------- | ------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Token        | 60 s      | Once                     | The admin user, site, content type, `documentId`, locale and the admin's origin                        |
+| Grant        | 15 min    | Until it expires or ends | The same as the token it came from                                                                     |
+| System grant | 60 s      | Once                     | The site, content type, `documentId`, locale and the version (`updatedAt`) of the draft; no admin user |
 
-Both are random, opaque values (not JWTs), and the CMS stores only their hash. A used, expired, unknown, revoked or wrong-site token gets the same refusal, `404` `previewRefused`, which names nothing; do the same for the draft route and answer it as for a draft that does not exist, with `private, no-store`.
+All three are random, opaque values (not JWTs), and the CMS stores only their hash. A used, expired, unknown, revoked or wrong-site token gets the same refusal, `404` `previewRefused`, which names nothing; do the same for the draft route and answer it as for a draft that does not exist, with `private, no-store`.
+
+## The system grant
+
+The plugin measures a page at publish by calling the frontend's weight report from the CMS server, where there is no browser and may be no admin user (ADR-0019, amendment of 2026-10-25). For that it mints a **system grant** for itself: `issueSystemGrant` of the `preview` service, called by plugin code in the publish path. No route mints one, and no response carries one; the plugin sends it in `X-Micelio-Preview-Grant` to the weight route of the site's `url` and nowhere else.
+
+- It names one draft and the `updatedAt` it had when the grant was minted. The frontend presents it to `GET /api/micelio/preview/draft` as it presents any grant and gets the draft with `meta.actor` `system`. If the draft was saved after the grant was minted, the answer is `previewRefused`.
+- It lives 60 seconds and works once. Nothing else ends it earlier: no admin user is involved, so logging out revokes nothing of it.
+- It adds no variable and no shared secret, and gives no one a right: it lets the plugin read the one draft it names. Whether someone may publish is the editorial policy's decision.
+- **The frontend's API token needs `plugin::micelio.preview.draft`** even when the preview is off, because the weight report is read through it (step 3 above). A full-access token has it. A token made by hand under Settings → API Tokens adds it; the token the distribution creates for the frontend gets it from `micelio-cms`.
 
 ## What ends a grant
 
-- Logging out of the admin revokes every token and grant of the user.
+- Logging out of the admin revokes every token and grant of the user, and no system grant.
 - Each exchange and each draft request checks again that the admin user is active and may read the draft. When they may not, every grant of that user and draft is revoked, and giving the permission back does not bring them back.
 
 ## What the frontend needs
