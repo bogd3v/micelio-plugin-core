@@ -256,6 +256,17 @@ describe('the site importer', () => {
       })
     })
 
+    it('gives the rows of an imported document, in each of its locales, the imported site', async () => {
+      const rows = (await strapi.db.query(STORY).findMany({
+        where: { documentId: fixture.story },
+        populate: ['site'],
+      })) as { locale: string; publishedAt: string | null; site: { documentId: string } | null }[]
+      expect(new Set(rows.map((row) => row.locale))).toEqual(new Set(['en', 'es']))
+      expect(rows.map((row) => row.site?.documentId)).toEqual(
+        rows.map(() => report.site.documentId)
+      )
+    })
+
     it('writes nothing when the same archive is imported again', async () => {
       const before = await snapshot()
       const second = await importArchive(archive, { into: 'default' })

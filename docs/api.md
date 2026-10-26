@@ -21,6 +21,8 @@ Every content type of a Micelio plugin belongs to one site (ADR-0017, section 4)
 
 Reads answer only that site's entries; reading, changing or deleting another site's entry by its id answers `404`, as if it did not exist; and an entry created through the content API belongs to that site.
 
+A locale added to an entry (by the Content Manager, the content API or an import) that names no site, or leaves the relation as it is, takes the site of the entry's other locales, and is refused with `400` and `site is required` when those locales belong to different sites or none has one. A locale added to an entry that names another site than the one its other locales share is refused with `400` and `site must be the site of the other locales`, as a removal of the site is. The site of a locale that exists may change only when no other locale of the entry stays on another site; otherwise the update is refused with `400` and `site cannot change while other locales of the document stay on another site`, and an entry of a single locale moves freely. Publishing a locale, or discarding the changes of its draft, keeps the site on the version Strapi rebuilds. A request scoped to a site is answered `404` for an entry of another site before any of this.
+
 ## Errors
 
 A `site` that names no site answers `404` with `application/problem+json` (RFC 9457):
