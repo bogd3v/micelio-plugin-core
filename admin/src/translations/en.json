@@ -124,5 +124,7 @@
   "preview.error.forbidden": "You may not preview this entry. It needs the permission to preview drafts and the permission to read the entry.",
   "preview.error.unsupported": "This type has no preview: its entries do not belong to a site.",
   "preview.error.busy": "Too many preview requests. Wait a minute, then reload.",
-  "preview.error.failed": "The preview could not load. Reload to try again."
+  "preview.error.failed": "The preview could not load. Reload to try again.",
+  "action.preview": "Preview",
+  "action.preview.unsaved": "Preview: save your changes first"
 }

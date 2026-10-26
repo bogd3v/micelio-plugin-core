@@ -124,5 +124,7 @@
   "preview.error.forbidden": "No puedes previsualizar esta entrada. Hace falta el permiso para previsualizar borradores y el permiso para leer la entrada.",
   "preview.error.unsupported": "Este tipo no tiene vista previa: sus entradas no pertenecen a un sitio.",
   "preview.error.busy": "Demasiadas solicitudes de vista previa. Espera un minuto y recarga.",
-  "preview.error.failed": "No se pudo cargar la vista previa. Recarga para intentarlo de nuevo."
+  "preview.error.failed": "No se pudo cargar la vista previa. Recarga para intentarlo de nuevo.",
+  "action.preview": "Vista previa",
+  "action.preview.unsaved": "Vista previa: guarda primero los cambios"
 }

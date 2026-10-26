@@ -3,6 +3,7 @@ import { registerComponents } from './components'
 import { editorialGuard } from './editorial/guard'
 import { siteSectionInstances } from './extensions/site-sections'
 import { hooksOf } from './hooks'
+import { registerPreviewShortcut } from './preview/shortcut'
 import { siteCreatedHook } from './sites/hooks'
 import { siteScopeDocuments } from './site-scope/documents'
 import { siteRules } from './sites/rules'
@@ -10,6 +11,7 @@ import { siteRules } from './sites/rules'
 /** Register phase: runs before the database is ready. */
 const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   registerComponents(strapi)
+  registerPreviewShortcut(strapi)
   // Outermost, so the hook runs once `siteRules` has finished, the default switch included.
   strapi.documents.use(siteCreatedHook(strapi))
   strapi.documents.use(siteRules(strapi))
