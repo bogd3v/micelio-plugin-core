@@ -25,12 +25,43 @@ jobs:
       standard: true
       reuse: true
 
+  # The image the browser jobs run in: Chromium and its system libraries come preinstalled, so no job downloads them (the install
+  # step sat more than 13 minutes on PR #86). The tag follows the lockfile's `playwright-core` and is pinned by digest once per run;
+  # scripts/ci/playwright-image.sh is the one bogd3v/micelio runs (its `playwright-image` job in deploy.yml).
+  playwright-image:
+    name: Playwright Image
+    if: ${{ github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            package-lock.json
+            scripts/ci
+          sparse-checkout-cone-mode: false
+
+      - name: Resolve the image digest
+        id: image
+        run: scripts/ci/playwright-image.sh | tee -a "$GITHUB_OUTPUT"
+
   # The admin pages in Chromium, with an axe run (WCAG 2.2 A and AA): not a check of section 15
   # that the reusable workflow runs, so it is a job of its own (`npm run test:admin`, AGENTS.md).
   admin:
     name: Admin pages
     if: ${{ github.event_name != 'schedule' }}
+    needs: playwright-image
     runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.playwright-image.outputs.image }}
+      options: --ipc=host
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -47,9 +78,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Install Chromium
-        run: npx playwright install --with-deps --only-shell chromium
 
       - name: Test the admin pages
         run: npm run test:admin
