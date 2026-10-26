@@ -63,6 +63,8 @@ The first release is `v0.1.0`, the `version` in `package.json`: with no earlier 
 - Node: 22.19 or later
 ```
 
+When a pull request since the last release is breaking (a `!` in its title), the workflow refuses to publish unless both `breaking_changes` (the hand-written "Breaking changes" section: who is affected) and `upgrade_notes` (what to do) are set; a dry run only warns. Both are Markdown and go in the release body.
+
 A release candidate (`release_candidate`) is published under the `next` tag and moves neither `X.Y` nor `latest`.
 
 ## License
