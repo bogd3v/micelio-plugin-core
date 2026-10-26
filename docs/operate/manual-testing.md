@@ -1,6 +1,6 @@
 # Test the plugin by hand
 
-How to run the plugin in a Strapi, next to the Micelio frontend, on Docker. It is for whoever works on this plugin: a clean Strapi 5 with only this plugin installed (as `test/strapi/app/` is, for the suites), PostgreSQL and the published frontend. It is not a deployment and nothing here is meant for production.
+How to run the plugin in a Strapi, next to the Micelio frontend, on Docker. It is for whoever works on this plugin: a clean Strapi 5 with only this plugin installed (as `test/strapi/app/` is, for the suites), PostgreSQL and the Micelio frontend. It is not a deployment and nothing here is meant for production.
 
 You need Docker with Compose v2, Node 22 (`.nvmrc`) and free ports 1337 and 3000.
 
@@ -15,19 +15,37 @@ The first run writes `.env.docker` (gitignored) with new throwaway secrets, buil
 | What     | Where                         | Notes                                                                                          |
 | -------- | ----------------------------- | ---------------------------------------------------------------------------------------------- |
 | Admin    | `http://localhost:1337/admin` | Strapi asks for the first admin's name, email and password on the first visit; use any values. |
-| Frontend | `http://localhost:3000`       | The published image `ghcr.io/bogd3v/micelio:edge`.                                             |
+| Frontend | `http://localhost:3000`       | The published image `ghcr.io/bogd3v/micelio:edge`, or the one `FRONTEND_IMAGE` names.          |
 
-The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site" and the host `localhost`, and creates a read-only API token for the frontend. Nothing else is created: no content, and no content type of `micelio-cms`. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview.
+The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site", the host `localhost` and the `url` `http://localhost:3000`, creates a custom API token for the frontend (every `find` and `findOne`, which a read-only token has, plus the two preview routes it needs to exchange preview tokens and read drafts) and another, with only the two preview routes, for trying the preview with `curl`, and creates a draft **Page**, "Open source, in plain words", with a text section and a scene, a heavy island (a one-triangle model) whose poster is its static alternative. The seed stores the two files' URLs with `CMS_PUBLIC_URL` (`http://localhost:1337`) and the frontend lists it as `NUXT_MEDIA_URL`: the frontend prefixes a relative media URL with `NUXT_PUBLIC_STRAPI_URL`, which is `http://cms:1337` inside Compose and which your browser cannot resolve. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview with `curl`; `docker/cms/src/api/page/` (with `category` and `tag`, which its `post-list` section points at) has the shape of the `page` of `micelio-cms`, because the frontend previews `api::page.page` and asks the CMS for every section of the catalogue. `docker/cms/dev.mjs` writes those sections' schemas into `docker/cms/src/components/` (gitignored) from `test/fixtures/micelio-cms-v0.4.0-components.json`. Like the rest of the stack, none of it is the distribution's.
 
-The frontend answers, but until the content types of `micelio-cms` move into the plugin (the cut-over of release line 0.7) its requests for the site settings and the categories fail with a 404, and it shows an empty site. Its log says so (`docker compose -f compose.dev.yml logs frontend`). Use the admin to see what the plugin does: the **Micelio** status page, the Content Manager and the Content-Type Builder.
+The frontend answers, but until the content types of `micelio-cms` move into the plugin (the cut-over of release line 0.7) its requests for the site settings and the categories fail with a 404, and it shows an empty site outside the preview. Its log says so (`docker compose -f compose.dev.yml logs frontend`). Use the admin to see what the plugin does: the **Micelio** status page, the Content Manager and the Content-Type Builder.
 
-## Try the preview
+The preview needs a frontend that has the preview route (bogd3v/micelio#729). If the `edge` image predates it, build one from the `main` branch of `micelio` and name it: `docker build -t micelio:preview <micelio checkout>`, then `FRONTEND_IMAGE=micelio:preview npm run dev:docker`.
 
-The frontend image does not exchange preview tokens yet (bogd3v/micelio#729), so you play the frontend with `curl`. The seed gives you a custom API token for it, `PREVIEW_API_TOKEN` in `.env.docker`; load it without printing the file. A `.env.docker` written before the preview existed lacks it: run `npm run dev:docker -- down`, delete `.env.docker` and start again.
+## Try the preview pane
+
+The admin's preview page shows a draft beside its form, rendered by the real frontend. Nothing here is played with `curl`.
+
+1. Bring the stack up with a frontend that has the preview route (above), open `http://localhost:1337/admin` and create the first admin (any values).
+2. In Content Manager → Page, open "Open source, in plain words" and copy its `documentId` from the URL. Open `http://localhost:1337/admin/plugins/micelio/preview/api::page.page/<documentId>` (the entry's own header action that opens it is #47). The entry's column is on the left and the frame on the right, showing the draft: the title, the text and the scene (`<micelio-scene>`), inside the frontend's own page.
+3. Tick **As static site**: the frame loads again with `mode=static`, and the scene is replaced by its poster, a blue panel (scroll the frame down to it: images load when they come into view). Untick it: the scene is back. While it loads, the old render stays and the two cross-fade.
+4. Press **Phone**, **Tablet** and **Desktop**, then Ctrl+Shift+1, 2 and 3: the frame takes 320, 768 and 1280 px, never wider than its column. Ctrl+Shift+S toggles the static site.
+5. Press **Open in the Content Manager, in a new tab**, change the title there and **Save**. Within about four seconds, on the preview page's tab, the frame loads the draft again once, with the new title, and the page's own title changes. In the browser's network panel, a document request to `localhost:3000/drafts/pages/…` and none to `/_preview`: the page sent `load-draft`, not a new token.
+6. Press **Reload**: the network panel shows `/_preview?token=…` (a new token, 303 to the draft).
+7. Turn on reduced motion in your operating system and reload the page: the cross-fade of step 3 is instantaneous.
+8. In Settings → Administration Panel → Roles, create a role with **Preview drafts on the frontend** and read permission on Page (all fields, all locales), and no other; invite a user with it and open the page as them: the entry's column says **Read-only**, and the preview shows.
+9. Set the language of your profile (the avatar menu → Profile) to Español and reload: the page is in Spanish.
+10. In `docker/cms/config/middlewares.js` remove the `frame-src` line, save, wait for Strapi to restart and reload the page: the pane does not show a broken frame; it says the admin does not allow `http://localhost:3000` in a frame and what to change. The **Micelio** status page says the same under the host check, `frame-src for the preview`. Put the line back.
+11. Safari and other WebKit browsers refuse the grant cookie in a frame from another site (bogd3v/micelio#744 is the fallback): the frame shows no draft and never says `ready`; the page keeps working, loading the preview again with a new token after each save.
+
+## Try the preview with curl
+
+To see what the routes do, one by one, play the frontend with `curl`. The seed gives you a custom API token for it, `PREVIEW_API_TOKEN` in `.env.docker`; load it without printing the file. A `.env.docker` written before the preview existed lacks it: run `npm run dev:docker -- down`, delete `.env.docker` and start again.
 
 1. Open `http://localhost:1337/admin` and create the first admin.
-2. In Content Manager → Site, open the default site and set **url** to `http://localhost:3000`. Save. (Without a `url` the token route answers `previewUnavailable`.)
-3. In Content Manager → Note, create a note with any title; the site is the default one. Copy its `documentId` from the URL.
+2. The seed has set the default site's **url** to `http://localhost:3000`. (Without a `url` the token route answers `previewUnavailable`: clear it in Content Manager → Site to see it.)
+3. In Content Manager → Note, create a note with any title; in the **Site** field pick the default site (the form does not preselect it). Copy its `documentId` from the URL.
 4. Log in on the API, ask for a preview token and read it from the URL (the password is the one you chose; nothing here is written to a file):
 
    ```bash
@@ -69,10 +87,10 @@ The frontend image does not exchange preview tokens yet (bogd3v/micelio#729), so
 
 ## Try the republish
 
-An edit of a live entry goes online with the transition `published → published` (ADR-0017, amendment of 2026-10-25). `docker/cms/src/api/article/` is a fixture type with the editorial workflow. The Content Manager cannot publish it, so you move it with `POST /micelio/transitions`, and read the content API with the frontend's read-only token (`FRONTEND_API_TOKEN` in `.env.docker`; load it without printing the file).
+An edit of a live entry goes online with the transition `published → published` (ADR-0017, amendment of 2026-10-25). `docker/cms/src/api/article/` is a fixture type with the editorial workflow. The Content Manager cannot publish it, so you move it with `POST /micelio/transitions`, and read the content API with the frontend's token (`FRONTEND_API_TOKEN` in `.env.docker`; load it without printing the file).
 
 1. Open `http://localhost:1337/admin` and create the first admin (the Super Admin). In Settings → Administration Panel → Users, invite a second user with the **Author** role and one with the **Editor** role, and set their passwords from the registration links (or use the Super Admin alone and skip step 9).
-2. In Content Manager → Article, create an article titled `First`; the site is the default one. Save, and copy its `documentId` from the URL.
+2. In Content Manager → Article, create an article titled `First`; in the **Site** field pick the default site (the form does not preselect it). Save, and copy its `documentId` from the URL.
 3. Publish it the way the workflow does, as the Super Admin:
 
    ```bash

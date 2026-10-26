@@ -49,17 +49,20 @@ services:
       TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT:-}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-}
-      # The frontend's read-only token: the seed creates it with this key.
+      # The frontend's token: the seed creates it with this key (a custom token: the reads of a read-only one and the two preview routes).
       FRONTEND_API_TOKEN: ${FRONTEND_API_TOKEN:-}
       # A custom token that may exchange preview tokens and read drafts by grant (docs/operate/preview.md).
       PREVIEW_API_TOKEN: ${PREVIEW_API_TOKEN:-}
       FRONTEND_ORIGIN: http://localhost:3000
+      # Where a browser on the host reaches the CMS: the seed stores the media URLs with it (docs/operate/manual-testing.md).
+      CMS_PUBLIC_URL: http://localhost:1337
     volumes:
       # The plugin's sources, edited on the host. Its node_modules and dist stay in the image and the
       # container; dev.mjs rebuilds dist when a source changes and restarts Strapi.
       - ./server:/plugin/server:z
       - ./admin:/plugin/admin:z
       - ./contract:/plugin/contract:z
+      - ./test/fixtures:/plugin/test/fixtures:ro,z
       - ./package.json:/plugin/package.json:ro,z
       - ./strapi-server.js:/plugin/strapi-server.js:ro,z
       - ./strapi-admin.js:/plugin/strapi-admin.js:ro,z
@@ -84,7 +87,8 @@ services:
   frontend:
     # The published frontend, built from the main branch of micelio (no image of a release line is
     # published yet); FRONTEND_IMAGE swaps it for a local build. It runs in production mode, so it needs
-    # its three runtime settings.
+    # its runtime settings. The preview route (bogd3v/micelio#729) is in `edge` only once an image is
+    # built from a main branch that has it.
     image: ${FRONTEND_IMAGE:-ghcr.io/bogd3v/micelio:edge}
     ports:
       - '127.0.0.1:3000:8080'
@@ -92,6 +96,10 @@ services:
       NUXT_PUBLIC_STRAPI_URL: http://cms:1337
       NUXT_STRAPI_API_TOKEN: ${FRONTEND_API_TOKEN:-}
       NUXT_PUBLIC_SITE_URL: http://localhost:3000
+      # The origin of the admin page that frames a draft: without it the preview is off (docs/operate/preview.md).
+      NUXT_PREVIEW_ADMIN_ORIGIN: http://localhost:1337
+      # The media origin the browser loads from: the CMS answers absolute URLs on it, and the page's CSP and schema allow it.
+      NUXT_MEDIA_URL: http://localhost:1337
     depends_on:
       cms:
         condition: service_healthy
