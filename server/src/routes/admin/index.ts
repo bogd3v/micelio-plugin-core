@@ -38,6 +38,12 @@ export default (): Core.RouterInput => ({
       config: { policies: ['admin::isAuthenticatedAdmin'] },
     },
     {
+      method: 'POST',
+      path: '/budget/measure',
+      handler: 'budget.measure',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
       method: 'GET',
       path: '/admin-pages',
       handler: 'extensions.pages',

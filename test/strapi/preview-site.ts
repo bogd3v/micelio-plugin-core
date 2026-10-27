@@ -5,12 +5,19 @@
 
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { answerWeight, newWeightBehaviour, type WeightBehaviour } from './weight-site'
 
 /** The stub site of the browser suite. */
 export interface PreviewSite {
   origin: string
   /** Points the stub at the CMS and the API token it calls it with. */
   connect: (cms: { base: string; apiToken: string; adminOrigin: string }) => void
+  /**
+   * How its weight route answers (`GET /api/preview/<uid>/<documentId>/weight`): the weight of the
+   * page and of each block, which the cost meter shows. Like the frontend's it takes the editor's
+   * grant in its cookie, from the admin's origin, and a system grant in the header.
+   */
+  weight: WeightBehaviour
   /** How many tokens it exchanged. */
   readonly exchanges: number
   /** How many times the draft route answered a page. */
@@ -121,6 +128,25 @@ export async function startPreviewSite(): Promise<PreviewSite> {
       return
     }
     const auth = { Authorization: `Bearer ${cms.apiToken}` }
+    const populate = {
+      'populate[sections][on][section.scene][populate]': '*',
+      'populate[sections][on][section.rich-text][populate]': '*',
+    }
+    if (
+      await answerWeight(
+        site.weight,
+        {
+          ...cms,
+          siteSlug: 'default',
+          populate,
+          admin: { origin: cms.adminOrigin, grantCookie: GRANT_COOKIE },
+        },
+        request,
+        response
+      )
+    ) {
+      return
+    }
     if (url.pathname === '/_preview') {
       const answer = await fetch(`${cms.base}/api/micelio/preview/exchange`, {
         method: 'POST',
@@ -192,6 +218,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
   const { port } = server.address() as AddressInfo
   const site: PreviewSite = {
     speaks: [1],
+    weight: newWeightBehaviour(),
     isSilent: false,
     isRefused: false,
     origin: `http://127.0.0.1:${port}`,

@@ -32,7 +32,7 @@ export interface BudgetReport {
   blocks: BudgetBlock[]
 }
 
-/** A draft measured against its budget (`docs/operate/budgets.md`). */
+/** A draft measured against its budget (`POST /micelio/budget/measure`, `docs/operate/budgets.md`). */
 export interface BudgetMeasurement extends BudgetReport {
   /** The page type whose budget applies. */
   pageType: string

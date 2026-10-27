@@ -13,7 +13,7 @@ import { TransitionError } from '../editorial/transitions'
 import type { BudgetMeasurement, BudgetReport, BudgetTarget } from '../types/budget'
 import type { PreviewService } from './preview'
 
-/** The `budget` service: `strapi.plugin('micelio').service('budget')`, behind the refusal at publish. */
+/** The `budget` service: `strapi.plugin('micelio').service('budget')`, behind the cost meter and the refusal at publish. */
 export interface BudgetService {
   /**
    * Whether a publish of the content type is measured: `budgets.contentTypes` lists it and it is
@@ -35,6 +35,18 @@ export interface BudgetService {
    * `previewUnavailable` when the site has no `url` or the frontend cannot measure the draft.
    */
   assertWithinBudget(target: BudgetTarget): Promise<BudgetMeasurement>
+
+  /**
+   * Places a report the admin got from the frontend with the editor's own grant against the budget
+   * of the saved draft, for the cost meter.
+   *
+   * @remarks
+   * Mints no grant and calls no frontend: the report is the editor's to show and carries no weight
+   * at publish, which measures the draft itself (`assertWithinBudget`).
+   *
+   * @throws {@link TransitionError} `editorialEntryNotFound` for a draft that does not exist.
+   */
+  standing(target: BudgetTarget, report: BudgetReport): Promise<BudgetMeasurement>
 
   /**
    * Refuses when the draft was saved after it was measured, right before it is published.
@@ -128,6 +140,12 @@ export default ({ strapi }: { strapi: Core.Strapi }): BudgetService => {
     applies: (uid) =>
       measuredTypesOf(budgets()).includes(uid) &&
       isMeasurable(strapi.contentType(uid as UID.ContentType)),
+
+    async standing(target, report) {
+      const draft = await readDraft(target)
+      if (!draft) throw new TransitionError(404, 'editorialEntryNotFound', 'There is no such entry')
+      return standingOf(draft, report)
+    },
 
     async assertWithinBudget(target) {
       const measurement = await measure(target)

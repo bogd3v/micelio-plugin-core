@@ -82,6 +82,7 @@ describe('the site exporter', () => {
         ['category', 'plugin::micelio.category', 0],
         ['essay', 'api::essay.essay', 0],
         ['label', LABEL, 1],
+        ['landing', 'api::landing.landing', 0],
         ['note', NOTE, 1],
         ['page', 'api::page.page', 0],
         ['post', 'api::post.post', 0],
