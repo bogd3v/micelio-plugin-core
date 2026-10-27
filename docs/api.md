@@ -11,6 +11,26 @@ How the plugin's content API routes behave. Routes keep Strapi's content API for
 
 The prefix `/micelio` is set explicitly, so a host's own `/api/sites` does not collide with it. The preview routes ([Preview](#preview)) are content API routes too. The two taxonomy types answer at the paths `micelio-cms` already serves ([Category and tag](#category-and-tag)).
 
+## Scoping the routes of a type
+
+A route file of a site-scoped type puts `SITE_SCOPE_MIDDLEWARE` in the `config` of each of its actions. Give every action its own config object:
+
+```js
+const scoped = () => ({ middlewares: [SITE_SCOPE_MIDDLEWARE] })
+
+module.exports = factories.createCoreRouter('api::note.note', {
+  config: {
+    find: scoped(),
+    findOne: scoped(),
+    create: scoped(),
+    update: scoped(),
+    delete: scoped(),
+  },
+})
+```
+
+Do not write `const scoped = { middlewares: [...] }` and pass it to all five. Strapi writes each route's `auth.scope` into the config object it is given, so a shared one ends up with the scope of the first action (`api::note.note.find`) on every route, and a custom API token that may only `find` can also `POST`, `PUT` and `DELETE`.
+
 ## Which site a request is for
 
 Every content type of a Micelio plugin belongs to one site (ADR-0017, section 4). On the routes of such a type, the site of a request is, in this order:

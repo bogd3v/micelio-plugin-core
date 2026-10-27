@@ -324,4 +324,36 @@ describe('site scoping', () => {
       expect(await strapi.db.query(SITE_UID).count({ where: { isDefault: true } })).toBe(1)
     })
   })
+
+  // Each action of a route file needs its own config object: Strapi writes the route's `auth.scope`
+  // into it, so a shared one gives every action the scope of `find` (docs/api.md).
+  describe('the permissions of a custom API token', () => {
+    it.each(['notes', 'articles', 'labels', 'pages', 'posts'])(
+      'lets a token that may only find %s read them and nothing else',
+      async (plural) => {
+        const singular = plural.slice(0, -1)
+        const readOnly = (await strapi.service('admin::api-token').create({
+          name: `read-only-${singular}`,
+          type: 'custom',
+          lifespan: null,
+          permissions: [`api::${singular}.${singular}.find`],
+        })) as { accessKey: string }
+        const headers = { Authorization: `Bearer ${readOnly.accessKey}` }
+        const body = JSON.stringify({ data: { title: 'written' } })
+        const json = { ...headers, 'Content-Type': 'application/json' }
+        const path = `/api/${plural}`
+
+        expect((await fetch(`${base}${path}`, { headers })).status).toBe(200)
+        expect(
+          (await fetch(`${base}${path}`, { method: 'POST', headers: json, body })).status
+        ).toBe(403)
+        expect(
+          (await fetch(`${base}${path}/unknown`, { method: 'PUT', headers: json, body })).status
+        ).toBe(403)
+        expect((await fetch(`${base}${path}/unknown`, { method: 'DELETE', headers })).status).toBe(
+          403
+        )
+      }
+    )
+  })
 })
