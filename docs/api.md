@@ -173,6 +173,8 @@ The scheduler, a cron job of the plugin, performs `scheduled → published` for 
 
 Every transition, the scheduler's included, runs the hooks of [docs/hooks.md](hooks.md): other plugins react to it there, and a `beforeTransition` handler may refuse it.
 
+A transition that publishes (`in_review → published`, `scheduled → published`, `published → published`) an entry of a measured type first has the site's frontend measure the draft ([docs/operate/budgets.md](operate/budgets.md)). It is refused above its budget (`pageOverBudget`) and whenever it could not be measured (`previewUnavailable`); it is never published without the measurement. A measured type is one that `budgets.contentTypes` lists (by default `api::page.page` and `api::article.article`, the types the frontend previews) and that is site-scoped, editorial and has a dynamic zone; any other type publishes as before, with no measurement. This is in the transition itself, so the admin route, the `transitions` service and the scheduler all hold it, and Strapi's own publish stays refused as before.
+
 ### Errors
 
 Every refusal answers `application/problem+json`:
@@ -186,6 +188,32 @@ Every refusal answers `application/problem+json`:
 | 404    | `editorialEntryNotFound`       | No such entry in that locale                          |
 | 409    | `editorialTransitionInvalid`   | The state machine has no such transition              |
 | 409    | `editorialTransitionRefused`   | A `beforeTransition` handler of a plugin refused it   |
+| 409    | `pageOverBudget`               | The blocks of the draft weigh more than its budget    |
+| 409    | `previewUnavailable`           | The draft could not be measured; see below            |
+
+`pageOverBudget` carries, besides the usual members, `pageType`, `budgetKb`, `blocksKb` (the sum of the blocks' shares, what the budget is measured against), `frameworkKb` and `totalKb` (the page's whole weight, which is `frameworkKb + blocksKb`) and `overByKb` (kB as the frontend sends them, one decimal) and `blocks`: every block of the page as `{ position, id, kb }`, heaviest first, so the editor sees where the weight is:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Conflict",
+  "status": 409,
+  "code": "pageOverBudget",
+  "detail": "The blocks of the page weigh 170 kB and the budget of a standard page is 120 kB, 50 kB over",
+  "pageType": "standard",
+  "budgetKb": 120,
+  "blocksKb": 170,
+  "frameworkKb": 270,
+  "totalKb": 440,
+  "overByKb": 50,
+  "blocks": [
+    { "position": 1, "id": "scene", "kb": 120 },
+    { "position": 2, "id": "rich-text", "kb": 50 }
+  ]
+}
+```
+
+`previewUnavailable` is also what a publish answers when the site has no `url`, the frontend cannot be reached, answers anything but a report (after the retries of a `429`), redirects, takes more than the time the plugin gives it, or when the draft was saved between the measurement and the publish. The `detail` of a frontend that failed is one fixed sentence; the cause is in the server's log, since it can name hosts of the CMS's network. The `detail` of a site with no `url` and of a draft saved meanwhile says so. The entry stays as it was.
 
 ## Block catalogue
 

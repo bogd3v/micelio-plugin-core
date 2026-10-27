@@ -65,6 +65,9 @@ strapi
 Runs before an editorial transition writes anything, once the transition exists, the site's
 policy allows it and its `publishAt` is valid.
 
+A publish of a page with blocks reaches it only within its weight budget
+(`docs/operate/budgets.md`); one over it is refused first.
+
 A handler refuses the transition by throwing: nothing is written, the handlers after it do not
 run, and the caller gets a `TransitionError` with the code `editorialTransitionRefused` (409)
 whose message is the handler's. `POST /micelio/transitions` answers it as a problem detail.

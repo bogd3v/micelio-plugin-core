@@ -17,7 +17,7 @@ The first run writes `.env.docker` (gitignored) with new throwaway secrets, buil
 | Admin    | `http://localhost:1337/admin` | Strapi asks for the first admin's name, email and password on the first visit; use any values. |
 | Frontend | `http://localhost:3000`       | The published image `ghcr.io/bogd3v/micelio:edge`, or the one `FRONTEND_IMAGE` names.          |
 
-The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site", the host `localhost` and the `url` `http://localhost:3000`, creates a custom API token for the frontend (every `find` and `findOne`, which a read-only token has, plus the two preview routes it needs to exchange preview tokens and read drafts) and another, with only the two preview routes, for trying the preview with `curl`, and creates a draft **Page**, "Open source, in plain words", with a text section and a scene, a heavy island (a one-triangle model) whose poster is its static alternative. The seed stores the two files' URLs with `CMS_PUBLIC_URL` (`http://localhost:1337`) and the frontend lists it as `NUXT_MEDIA_URL`: the frontend prefixes a relative media URL with `NUXT_PUBLIC_STRAPI_URL`, which is `http://cms:1337` inside Compose and which your browser cannot resolve. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview with `curl`; `docker/cms/src/api/page/` has the shape of the `page` of `micelio-cms`, because the frontend previews `api::page.page` and asks the CMS for every section of the catalogue. `docker/cms/dev.mjs` writes those sections' schemas into `docker/cms/src/components/` (gitignored) from `test/fixtures/micelio-cms-v0.4.0-components.json`. Like the rest of the stack, none of it is the distribution's.
+The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site", the host `localhost` and the `url` `http://localhost:3000`, creates a custom API token for the frontend (every `find` and `findOne`, which a read-only token has, plus the two preview routes it needs to exchange preview tokens and read drafts) and another, with only the two preview routes, for trying the preview with `curl`, and creates a draft **Page**, "Open source, in plain words", with a text section and a scene, a heavy island (a one-triangle model) whose poster is its static alternative, and a second one, "A heavy page", over the stack's page budget ([Try the page budget](#try-the-page-budget)). The seed stores the two files' URLs with `CMS_PUBLIC_URL` (`http://localhost:1337`) and the frontend lists it as `NUXT_MEDIA_URL`: the frontend prefixes a relative media URL with `NUXT_PUBLIC_STRAPI_URL`, which is `http://cms:1337` inside Compose and which your browser cannot resolve. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview with `curl`; `docker/cms/src/api/page/` has the shape of the `page` of `micelio-cms`, because the frontend previews `api::page.page` and asks the CMS for every section of the catalogue. `docker/cms/dev.mjs` writes those sections' schemas into `docker/cms/src/components/` (gitignored) from `test/fixtures/micelio-cms-v0.4.0-components.json`. Like the rest of the stack, none of it is the distribution's.
 
 The plugin owns **Category** and **Tag** (`/api/categories` and `/api/tags`, as in `micelio-cms`; the fixture article and the `post-list` section point at them, and `docker/cms/src/extensions/micelio/` adds the inverse `articles` as the distribution does), so the frontend's category requests answer. Until the rest of the content types of `micelio-cms` move into the plugin (the cut-over of release line 0.7) its request for the site settings fails with a 404, and it shows an empty site outside the preview. Its log says so (`docker compose -f compose.dev.yml logs frontend`). Use the admin to see what the plugin does: the **Micelio** status page, the Content Manager and the Content-Type Builder.
 
@@ -46,6 +46,31 @@ The frontend reads an article draft with a `populate` of its cover, author, cate
 1. Create the first admin, as above. In Content Manager → Article, open "A draft article" and copy its `documentId` from the URL.
 2. Open `http://localhost:1337/admin/plugins/micelio/preview/api::article.article/<documentId>`. The frame shows the draft in the frontend: the title, the description, the cover image, the author "Ada Example" and the body.
 3. The frontend's log (`docker compose -f compose.dev.yml logs frontend`) has no error for the draft.
+
+## Try the page budget
+
+A page with blocks (`page` and `article`, the types the frontend previews) is measured by the frontend when it is published and refused above its budget ([budgets.md](budgets.md)). The stack uses the core's budgets (120 kB for a standard page), measured on the weight of the page's blocks: the framework's script, styles and fonts, about 270 kB on the frontend of `main`, come with every page and are shown apart. The seed creates two draft pages, "Open source, in plain words" (under the budget) and "A heavy page" (over it, with a long text). Two forwards in the stack make the site's `url` and the media URL, which are addresses a browser opens, answer inside the containers too: the CMS reaches the frontend at `http://localhost:3000` and the frontend reaches the CMS's uploads at `http://localhost:1337` (`docker/cms/forward.mjs`).
+
+The stack needs a frontend with the weight route (bogd3v/micelio#730): `FRONTEND_IMAGE=micelio:preview npm run dev:docker`, with an image built from `main` of `micelio`.
+
+1. Create the first admin, as above. In Content Manager → Page, open "A heavy page" and copy its `documentId` from the URL; do the same for "Open source, in plain words" (the landing).
+2. Publishing is a transition: there is no button for it in the admin yet (bogd3v/micelio-plugin-core#57), so log in on the API and publish as the admin route does (the password is the one you chose; nothing is written to a file):
+
+   ```bash
+   ADMIN=$(curl -s -X POST localhost:1337/admin/login -H 'Content-Type: application/json' \
+     -d '{"email":"<your email>","password":"<your password>"}' | jq -r .data.token)
+   PUBLISH() { curl -s -w '\n%{http_code}\n' -X POST localhost:1337/micelio/transitions \
+     -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+     -d "{\"uid\":\"api::page.page\",\"documentId\":\"$1\",\"locale\":\"en\",\"to\":\"$2\"}"; }
+   PUBLISH <heavy documentId> in_review     # 200
+   PUBLISH <heavy documentId> published     # 409 pageOverBudget: blocksKb, frameworkKb, totalKb, budgetKb, overByKb and the blocks
+   PUBLISH <landing documentId> in_review   # 200
+   PUBLISH <landing documentId> published   # 200, and Content Manager → Page shows it published
+   ```
+
+3. Strapi's own **Publish** button in the Content Manager is refused for these pages, with or without a budget: entries are published through the transitions.
+4. Point the site at nothing: in Content Manager → Site, set the default site's **url** to `http://localhost:3999` and publish another page (or republish the landing, `PUBLISH <landing documentId> published`): `409 previewUnavailable`, and the page keeps its state. Put `http://localhost:3000` back. (Stopping the frontend does the same, but restart it with `docker compose -f compose.dev.yml restart frontend`, which also restarts the forward that lives in its network.)
+5. Raise the budget: in `docker/cms/config/plugins.js` add `config: { budgets: { pageTypes: { standard: 200 } } }` to `micelio`, wait for Strapi to restart and publish the heavy page: `200`.
 
 ## Try the preview with curl
 

@@ -1,5 +1,6 @@
 import type { Core, UID } from '@strapi/strapi'
 import { EDITORIAL_ATTRIBUTE, type EditorialState } from '../constants/editorial'
+import type { BudgetService } from '../services/budget'
 import { hooksOf } from '../hooks'
 import { SITE_ATTRIBUTE } from '../site-scope'
 import type { EntryPayload, TransitionPayload } from '../types/hooks'
@@ -45,13 +46,17 @@ export type TransitionErrorCode =
   | 'editorialTransitionForbidden'
   | 'editorialPublishAtInvalid'
   | 'editorialTransitionRefused'
+  | 'pageOverBudget'
+  | 'previewUnavailable'
 
 /** A refused transition, with the HTTP status and code it answers. */
 export class TransitionError extends Error {
   constructor(
     readonly status: number,
     readonly code: TransitionErrorCode,
-    message: string
+    message: string,
+    /** Members the problem detail carries besides the standard ones (`pageOverBudget`: the blocks and the excess). */
+    readonly extensions: Record<string, unknown> = {}
   ) {
     super(message)
     this.name = 'TransitionError'
@@ -82,6 +87,13 @@ interface EditorialEntry {
  * first, so a reader of the content API always gets a published version; it sets `publishedBy` to
  * the republisher and leaves `reviewedBy` alone. `reviewedBy` records the user who moved the
  * entry out of `in_review`, and `publishedBy` the one who published it (empty for the scheduler).
+ *
+ * Moving to `published` an entry of a measured type (`budgets.contentTypes`, by default `page` and
+ * `article`, when it is site-scoped, editorial and has a dynamic zone) first has the frontend
+ * measure its draft, through the `budget` service, and refuses with `pageOverBudget` above the
+ * budget of its page type, or `previewUnavailable` when the measurement fails. It never publishes
+ * without the measurement. Right before the write it checks that the draft was not saved since, and
+ * refuses with `previewUnavailable` when it was.
  *
  * It runs the hooks of the transition (`docs/hooks.md`): `beforeTransition` once every check has
  * passed and before anything is written, then `afterTransition` and, when the entry was published
@@ -169,6 +181,16 @@ export async function performTransition(
     actor:
       request.actor.kind === 'user' ? { kind: 'user', id: request.actor.id } : { kind: 'system' },
   }
+  // Every check of the policy has passed; what remains is what the frontend says the page weighs.
+  const budget = strapi.plugin('micelio').service('budget') as BudgetService
+  const measured =
+    transition.to === 'published' && budget.applies(request.uid)
+      ? await budget.assertWithinBudget({
+          uid: request.uid,
+          documentId: entry.documentId,
+          locale: entry.locale,
+        })
+      : null
   const hooks = hooksOf(strapi)
   try {
     await hooks.runBefore('beforeTransition', payload)
@@ -176,6 +198,13 @@ export async function performTransition(
     throw new TransitionError(409, 'editorialTransitionRefused', refusalMessage(error))
   }
 
+  if (measured) {
+    await budget.assertUnchanged(measured, {
+      uid: request.uid,
+      documentId: entry.documentId,
+      locale: entry.locale,
+    })
+  }
   await runAsTransition(async () => {
     // A republish never unpublishes: the live version stays until the one `publish` replaces it.
     if (transition.from === 'published' && transition.to !== 'published') {

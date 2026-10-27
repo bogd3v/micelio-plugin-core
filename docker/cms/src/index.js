@@ -1,5 +1,5 @@
 // The seed of compose.dev.yml: one neutral site with the frontend's url, the frontend's API token, a
-// custom token for trying the preview by hand, a draft landing page with an island and a draft
+// custom token for trying the preview by hand, a draft landing page with an island, a draft heavy page and a draft
 // article with a cover and an author. All are idempotent. A new database (`down -v`, then `up`) is
 // seeded again.
 
@@ -13,6 +13,7 @@ const SITE_HOSTS = ['localhost']
 const TOKEN_NAME = 'Frontend (compose.dev.yml)'
 const PREVIEW_TOKEN_NAME = 'Preview by hand (compose.dev.yml)'
 const LANDING_SLUG = 'landing'
+const HEAVY_SLUG = 'heavy'
 const AUTHOR_NAME = 'Ada Example'
 const ARTICLE_SLUG = 'a-draft-article'
 // A 320x180 PNG, the poster of the scene: the static alternative of the island.
@@ -199,6 +200,25 @@ async function seedLanding(strapi) {
   })
 }
 
+// The "heavy page": a draft with a long text section, which puts its blocks over the core's budget
+// for a standard page. The landing above stays under it, so a publish can be tried both ways.
+async function seedHeavyPage(strapi) {
+  const site = await strapi.db.query('plugin::micelio.site').findOne({ where: { slug: SITE_SLUG } })
+  if (!site) return
+  if (await strapi.db.query('api::page.page').findOne({ where: { slug: HEAVY_SLUG } })) return
+  // About 70 kB of plain text, which the page sends as HTML.
+  const paragraph = `${'Plain words that make a page heavy. '.repeat(30).trim()}\n\n`
+  await strapi.documents('api::page.page').create({
+    locale: 'en',
+    data: {
+      title: 'A heavy page',
+      slug: HEAVY_SLUG,
+      site: site.documentId,
+      sections: [{ __component: 'section.rich-text', body: paragraph.repeat(65) }],
+    },
+  })
+}
+
 // The draft article of the preview pane: a cover and an author, which the frontend reads with its
 // `populate` (docs/operate/manual-testing.md). The type is the fixture of docker/cms/src/api/article/.
 async function seedArticle(strapi) {
@@ -240,6 +260,7 @@ module.exports = {
     await seedFrontendToken(strapi)
     await seedPreviewToken(strapi)
     await seedLanding(strapi)
+    await seedHeavyPage(strapi)
     await seedArticle(strapi)
   },
 }
