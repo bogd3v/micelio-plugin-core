@@ -215,6 +215,23 @@ Every refusal answers `application/problem+json`:
 
 `previewUnavailable` is also what a publish answers when the site has no `url`, the frontend cannot be reached, answers anything but a report (after the retries of a `429`), redirects, takes more than the time the plugin gives it, or when the draft was saved between the measurement and the publish. The `detail` of a frontend that failed is one fixed sentence; the cause is in the server's log, since it can name hosts of the CMS's network. The `detail` of a site with no `url` and of a draft saved meanwhile says so. The entry stays as it was.
 
+## Page weight
+
+An admin API route, for the cost meter of the preview page ([docs/operate/budgets.md](operate/budgets.md)); it is not part of the content API. It mints no grant and calls no frontend: the admin reads the weight report from the frontend with the editor's own preview grant and sends it here to be placed against the budget.
+
+| Method | Path                      | Answers                                                                                                                                                        |
+| ------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/micelio/budget/measure` | `{ "data": { pageType, budgetKb, blocksKb, frameworkKb, totalKb, overByKb, onDemandKb, htmlKb, cssKb, jsKb, fontKb, imagesKb, blocks, measuredAt, version } }` |
+
+The body is `{ "uid", "documentId", "locale", "report" }`: the first three as for the preview token, and `report` the body of the frontend's weight route (`{ "data": … }`) in the dynamic mode, as the admin got it. The plugin reads the report, finds the page type and budget of the saved draft and answers both together. The report is shown and never trusted: a publish measures the draft itself, so what is sent here cannot let a page through. A page over its budget is a `200` here: the refusal is the publish's. `blocks` is every block as `{ position, id, kb, onDemandKb }` in the page's order; `onDemandKb` is the script its islands load only once used and is never part of `totalKb`; `version` is the `updatedAt` that was measured. The answer is `private, no-store`. It needs the permission to preview drafts and the permission to read the entry.
+
+| Status | `code`                   | When                                                                                                                       |
+| ------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| 400    | `budgetRequestInvalid`   | The body lacks `uid` or `documentId`, `locale` is not a string, or `report` is not a weight report of the dynamic mode     |
+| 400    | `budgetTypeInvalid`      | The type is not measured: `budgets.contentTypes` does not list it, or it is not site-scoped, editorial with a dynamic zone |
+| 403    | `previewForbidden`       | The role lacks the preview permission, or may not read the entry                                                           |
+| 404    | `editorialEntryNotFound` | No such entry                                                                                                              |
+
 ## Block catalogue
 
 An admin API route, for the admin panel and its builder; any admin user may read it.

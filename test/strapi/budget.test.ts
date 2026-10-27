@@ -2,11 +2,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import type { AddressInfo } from 'node:net'
 import type { Core, UID } from '@strapi/strapi'
 import config, { type PluginConfig } from '../../server/src/config'
-import { PREVIEW_CREDENTIAL_UID } from '../../server/src/constants/preview'
+import { PREVIEW_PERMISSION, PREVIEW_CREDENTIAL_UID } from '../../server/src/constants/preview'
 import { SITE_UID } from '../../server/src/constants/site'
 import { TransitionError } from '../../server/src/editorial/transitions'
 import type { BudgetService } from '../../server/src/services/budget'
 import type { TransitionsService } from '../../server/src/services/transitions'
+import { refusalNotice } from '../../admin/src/utils/refusal'
 import { closedOrigin } from './frontend'
 import { cleanupStrapi, setupStrapi } from './harness'
 import { startWeightSite, type WeightSite } from './weight-site'
@@ -150,6 +151,14 @@ describe('the budget of a page at publish', () => {
       populate: ['editorial'],
     } as never)) as unknown as { editorial?: { state?: string } } | null
     return draft?.editorial?.state
+  }
+
+  function measure(token: string, body: unknown): Promise<Response> {
+    return fetch(`${base}/micelio/budget/measure`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    })
   }
 
   beforeAll(async () => {
@@ -387,6 +396,29 @@ describe('the budget of a page at publish', () => {
       expect((await problemOf(response)).code).toBe('pageOverBudget')
     })
 
+    it('answers a problem detail the admin’s notification reads, over its budget and unmeasurable', async () => {
+      const entry = { uid: STORY, documentId: await storyOf(2), locale: 'en' }
+      frontend.blockKb = 70
+      const over = refusalNotice(await problemOf(await publish(entry.documentId)), entry)
+      expect(over?.message).toEqual({
+        id: 'refusal.pageOverBudget',
+        values: {
+          weight: '140',
+          budget: '120',
+          over: '20',
+          blocks: 'quote (70 kB), quote (70 kB)',
+        },
+      })
+      expect(over?.previewPath).toContain(
+        `/preview/${encodeURIComponent(STORY)}/${entry.documentId}`
+      )
+      frontend.blockKb = 5
+      frontend.queue = [{ status: 500 }]
+      const unavailable = refusalNotice(await problemOf(await publish(entry.documentId)), entry)
+      expect(unavailable?.message.id).toBe('refusal.previewUnavailable')
+      expect(unavailable?.message.values.cause).toMatch(/^The frontend could not measure the page/)
+    })
+
     it('leaves a scheduled page scheduled when the scheduler finds it over its budget or unmeasurable', async () => {
       const { documentId } = await stories().create({
         locale: 'en',
@@ -566,6 +598,147 @@ describe('the budget of a page at publish', () => {
         await stories().update({ documentId, locale: 'en', data: { title: 'Again' } as never })
       }
       await expectRefused(documentId, FIXED, /answered 404/)
+    })
+  })
+
+  describe('POST /micelio/budget/measure', () => {
+    // The body of the weight route as the admin got it with the editor's grant.
+    function reportOf(blocks: number, blockKb: number, baseKb = 20) {
+      return {
+        data: {
+          mode: 'dynamic',
+          htmlKb: 1,
+          cssKb: 1,
+          jsKb: 1,
+          fontKb: 1,
+          imagesKb: 0,
+          totalKb: baseKb + blocks * blockKb,
+          onDemandKb: 0,
+          blocks: Array.from({ length: blocks }, () => ({
+            id: 'quote',
+            kb: blockKb,
+            onDemandKb: 0,
+          })),
+        },
+      }
+    }
+
+    it('places the report the admin got against the budget of the saved draft, over it or not', async () => {
+      const documentId = await storyOf(5)
+      const response = await measure(await newAdmin(), {
+        uid: STORY,
+        documentId,
+        locale: 'en',
+        report: reportOf(5, 30),
+      })
+      expect(response.status).toBe(200)
+      expect(response.headers.get('cache-control')).toBe('private, no-store')
+      const { data } = (await response.json()) as { data: Record<string, unknown> }
+      expect(data).toMatchObject({
+        pageType: 'standard',
+        budgetKb: STANDARD_KB,
+        blocksKb: 150,
+        frameworkKb: 20,
+        totalKb: 170,
+        overByKb: 30,
+        onDemandKb: 0,
+      })
+      expect(data.measuredAt).toMatch(/^\d{4}-\d\d-\d\dT/)
+      expect(new Date(data.version as string).getTime()).not.toBeNaN()
+      expect(data.blocks).toHaveLength(5)
+    })
+
+    it('mints no system grant and asks no frontend: only the publish path does', async () => {
+      const documentId = await storyOf(1)
+      const previews = strapi.plugin('micelio').service('preview') as {
+        issueSystemGrant: (...args: unknown[]) => Promise<string>
+      }
+      const issue = vi.spyOn(previews, 'issueSystemGrant')
+      const credentials = () => strapi.db.query(PREVIEW_CREDENTIAL_UID).count({})
+      const before = await credentials()
+      try {
+        const response = await measure(await newAdmin(), {
+          uid: STORY,
+          documentId,
+          locale: 'en',
+          report: reportOf(1, 5),
+        })
+        expect(response.status).toBe(200)
+        expect(issue).not.toHaveBeenCalled()
+      } finally {
+        issue.mockRestore()
+      }
+      expect(await credentials()).toBe(before)
+      expect(frontend.requests).toHaveLength(0)
+    })
+
+    it('refuses a report that is not the weight route’s answer', async () => {
+      const documentId = await storyOf(1)
+      const token = await newAdmin()
+      for (const report of [undefined, { data: { totalKb: 'heavy' } }, 'x']) {
+        const response = await measure(token, { uid: STORY, documentId, locale: 'en', report })
+        expect(response.status).toBe(400)
+        expect((await problemOf(response)).code).toBe('budgetRequestInvalid')
+      }
+    })
+
+    it('refuses an admin user without the permission to preview', async () => {
+      const documentId = await storyOf(1)
+      const response = await measure(await newAdmin('strapi-editor'), {
+        uid: STORY,
+        documentId,
+        report: reportOf(1, 5),
+      })
+      expect(response.status).toBe(403)
+      expect((await problemOf(response)).code).toBe('previewForbidden')
+    })
+
+    it('refuses a user who may preview and may not read the draft', async () => {
+      counter += 1
+      const role = (await strapi
+        .service('admin::role')
+        .create({ name: `Previewer ${counter}`, code: `previewer-${counter}` })) as { id: number }
+      await strapi
+        .service('admin::role')
+        .addPermissions(role.id, [
+          { action: PREVIEW_PERMISSION, subject: null, conditions: [], properties: {} },
+        ])
+      await strapi.service('admin::user').create({
+        email: `previewer-${counter}@example.com`,
+        firstname: 'Previewer',
+        lastname: 'Test',
+        password: PASSWORD,
+        roles: [role.id],
+        isActive: true,
+      })
+      const token = await signIn(`previewer-${counter}@example.com`)
+      const documentId = await storyOf(1)
+      const response = await measure(token, { uid: STORY, documentId, report: reportOf(1, 5) })
+      expect(response.status).toBe(403)
+    })
+
+    it.each([
+      ['a type without blocks', { uid: ARTICLE, documentId: 'x' }, 400, 'budgetTypeInvalid'],
+      ['a body that is not valid', { uid: STORY }, 400, 'budgetRequestInvalid'],
+      [
+        'a draft that does not exist',
+        { uid: STORY, documentId: 'nope' },
+        404,
+        'editorialEntryNotFound',
+      ],
+    ])('answers %s', async (_name, body, status, code) => {
+      const response = await measure(await newAdmin(), { ...body, report: reportOf(1, 5) })
+      expect(response.status).toBe(status)
+      expect((await problemOf(response)).code).toBe(code)
+    })
+
+    it('refuses a request without an admin session', async () => {
+      const response = await fetch(`${base}/micelio/budget/measure`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: STORY, documentId: 'x' }),
+      })
+      expect(response.status).toBe(401)
     })
   })
 

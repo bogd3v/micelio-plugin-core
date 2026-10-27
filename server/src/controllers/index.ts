@@ -2,6 +2,7 @@ import { factories, type UID } from '@strapi/strapi'
 import { SITE_UID } from '../constants/site'
 import { CATEGORY_UID, TAG_UID } from '../constants/taxonomy'
 import blocks from './blocks'
+import budget from './budget'
 import preview from './preview'
 import extensions from './extensions'
 import status from './status'
@@ -12,6 +13,7 @@ export default {
   category: factories.createCoreController(CATEGORY_UID as UID.ContentType),
   tag: factories.createCoreController(TAG_UID as UID.ContentType),
   blocks,
+  budget,
   transitions,
   status,
   preview,

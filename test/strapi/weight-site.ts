@@ -14,8 +14,10 @@ export type WeightAnswer =
 export interface WeightRequestSeen {
   path: string
   query: Record<string, string>
-  /** The grant of the header, which the suites compare and never print. */
+  /** The grant the request carried, which the suites compare and never print. */
   grant: string | null
+  /** Where it came from: the header is the CMS's system grant, the cookie the editor's. */
+  via: 'header' | 'cookie' | null
 }
 
 /** How a stub answers weight requests: what the suites change between tests. */
@@ -50,12 +52,17 @@ export interface WeightSiteCms {
   /** The frontend's API token. */
   apiToken: string
   siteSlug: string
+  /**
+   * The admin's origin. Its pages may read the weight route with the editor's own grant, in the
+   * cookie `grantCookie` names, as the frontend allows (ADR-0019, amendment of 2026-10-25).
+   */
+  admin?: { origin: string; grantCookie: string }
   /** The `populate` the frontend reads the draft with, as query pairs; every first-level relation by default. */
   populate?: Record<string, string>
 }
 
 /** A fresh behaviour: a 10 kB page that gains 5 kB for each block. */
-function newWeightBehaviour(): WeightBehaviour {
+export function newWeightBehaviour(): WeightBehaviour {
   return { requests: [], queue: [], baseKb: 10, blockKb: 5 }
 }
 
@@ -93,7 +100,7 @@ function report(site: WeightBehaviour, draft: Draft) {
  * @remarks
  * The CMS confirms the grant of the header once, with the draft route, and says who it acts for.
  */
-async function answerWeight(
+export async function answerWeight(
   behaviour: WeightBehaviour,
   cms: WeightSiteCms,
   request: http.IncomingMessage,
@@ -102,11 +109,27 @@ async function answerWeight(
   const url = new URL(request.url ?? '/', 'http://stub')
   const match = /^\/api\/preview\/([^/]+)\/([^/]+)\/weight$/.exec(url.pathname)
   if (!match) return false
-  const grant = request.headers['x-micelio-preview-grant']
+  const header = request.headers['x-micelio-preview-grant']
+  const cookie = cms.admin
+    ? (request.headers.cookie ?? '')
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${cms.admin!.grantCookie}=`))
+        ?.slice(cms.admin.grantCookie.length + 1)
+    : undefined
+  // The header is the CMS's (a system grant); the cookie is the editor's (an admin grant).
+  const grant = typeof header === 'string' ? header : cookie
+  const actor = typeof header === 'string' ? 'system' : 'admin'
+  if (cms.admin && request.headers.origin === cms.admin.origin) {
+    response.setHeader('Access-Control-Allow-Origin', cms.admin.origin)
+    response.setHeader('Access-Control-Allow-Credentials', 'true')
+    response.setHeader('Vary', 'Origin')
+  }
   behaviour.requests.push({
     path: url.pathname,
     query: Object.fromEntries(url.searchParams),
     grant: typeof grant === 'string' ? grant : null,
+    via: typeof header === 'string' ? 'header' : cookie ? 'cookie' : null,
   })
   if (typeof grant !== 'string') {
     response.writeHead(404).end()
@@ -140,7 +163,7 @@ async function answerWeight(
     return true
   }
   const { data, meta } = (await read.json()) as { data: Draft; meta: { actor: string } }
-  if (meta.actor !== 'system') {
+  if (meta.actor !== actor) {
     response.writeHead(404).end()
     return true
   }

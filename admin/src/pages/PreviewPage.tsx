@@ -5,11 +5,14 @@ import { useIntl } from 'react-intl'
 import { NavLink, useHref, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import styled from 'styled-components'
 
+import { CostMeter } from '../components/CostMeter'
 import { PreviewFrame, type FrameState, type PreviewFrameHandle } from '../components/PreviewFrame'
+import { useBudget } from '../hooks/useBudget'
 import { useEntry, type Entry } from '../hooks/useEntry'
 import { useNewTab, usePreviewSource, type PreviewSourceError } from '../hooks/usePreviewSource'
 import { useMessages } from '../messages'
 import { PREVIEW_PERMISSION } from '../permissions'
+import { weightRoute } from '../utils/costMeter'
 import { DEVICES, previewShortcut, type DeviceId, type PreviewMode } from '../utils/previewPane'
 
 // The motion tokens of the Motion artboard: fast 120 ms, base 200 ms, slow 320 ms. With
@@ -102,6 +105,18 @@ function PreviewPane() {
     entry ? { uid, documentId, locale: entry.locale } : undefined,
     mode
   )
+  // The frame holds the editor's grant once it has loaded; the meter reads the weight with it.
+  const weightUrl =
+    source.kind === 'ready' && frameState.protocol === 'ok'
+      ? weightRoute(source.src, uid, documentId, entry ? entry.locale : locale)
+      : undefined
+  const { resource: budget, measureAgain } = useBudget(
+    uid,
+    documentId,
+    entry ? entry.locale : locale,
+    entry?.updatedAt,
+    weightUrl
+  )
   const newTab = useNewTab(entry ? { uid, documentId, locale: entry.locale } : undefined, mode)
   const canEdit = permissions.some(
     ({ action, subject }) => action === 'plugin::content-manager.explorer.update' && subject === uid
@@ -178,7 +193,10 @@ function PreviewPane() {
         />
         <Layouts.Content>
           <Columns>
-            <EntryColumn entry={entry} canEdit={canEdit} entryPath={entryPath} date={date} />
+            <div>
+              <EntryColumn entry={entry} canEdit={canEdit} entryPath={entryPath} date={date} />
+              <CostMeter resource={budget} onMeasureAgain={measureAgain} />
+            </div>
             <section aria-label={t('preview.pane')}>
               <Flex gap={4} wrap="wrap" alignItems="center" marginBottom={3}>
                 <Flex gap={2} role="group" aria-label={t('preview.device.group')}>
