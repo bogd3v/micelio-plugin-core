@@ -29,7 +29,7 @@ All three are random, opaque values (not JWTs), and the CMS stores only their ha
 
 ## The system grant
 
-The plugin measures a page at publish by calling the frontend's weight report from the CMS server, where there is no browser and may be no admin user (ADR-0019, amendment of 2026-10-25). For that it mints a **system grant** for itself: `issueSystemGrant` of the `preview` service, called by plugin code in the publish path. No route mints one, and no response carries one; the plugin sends it in `X-Micelio-Preview-Grant` to the weight route of the site's `url` and nowhere else.
+The plugin measures a page at publish ([budgets.md](budgets.md)) by calling the frontend's weight report from the CMS server, where there is no browser and may be no admin user (ADR-0019, amendment of 2026-10-25). For that it mints a **system grant** for itself: `issueSystemGrant` of the `preview` service, called by plugin code in the publish path and only there. No route mints one and no response carries one; the plugin sends it in `X-Micelio-Preview-Grant` to the weight route of the site's `url` and nowhere else.
 
 - It names one draft and the `updatedAt` it had when the grant was minted. The frontend presents it to `GET /api/micelio/preview/draft` as it presents any grant and gets the draft with `meta.actor` `system`. If the draft was saved after the grant was minted, the answer is `previewRefused`.
 - It lives 60 seconds and works once. Nothing else ends it earlier: no admin user is involved, so logging out revokes nothing of it.

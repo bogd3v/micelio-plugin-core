@@ -19,7 +19,12 @@ module.exports = ({ env }) => ({
     enabled: true,
     resolve: path.resolve(__dirname, '../../../..'),
     // Every second instead of every minute, so the scheduler suite waits seconds, not a minute.
-    config: { scheduledPublishRule: '* * * * * *' },
+    // A host that sets one budget keeps the defaults of the others, and `story`, the fixture with a
+    // dynamic zone, is the one type measured at publish (test/strapi/budget.test.ts).
+    config: {
+      scheduledPublishRule: '* * * * * *',
+      budgets: { pageTypes: { 'long-read': 200 }, contentTypes: ['api::story.story'] },
+    },
   },
   // Only the suite of the takeover of category and tag turns it on (`MICELIO_TEST_USERS_PERMISSIONS`):
   // a database written by micelio-cms holds the public role's grants of the two types. Every other

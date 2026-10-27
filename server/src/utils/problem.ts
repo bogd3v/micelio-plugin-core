@@ -10,8 +10,8 @@ export interface ProblemDetail {
   code: string
 }
 
-/** Answers the request with a problem detail as `application/problem+json`. */
-export function sendProblem(ctx: Context, problem: ProblemDetail): void {
+/** Answers the request with a problem detail as `application/problem+json`; `problem` may carry extension members (RFC 9457, section 3.2). */
+export function sendProblem(ctx: Context, problem: ProblemDetail & Record<string, unknown>): void {
   ctx.status = problem.status
   ctx.body = problem
   // After the body: Koa sets `application/json` whenever the body is an object.

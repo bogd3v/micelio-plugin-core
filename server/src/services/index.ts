@@ -1,6 +1,7 @@
 import { factories, type UID } from '@strapi/strapi'
 import { SITE_UID } from '../constants/site'
 import { CATEGORY_UID, TAG_UID } from '../constants/taxonomy'
+import budget from './budget'
 import extensions from './extensions'
 import hooks from './hooks'
 import hostCheck from './host-check'
@@ -19,5 +20,6 @@ export default {
   extensions,
   status,
   preview,
+  budget,
   siteExport,
 }

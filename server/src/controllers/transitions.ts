@@ -58,6 +58,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): { perform(ctx: Context): P
         status: error.status,
         detail: error.message,
         code: error.code,
+        ...error.extensions,
       })
     }
   },

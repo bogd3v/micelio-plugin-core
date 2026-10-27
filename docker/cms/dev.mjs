@@ -6,6 +6,8 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { forward } from './forward.mjs'
+
 const PLUGIN = '/plugin'
 const DIST = join(PLUGIN, 'dist')
 const PROJECT = join(PLUGIN, 'docker', 'cms')
@@ -78,6 +80,13 @@ function writeComponents() {
       text = text.replaceAll(legacy, current)
     writeFileSync(join(folder, `${name}.json`), text)
   }
+}
+
+// The site's `url` is the frontend as a browser reaches it (`http://localhost:3000`), and at publish the
+// plugin asks that address for the weight of the page from this server, where `localhost` is this
+// container. A forward from that port to the `frontend` service makes the one `url` work for both.
+if (process.env.FRONTEND_FORWARD && process.env.FRONTEND_ORIGIN) {
+  forward(Number(new URL(process.env.FRONTEND_ORIGIN).port), process.env.FRONTEND_FORWARD)
 }
 
 const watcher = spawn('npm', ['run', 'dev'], { cwd: PLUGIN, stdio: 'inherit' })

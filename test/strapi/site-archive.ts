@@ -4,10 +4,12 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import type { AddressInfo } from 'node:net'
 import { Writable } from 'node:stream'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import type { Core, UID } from '@strapi/strapi'
 import { SITE_UID } from '../../server/src/constants/site'
+import { startWeightSite } from './weight-site'
 
 // The fixture types of test/strapi/app/src/api/: `story` (localised, editorial, with media, blocks,
 // a private, a password and a personal attribute), `label` (the inverse side of `story.labels`),
@@ -155,6 +157,37 @@ export async function exportArchive(strapi: Core.Strapi, request: object = {}): 
 }
 
 /**
+ * Runs `work` with a frontend that measures every page as light, because a story has blocks and
+ * publishing it asks the site's frontend for its weight (the budget). The site's `url` is put
+ * back afterwards, so the archive holds what it always held.
+ */
+async function withFrontend(strapi: Core.Strapi, site: string, work: () => Promise<void>) {
+  const { port } = strapi.server.httpServer.address() as AddressInfo
+  const token = (await strapi.service('admin::api-token').create({
+    name: 'export-suite-frontend',
+    type: 'full-access',
+    lifespan: null,
+  })) as { id: number; accessKey: string }
+  const slug = (await strapi.documents(SITE_UID as UID.ContentType).findOne({ documentId: site }))!
+    .slug as string
+  const frontend = await startWeightSite({
+    base: `http://127.0.0.1:${port}`,
+    apiToken: token.accessKey,
+    siteSlug: slug,
+  })
+  const sites = strapi.documents(SITE_UID as UID.ContentType)
+  const before = (await sites.findOne({ documentId: site }))!.url ?? null
+  await sites.update({ documentId: site, data: { url: frontend.origin } as never })
+  try {
+    await work()
+  } finally {
+    await sites.update({ documentId: site, data: { url: before } as never })
+    await frontend.close()
+    await strapi.service('admin::api-token').revoke(token.id)
+  }
+}
+
+/**
  * Fills the default site with one document of each fixture type, in two locales, with media,
  * and adds a second site with a note of its own.
  */
@@ -226,18 +259,20 @@ export async function buildFixtureSite(strapi: Core.Strapi): Promise<FixtureSite
     } as never,
   })
   const story = created.documentId
-  for (const to of ['in_review', 'published']) {
-    await strapi
-      .plugin('micelio')
-      .service('transitions')
-      .perform({
-        uid: STORY,
-        documentId: story,
-        locale: 'en',
-        to,
-        actor: { kind: 'user', id: adminId, roles: ['strapi-super-admin'] },
-      })
-  }
+  await withFrontend(strapi, site, async () => {
+    for (const to of ['in_review', 'published']) {
+      await strapi
+        .plugin('micelio')
+        .service('transitions')
+        .perform({
+          uid: STORY,
+          documentId: story,
+          locale: 'en',
+          to,
+          actor: { kind: 'user', id: adminId, roles: ['strapi-super-admin'] },
+        })
+    }
+  })
   await strapi
     .documents(STORY)
     .update({ documentId: story, locale: 'en', data: { title: 'Draft title' } as never })

@@ -33,6 +33,14 @@ module.exports = {
       // When the host check and the checks of other plugins run again on their own, as a cron rule.
       // `false` turns it off: they then run only with "Run again" in the status page.
       statusRefreshRule: '0 4 * * *', // the default: every day at 04:00 server time
+      // The weight, in kB, above which publishing a page with blocks is refused (docs/operate/budgets.md).
+      // A key replaces the default of that page type; `sites` sets a site's own, by its slug.
+      // `contentTypes` lists the types measured at publish, the ones the frontend previews.
+      budgets: {
+        contentTypes: ['api::page.page', 'api::article.article'], // the default
+        pageTypes: { landing: 60, standard: 120, 'long-read': 160 }, // the defaults
+        sites: {},
+      },
     },
   },
 }
