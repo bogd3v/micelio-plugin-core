@@ -19,6 +19,12 @@ export type PreviewShortcut = { action: 'device'; device: DeviceId } | { action:
 /** The minutes the page waits after it asked for a token before it asks for a new one: the grant lasts 15 minutes. */
 export const GRANT_REFRESH_MINUTES = 14
 
+/**
+ * The seconds the pane waits for `ready` after the frame has loaded before it says the preview did not
+ * start (ADR-0019, amendment of 2026-10-26). Long enough for a slow frontend that works.
+ */
+export const READY_WAIT_SECONDS = 10
+
 /** How often the page reads the document to notice a save made elsewhere, in milliseconds. */
 export const SAVE_POLL_MS = 4000
 
@@ -57,6 +63,45 @@ export function frameTarget(
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return undefined
   if (mode === 'static') parsed.searchParams.set('mode', 'static')
   return { src: parsed.toString(), origin: parsed.origin }
+}
+
+/** The part of a window the pane uses to send it to the preview: what `window.open` answers. */
+export interface PreviewTab {
+  /** The window that opened this one; cleared so a site without `Cross-Origin-Opener-Policy` cannot reach the admin. */
+  opener: unknown
+  location: { href: string }
+  close: () => void
+}
+
+/**
+ * Opens the preview in a window of its own, in a way a popup blocker lets through: the window is opened
+ * at once, in the click, and sent to the URL once `askForUrl` answers (ADR-0019, amendment of 2026-10-26).
+ *
+ * @remarks
+ * The window is opened without `noopener`, or the browser would hide it from the click, so `opener` is
+ * cleared right after. The site's `Cross-Origin-Opener-Policy` is a second barrier, and no message is
+ * sent to the window. The URL holds
+ * the single-use token and goes nowhere else.
+ *
+ * @param openWindow - Opens a blank window; `null` when the browser refused.
+ * @param askForUrl - Asks the token route for the URL the window loads.
+ * @returns `false` when the browser refused the window and nothing was asked.
+ * @throws What `askForUrl` threw, after closing the blank window.
+ */
+export async function openInNewTab(
+  openWindow: () => PreviewTab | null,
+  askForUrl: () => Promise<string>
+): Promise<boolean> {
+  const tab = openWindow()
+  if (!tab) return false
+  tab.opener = null
+  try {
+    tab.location.href = await askForUrl()
+  } catch (error) {
+    tab.close()
+    throw error
+  }
+  return true
 }
 
 // Inputs that take no text: a shortcut pressed on one of them is not typing.

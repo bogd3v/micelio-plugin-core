@@ -118,6 +118,9 @@
   "preview.blocked.body": "The Content Security Policy of the admin does not list {origin} in frame-src, so the browser refuses to show it. Add it to frame-src in the strapi::security config of the Strapi project and restart it. The host check on the Micelio status page reports it too.",
   "preview.upgrade.title": "Upgrade the frontend",
   "preview.upgrade.body": "The site's frontend speaks the preview protocol versions {versions}, and this plugin speaks none of them. The preview stays plain: it shows the draft and loads it again as a whole after each save.",
+  "preview.newTab": "Open in a new tab",
+  "preview.silent.title": "The preview did not start in this browser",
+  "preview.silent.body": "The site loaded in the frame but never said it was ready. Some browsers, Safari among them, do not send the site's cookie in a frame of another site, and an older frontend never says it. Open the preview in a new tab to see the saved draft there. The tab does not follow your saves: reload it to see them, and after 15 minutes press the button again.",
   "preview.error.entry": "The entry could not be loaded.",
   "preview.error.missing": "This entry does not exist.",
   "preview.error.unavailable": "This site has no preview: set its url in the Content Manager (Site), and make sure the frontend runs there.",
@@ -125,6 +128,7 @@
   "preview.error.unsupported": "This type has no preview: its entries do not belong to a site.",
   "preview.error.busy": "Too many preview requests. Wait a minute, then reload.",
   "preview.error.failed": "The preview could not load. Reload to try again.",
+  "preview.error.popup": "The browser blocked the new tab. Allow pop-ups for the admin and try again.",
   "action.preview": "Preview",
   "action.preview.unsaved": "Preview: save your changes first"
 }

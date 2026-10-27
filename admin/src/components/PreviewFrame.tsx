@@ -14,7 +14,7 @@ import {
   parsePreviewMessage,
   type PreviewMessage,
 } from '../../../contract/preview'
-import { SPOKEN_VERSIONS } from '../utils/previewPane'
+import { READY_WAIT_SECONDS, SPOKEN_VERSIONS } from '../utils/previewPane'
 
 /** Whether the frame said it speaks a version the admin speaks. */
 export type FrameProtocol = 'waiting' | 'ok' | 'upgrade'
@@ -27,6 +27,12 @@ export interface FrameState {
   versions: number[]
   /** A frame is loading, or the one in view is loading the draft again after a `load-draft`. */
   isBusy: boolean
+  /**
+   * The frame in view loaded and said no `ready` within `READY_WAIT_SECONDS`. The admin cannot read the
+   * frame, so a cookie the browser refused (a 404 page) and a frontend that never says `ready` look the
+   * same; a `ready` from any frame of the site clears it, and a reload keeps it until then.
+   */
+  isSilent: boolean
 }
 
 /** What the page can ask of the frame. */
@@ -54,6 +60,11 @@ interface PreviewFrameProps {
   onChange: (state: FrameState) => void
   /** The admin's Content Security Policy refused to frame `origin`. */
   onBlocked: () => void
+  /**
+   * A notice covers the frames: they leave the tab order and the accessibility tree, and still take
+   * messages, so a late `ready` can lift the cover.
+   */
+  isCovered?: boolean
 }
 
 type Phase = 'loading' | 'shown' | 'leaving'
@@ -62,6 +73,8 @@ interface Layer {
   key: number
   src: string
   phase: Phase
+  /** The frame fired `load`. */
+  isLoaded: boolean
 }
 
 // The slowest motion token (the Motion artboard): how long the old render takes to fade out. With
@@ -112,9 +125,11 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
   props: PreviewFrameProps,
   ref: Ref<PreviewFrameHandle>
 ) {
-  const { src, origin, documentId, locale, title, width, onChange, onBlocked } = props
+  const { src, origin, documentId, locale, title, width, onChange, onBlocked, isCovered } = props
   const [layers, setLayers] = useState<Layer[]>([])
   const [isUpdating, setIsUpdating] = useState(false)
+  // The origin whose frame stayed silent: a new frame of it (a reload) keeps the notice until one says `ready`.
+  const [silentOrigin, setSilentOrigin] = useState<string>()
   const [protocol, setProtocol] = useState<{
     key: number
     protocol: FrameProtocol
@@ -123,7 +138,9 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
   const frames = useRef(new Map<number, HTMLIFrameElement>())
   const protocols = useRef(new Map<number, { protocol: FrameProtocol; versions: number[] }>())
   const nextKey = useRef(0)
-  const shownKey = layers.find((layer) => layer.phase === 'shown')?.key
+  const shown = layers.find((layer) => layer.phase === 'shown')
+  const shownKey = shown?.key
+  const isShownLoaded = shown?.isLoaded === true
   const timers = useRef<number[]>([])
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
@@ -146,7 +163,7 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
     // The first frame is in view at once; a later one waits, hidden, until it has loaded.
     setLayers((current) => [
       ...current,
-      { key, src, phase: current.length === 0 ? 'shown' : 'loading' },
+      { key, src, phase: current.length === 0 ? 'shown' : 'loading', isLoaded: false },
     ])
   }, [src])
 
@@ -206,6 +223,7 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
       }
       protocols.current.set(key, state)
       setProtocol({ key, ...state })
+      setSilentOrigin(undefined)
       setIsUpdating(false)
     }
     window.addEventListener('message', onMessage)
@@ -237,12 +255,27 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
     [shownKey, origin, documentId, locale]
   )
 
+  // The clock starts when the frame in view has loaded, and a `ready` from it stops the wait.
+  const hasSaidReady = protocol.key === shownKey
+  useEffect(() => {
+    if (shownKey === undefined || !origin || !isShownLoaded || hasSaidReady) return
+    const timer = window.setTimeout(() => setSilentOrigin(origin), READY_WAIT_SECONDS * 1000)
+    return () => window.clearTimeout(timer)
+  }, [shownKey, isShownLoaded, hasSaidReady, origin])
+
   const inView =
     protocol.key === shownKey ? protocol : { protocol: 'waiting' as const, versions: NO_VERSIONS }
   const isBusy = isUpdating || layers.some((layer) => layer.phase === 'loading')
+  const isSilent =
+    shownKey !== undefined && origin !== undefined && silentOrigin === origin && !hasSaidReady
   useEffect(() => {
-    onChangeRef.current({ protocol: inView.protocol, versions: inView.versions, isBusy })
-  }, [inView.protocol, inView.versions, isBusy])
+    onChangeRef.current({
+      protocol: inView.protocol,
+      versions: inView.versions,
+      isBusy,
+      isSilent,
+    })
+  }, [inView.protocol, inView.versions, isBusy, isSilent])
 
   return (
     <Stage $width={width}>
@@ -252,6 +285,7 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
           $phase={layer.phase}
           src={layer.src}
           title={title}
+          {...(isCovered ? { inert: '', 'aria-hidden': true, tabIndex: -1 } : {})}
           sandbox="allow-scripts allow-same-origin allow-forms"
           referrerPolicy="no-referrer"
           ref={(frame: HTMLIFrameElement | null) => {
@@ -259,6 +293,9 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
             else frames.current.delete(layer.key)
           }}
           onLoad={() => {
+            setLayers((current) =>
+              current.map((item) => (item.key === layer.key ? { ...item, isLoaded: true } : item))
+            )
             reveal(layer.key)
             // The frame loaded the draft again after a `load-draft`.
             if (layer.phase === 'shown') setIsUpdating(false)

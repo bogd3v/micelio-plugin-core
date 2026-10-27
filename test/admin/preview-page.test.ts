@@ -8,6 +8,7 @@ import type { Core, UID } from '@strapi/strapi'
 import { chromium, type Browser, type BrowserContext, type Frame, type Page } from 'playwright'
 import en from '../../admin/src/translations/en.json'
 import es from '../../admin/src/translations/es.json'
+import { READY_WAIT_SECONDS } from '../../admin/src/utils/previewPane'
 import { PREVIEW_PERMISSION } from '../../server/src/constants/preview'
 import { SITE_UID } from '../../server/src/constants/site'
 import { cleanupStrapi, setupStrapi } from '../strapi/harness'
@@ -535,6 +536,304 @@ describe('the preview page in the admin', () => {
       const page = await openUpgrading()
       await deliver(page, shownFrame(page), ready({ locale: 'es' }))
       await expect(upgradeNotice(page).count()).resolves.toBe(1)
+    })
+  })
+
+  describe('when the frame never says ready', () => {
+    const silentTitle = en['preview.silent.title']
+
+    /** Lets `seconds` pass in the page, a second at a time so the timers it sets on the way run. */
+    async function pass(page: Page, seconds: number): Promise<void> {
+      for (let elapsed = 0; elapsed < seconds; elapsed++) {
+        await page.clock.fastForward(1000)
+        await page.waitForTimeout(100)
+      }
+    }
+
+    /** Records the order of `window.open` and the token request, and what `window.open` was given. */
+    const recordCalls = async (page: Page): Promise<void> => {
+      await page.addInitScript(`(() => {
+        window.calls = []
+        const open = window.open
+        window.open = function (...args) {
+          window.calls.push(['open', args])
+          return open.apply(this, args)
+        }
+        const request = window.fetch
+        window.fetch = function (input, ...rest) {
+          const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+          if (url.includes('/micelio/preview/token')) window.calls.push(['token'])
+          return request.call(this, input, ...rest)
+        }
+        const send = XMLHttpRequest.prototype.send
+        const begin = XMLHttpRequest.prototype.open
+        XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+          this.isToken = String(url).includes('/micelio/preview/token')
+          return begin.call(this, method, url, ...rest)
+        }
+        XMLHttpRequest.prototype.send = function (...args) {
+          if (this.isToken) window.calls.push(['token'])
+          return send.apply(this, args)
+        }
+      })()`)
+    }
+
+    async function silentPage(email?: string): Promise<Page> {
+      site.isSilent = true
+      const page = await open(email, {
+        beforePreview: async (opened) => {
+          await opened.clock.install()
+          await recordCalls(opened)
+        },
+      })
+      await frameOf(page).getByRole('heading', { level: 1 }).waitFor()
+      return page
+    }
+
+    afterEach(() => {
+      site.isSilent = false
+      site.isRefused = false
+    })
+
+    /** Posts a `ready` for the landing from inside the shown frame, as a frontend that is late would. */
+    async function sayReady(page: Page): Promise<void> {
+      const message = {
+        v: 1,
+        type: 'ready',
+        payload: { v: [1], documentId, locale: 'en', version: 'late' },
+      }
+      await page
+        .mainFrame()
+        .childFrames()
+        .at(-1)!
+        .evaluate(`window.parent.postMessage(${JSON.stringify(message)}, '*')`)
+    }
+
+    it('covers the frame with the notice and the button once the wait has passed', async () => {
+      const page = await silentPage()
+      await pass(page, READY_WAIT_SECONDS - 3)
+      await expect(page.getByText(silentTitle).count()).resolves.toBe(0)
+      await pass(page, 6)
+      await page.getByText(silentTitle).waitFor()
+      const notice = page.getByRole('status').filter({ hasText: silentTitle })
+      await expect(notice.textContent()).resolves.toContain(en['preview.silent.body'])
+      await expect(
+        notice.getByRole('button', { name: en['preview.newTab'] }).count()
+      ).resolves.toBe(1)
+      // The notice covers the frame: its box is the frame's box.
+      const [cover, stage] = await Promise.all([
+        notice.locator('..').boundingBox(),
+        page.locator('iframe[title^="Preview of"]').boundingBox(),
+      ])
+      expect(cover).toMatchObject({ x: stage?.x, y: stage?.y, width: stage?.width })
+      await expect(violationsOf(page)).resolves.toEqual([])
+    })
+
+    it('keeps the frame out of the tab order and the accessibility tree while the notice covers it', async () => {
+      const page = await silentPage()
+      const iframe = page.locator('iframe[title^="Preview of"]')
+      await expect(iframe.getAttribute('inert')).resolves.toBeNull()
+      await pass(page, READY_WAIT_SECONDS + 1)
+      await page.getByText(silentTitle).waitFor()
+      await expect(iframe.getAttribute('inert')).resolves.not.toBeNull()
+      await expect(iframe.getAttribute('aria-hidden')).resolves.toBe('true')
+      const notice = page.getByRole('status').filter({ hasText: silentTitle })
+      await notice.getByRole('button', { name: en['preview.newTab'] }).focus()
+      for (let tabs = 0; tabs < 4; tabs++) {
+        await page.keyboard.press('Tab')
+        await expect(page.evaluate('document.activeElement?.tagName')).resolves.not.toBe('IFRAME')
+      }
+    })
+
+    it('takes the notice away when the frame says ready late, and gives the frame back', async () => {
+      const page = await silentPage()
+      await pass(page, READY_WAIT_SECONDS + 1)
+      await page.getByText(silentTitle).waitFor()
+      await sayReady(page)
+      await page.getByText(silentTitle).waitFor({ state: 'detached' })
+      const iframe = page.locator('iframe[title^="Preview of"]')
+      await expect(iframe.getAttribute('inert')).resolves.toBeNull()
+      await expect(iframe.getAttribute('aria-hidden')).resolves.toBeNull()
+      // A frame that has said `ready` is told about a save, not loaded anew with a new token.
+      const exchanges = site.exchanges
+      try {
+        await saveDraft('Landing, late')
+        await eventually(() => frameOf(page).getByRole('heading', { level: 1 }).textContent()).toBe(
+          'Landing, late'
+        )
+        expect(site.exchanges).toBe(exchanges)
+        await expect(page.getByText(silentTitle).count()).resolves.toBe(0)
+      } finally {
+        await saveDraft('Landing')
+      }
+    })
+
+    it('takes the notice away when the frame says ready before the wait ends', async () => {
+      const page = await silentPage()
+      await pass(page, READY_WAIT_SECONDS - 3)
+      await sayReady(page)
+      await pass(page, 6)
+      await expect(page.getByText(silentTitle).count()).resolves.toBe(0)
+    })
+
+    it('keeps the notice when a save loads the preview anew and the new frame is silent too', async () => {
+      const page = await silentPage()
+      await pass(page, READY_WAIT_SECONDS + 1)
+      await page.getByText(silentTitle).waitFor()
+      const exchanges = site.exchanges
+      try {
+        await saveDraft('Landing, silent save')
+        await eventually(() => site.exchanges).toBe(exchanges + 1)
+        await eventually(() => frameOf(page).getByRole('heading', { level: 1 }).textContent()).toBe(
+          'Landing, silent save'
+        )
+        await expect(page.getByText(silentTitle).count()).resolves.toBe(1)
+      } finally {
+        await saveDraft('Landing')
+      }
+    })
+
+    it('covers a frame the site refused to show, as WebKit gets it without the cookie', async () => {
+      site.isRefused = true
+      const page = await open(undefined, { beforePreview: (opened) => opened.clock.install() })
+      // The refused document still fires `load` in the frame, which starts the wait.
+      for (let seconds = 0; seconds < 30; seconds++) {
+        if ((await page.getByText(silentTitle).count()) > 0) break
+        await pass(page, 1)
+      }
+      await page.getByText(silentTitle).waitFor({ timeout: 1000 })
+    })
+
+    it('shows neither when the frame says ready', async () => {
+      site.isSilent = false
+      const page = await open(undefined, { beforePreview: (opened) => opened.clock.install() })
+      await frameOf(page).locator('[data-island="scene"]').waitFor()
+      await pass(page, READY_WAIT_SECONDS + 5)
+      await expect(page.getByText(silentTitle).count()).resolves.toBe(0)
+      // The toolbar keeps its button for any engine.
+      await expect(page.getByRole('button', { name: en['preview.newTab'] }).count()).resolves.toBe(
+        1
+      )
+    })
+
+    it('says it in Spanish', async () => {
+      const page = await silentPage(SPANISH_EMAIL)
+      await pass(page, READY_WAIT_SECONDS + 1)
+      await page.getByText(es['preview.silent.title']).waitFor()
+      const shown = (await page.getByRole('main').textContent()) ?? ''
+      expect(shown).toContain(es['preview.silent.body'])
+      expect(shown).not.toContain(en['preview.silent.title'])
+      await expect(violationsOf(page)).resolves.toEqual([])
+    })
+
+    it('opens the draft in a window from the notice', async () => {
+      const page = await silentPage()
+      await pass(page, READY_WAIT_SECONDS + 1)
+      const notice = page.getByRole('status').filter({ hasText: silentTitle })
+      const [popup] = await Promise.all([
+        page.waitForEvent('popup'),
+        notice.getByRole('button', { name: en['preview.newTab'] }).click(),
+      ])
+      await popup.waitForURL(`${site.origin}/drafts/pages/${documentId}*`)
+      await expect(popup.getByRole('heading', { level: 1 }).textContent()).resolves.toBe('Landing')
+    })
+
+    describe('and the editor presses Open in a new tab', () => {
+      const button = (page: Page) => page.getByRole('button', { name: en['preview.newTab'] })
+
+      /** The requests the site gets, with the page that made each: listening starts before the click. */
+      function trackRequests(page: Page): { url: string; page: Page }[] {
+        const requested: { url: string; page: Page }[] = []
+        page.context().on('request', (request) => {
+          if (request.url().startsWith(`${site.origin}/_preview`)) {
+            requested.push({ url: request.url(), page: request.frame().page() })
+          }
+        })
+        return requested
+      }
+
+      it('opens one window in the click and sends it to the URL the token route answered', async () => {
+        const page = await open(undefined, { beforePreview: recordCalls })
+        await frameOf(page).locator('[data-island="scene"]').waitFor()
+        await page.evaluate('window.calls.length = 0')
+        const windows: Page[] = []
+        page.context().on('page', (opened) => windows.push(opened))
+        const requested = trackRequests(page)
+        const answered = page.waitForResponse(
+          (response) =>
+            response.url().includes('/micelio/preview/token') &&
+            response.request().method() === 'POST'
+        )
+        const [popup] = await Promise.all([page.waitForEvent('popup'), button(page).click()])
+        const url = ((await (await answered).json()) as { data: { url: string } }).data.url
+        await popup.waitForURL(`${site.origin}/drafts/pages/${documentId}*`)
+        await expect(popup.getByRole('heading', { level: 1 }).textContent()).resolves.toBe(
+          'Landing'
+        )
+        // The window opens first, with no feature that would hide it from the click; the token follows.
+        const calls = (await page.evaluate('window.calls')) as [string, unknown[]?][]
+        expect(calls.map(([kind]) => kind)).toEqual(['open', 'token'])
+        expect(calls[0]?.[1]).toEqual(['about:blank', '_blank'])
+        expect(windows).toHaveLength(1)
+        // The token travels in that window's address and nowhere in the admin's.
+        expect(requested.some((item) => item.url === url && item.page === popup)).toBe(true)
+        expect(page.url()).not.toContain('token=')
+      })
+
+      it('asks for the static alternatives when the toolbar says so', async () => {
+        const page = await open()
+        await frameOf(page).locator('[data-island="scene"]').waitFor()
+        await page.getByLabel('As static site').check()
+        await frameOf(page).locator('[data-static-alternative]').waitFor()
+        const requested = trackRequests(page)
+        const answered = page.waitForResponse(
+          (response) =>
+            response.url().includes('/micelio/preview/token') &&
+            response.request().method() === 'POST'
+        )
+        const [popup] = await Promise.all([page.waitForEvent('popup'), button(page).click()])
+        const url = new URL(((await (await answered).json()) as { data: { url: string } }).data.url)
+        url.searchParams.set('mode', 'static')
+        await popup.waitForURL(`${site.origin}/drafts/pages/${documentId}*mode=static*`)
+        expect(requested.some((item) => item.url === url.toString() && item.page === popup)).toBe(
+          true
+        )
+        await popup.locator('[data-static-alternative]').waitFor()
+      })
+
+      it('says so, and asks for no token, when the browser blocks the window', async () => {
+        const page = await open(undefined, {
+          beforePreview: async (opened) => {
+            await opened.addInitScript('window.open = () => null')
+          },
+        })
+        await frameOf(page).locator('[data-island="scene"]').waitFor()
+        let tokens = 0
+        page.on('request', (request) => {
+          if (request.url().includes('/micelio/preview/token')) tokens += 1
+        })
+        await button(page).click()
+        await page.getByRole('alert').filter({ hasText: en['preview.error.popup'] }).waitFor()
+        expect(tokens).toBe(0)
+      })
+
+      it('closes the window and shows the pane error when the token request fails', async () => {
+        const page = await open()
+        await frameOf(page).locator('[data-island="scene"]').waitFor()
+        await page.route('**/micelio/preview/token', (route) =>
+          route.fulfill({
+            status: 409,
+            contentType: 'application/json',
+            body: JSON.stringify({ error: { status: 409, name: 'ApplicationError', message: '' } }),
+          })
+        )
+        const [popup] = await Promise.all([page.waitForEvent('popup'), button(page).click()])
+        await popup.waitForEvent('close')
+        const alert = page.getByRole('alert').filter({ hasText: en['preview.error.unavailable'] })
+        await alert.waitFor()
+        // Nothing was sent to the site by the failed click.
+        expect(popup.url()).toBe('about:blank')
+      })
     })
   })
 

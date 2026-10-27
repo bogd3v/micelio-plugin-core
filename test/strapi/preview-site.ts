@@ -17,6 +17,13 @@ export interface PreviewSite {
   readonly draftLoads: number
   /** The envelope versions its page lists in `ready`; `[2]` plays a frontend this plugin cannot talk to. */
   speaks: number[]
+  /** Its page never posts `ready`, as a frame that gets the 404 page of a refused cookie, or an older frontend. */
+  isSilent: boolean
+  /**
+   * Its draft route answers what WebKit gets when it sends no cookie in the frame: a 404 that refuses to
+   * be framed (`frame-ancestors 'none'`, `X-Frame-Options: DENY`).
+   */
+  isRefused: boolean
   close: () => Promise<void>
 }
 
@@ -60,7 +67,8 @@ function pageHtml(
   draft: Draft,
   isStatic: boolean,
   cms: { base: string; adminOrigin: string },
-  speaks: number[]
+  speaks: number[],
+  isSilent: boolean
 ): string {
   const locale = draft.locale ?? null
   const ready = JSON.stringify({
@@ -85,7 +93,7 @@ window.addEventListener('message', (event) => {
       message.payload.documentId === ${JSON.stringify(draft.documentId)} &&
       message.payload.locale === ${JSON.stringify(locale)}) window.location.reload()
 })
-if (window.parent !== window) window.parent.postMessage(${ready}, adminOrigin)
+${isSilent ? '' : `if (window.parent !== window) window.parent.postMessage(${ready}, adminOrigin)`}
 </script>
 </body>
 </html>`
@@ -137,6 +145,15 @@ export async function startPreviewSite(): Promise<PreviewSite> {
       response.end()
       return
     }
+    if (site.isRefused && url.pathname.startsWith('/drafts/')) {
+      response
+        .writeHead(404, {
+          'Content-Security-Policy': "frame-ancestors 'none'",
+          'X-Frame-Options': 'DENY',
+        })
+        .end('Page not found')
+      return
+    }
     const draftPath = /^\/drafts\/pages\/([\w-]+)$/.exec(url.pathname)
     const grant = grantOf(request)
     if (!draftPath || !grant) {
@@ -158,7 +175,9 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     draftLoads++
     const { data } = (await answer.json()) as { data: Draft }
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-    response.end(pageHtml(data, url.searchParams.get('mode') === 'static', cms, site.speaks))
+    response.end(
+      pageHtml(data, url.searchParams.get('mode') === 'static', cms, site.speaks, site.isSilent)
+    )
   }
 
   const server = http.createServer(async (request, response) => {
@@ -173,6 +192,8 @@ export async function startPreviewSite(): Promise<PreviewSite> {
   const { port } = server.address() as AddressInfo
   const site: PreviewSite = {
     speaks: [1],
+    isSilent: false,
+    isRefused: false,
     origin: `http://127.0.0.1:${port}`,
     connect: (next) => {
       cms = next

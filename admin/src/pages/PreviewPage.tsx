@@ -1,13 +1,13 @@
 import { Badge, Box, Button, Flex, Link, Typography } from '@strapi/design-system'
 import { Layouts, Page, useAuth } from '@strapi/strapi/admin'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useIntl } from 'react-intl'
 import { NavLink, useHref, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import styled from 'styled-components'
 
 import { PreviewFrame, type FrameState, type PreviewFrameHandle } from '../components/PreviewFrame'
 import { useEntry, type Entry } from '../hooks/useEntry'
-import { usePreviewSource, type PreviewSourceError } from '../hooks/usePreviewSource'
+import { useNewTab, usePreviewSource, type PreviewSourceError } from '../hooks/usePreviewSource'
 import { useMessages } from '../messages'
 import { PREVIEW_PERMISSION } from '../permissions'
 import { DEVICES, previewShortcut, type DeviceId, type PreviewMode } from '../utils/previewPane'
@@ -46,8 +46,21 @@ const Select = styled.select`
 `
 
 const StageBox = styled.div`
+  position: relative;
   height: calc(100vh - 20rem);
   min-height: 32rem;
+`
+
+// Covers the frame while it is silent; the frame stays under it, so a late `ready` takes the cover away.
+const Cover = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: #ffffff;
 `
 
 const SHORTCUTS = {
@@ -79,6 +92,7 @@ function PreviewPane() {
     protocol: 'waiting',
     versions: [],
     isBusy: false,
+    isSilent: false,
   })
   const [isBlocked, setIsBlocked] = useState(false)
   const frame = useRef<PreviewFrameHandle>(null)
@@ -88,6 +102,7 @@ function PreviewPane() {
     entry ? { uid, documentId, locale: entry.locale } : undefined,
     mode
   )
+  const newTab = useNewTab(entry ? { uid, documentId, locale: entry.locale } : undefined, mode)
   const canEdit = permissions.some(
     ({ action, subject }) => action === 'plugin::content-manager.explorer.update' && subject === uid
   )
@@ -139,7 +154,9 @@ function PreviewPane() {
 
   const title = entry?.title ?? t('preview.title')
   const width = DEVICES.find((item) => item.id === device)?.width ?? 1280
-  const reason: PreviewSourceError | undefined = source.kind === 'error' ? source.reason : undefined
+  const reason: PreviewSourceError | undefined =
+    source.kind === 'error' ? source.reason : newTab.error
+  const isSilent = frameState.isSilent && !isBlocked && source.kind === 'ready'
   const isUpgradeNeeded = frameState.protocol === 'upgrade'
 
   return (
@@ -206,6 +223,15 @@ function PreviewPane() {
                 <Button type="button" size="S" variant="tertiary" onClick={reload}>
                   {t('preview.reload')}
                 </Button>
+                <Button
+                  type="button"
+                  size="S"
+                  variant="tertiary"
+                  disabled={!entry}
+                  onClick={() => void newTab.open()}
+                >
+                  {t('preview.newTab')}
+                </Button>
                 <Typography role="status" textColor="neutral700">
                   {frameState.isBusy ? t('preview.updating') : ''}
                 </Typography>
@@ -231,6 +257,19 @@ function PreviewPane() {
                 ) : null}
               </Box>
               <StageBox>
+                {isSilent ? (
+                  <Cover>
+                    <Notice
+                      role="status"
+                      title={t('preview.silent.title')}
+                      text={t('preview.silent.body')}
+                    >
+                      <Button type="button" onClick={() => void newTab.open()}>
+                        {t('preview.newTab')}
+                      </Button>
+                    </Notice>
+                  </Cover>
+                ) : null}
                 {isBlocked || source.kind === 'error' ? null : (
                   <PreviewFrame
                     ref={frame}
@@ -242,6 +281,7 @@ function PreviewPane() {
                     width={width}
                     onChange={setFrameState}
                     onBlocked={() => setIsBlocked(true)}
+                    isCovered={isSilent}
                   />
                 )}
               </StageBox>
@@ -295,7 +335,12 @@ function EntryColumn(props: {
   )
 }
 
-function Notice(props: { role: 'alert' | 'status'; title?: string; text: string }) {
+function Notice(props: {
+  role: 'alert' | 'status'
+  title?: string
+  text: string
+  children?: ReactNode
+}) {
   return (
     <Box
       role={props.role}
@@ -311,6 +356,7 @@ function Notice(props: { role: 'alert' | 'status'; title?: string; text: string 
         </Typography>
       ) : null}
       <Typography tag="p">{props.text}</Typography>
+      {props.children ? <Box marginTop={3}>{props.children}</Box> : null}
     </Box>
   )
 }
