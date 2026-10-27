@@ -11,6 +11,11 @@ export const SITE_ATTRIBUTE = 'site'
  * Add it to the `config.middlewares` of each content API route of a site-scoped type. It answers
  * `unknownSite` when the request names a site that does not exist, and otherwise scopes every read
  * and write of the request to its site.
+ *
+ * Give each action its own config object (a new literal or a call for every action), never one
+ * object shared by several: Strapi writes a route's `auth.scope` into the config it is given, so a
+ * shared object carries the scope of the first action onto the rest and a token that may only
+ * `find` can also create, update and delete (`docs/api.md`).
  */
 export const SITE_SCOPE_MIDDLEWARE = 'plugin::micelio.site-scope'
 
