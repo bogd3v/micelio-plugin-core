@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { PREVIEW_PROTOCOL_VERSION } from '../contract/preview'
 import {
   DEVICES,
+  GRANT_REFRESH_MINUTES,
+  READY_WAIT_SECONDS,
   SPOKEN_VERSIONS,
   frameTarget,
   isTypingTarget,
+  openInNewTab,
   previewShortcut,
+  type PreviewTab,
   type ShortcutEvent,
 } from '../admin/src/utils/previewPane'
 
@@ -86,5 +90,84 @@ describe('the shortcuts of the preview', () => {
 describe('the protocol the admin speaks', () => {
   it('speaks the envelope version of its own release', () => {
     expect(SPOKEN_VERSIONS).toEqual([PREVIEW_PROTOCOL_VERSION])
+  })
+})
+
+describe('the wait for ready', () => {
+  it('is 10 seconds: long enough for a slow frontend, short of the grant', () => {
+    expect(READY_WAIT_SECONDS).toBe(10)
+    expect(READY_WAIT_SECONDS).toBeLessThan(GRANT_REFRESH_MINUTES * 60)
+  })
+})
+
+describe('opening the preview in a new tab', () => {
+  const tabOf = (): PreviewTab & { closed: number; hrefs: string[] } => {
+    const hrefs: string[] = []
+    const tab = {
+      closed: 0,
+      hrefs,
+      opener: 'the admin' as unknown,
+      location: {
+        set href(value: string) {
+          hrefs.push(value)
+        },
+        get href() {
+          return hrefs.at(-1) ?? 'about:blank'
+        },
+      },
+      close() {
+        tab.closed += 1
+      },
+    }
+    return tab
+  }
+
+  it('opens the window before it asks for the URL, then sends the window there', async () => {
+    const tab = tabOf()
+    const steps: string[] = []
+    const isOpened = await openInNewTab(
+      () => {
+        steps.push('open')
+        return tab
+      },
+      async () => {
+        steps.push('ask')
+        return 'https://example.com/_preview?token=abc'
+      }
+    )
+    expect(isOpened).toBe(true)
+    expect(steps).toEqual(['open', 'ask'])
+    expect(tab.hrefs).toEqual(['https://example.com/_preview?token=abc'])
+    expect(tab.closed).toBe(0)
+    expect(tab.opener).toBeNull()
+  })
+
+  it('asks for nothing when the browser refuses the window', async () => {
+    let asked = 0
+    const isOpened = await openInNewTab(
+      () => null,
+      async () => {
+        asked += 1
+        return 'https://example.com/'
+      }
+    )
+    expect(isOpened).toBe(false)
+    expect(asked).toBe(0)
+  })
+
+  it('closes the window and passes the error on when the token request fails', async () => {
+    const tab = tabOf()
+    const failure = new Error('refused')
+    await expect(
+      openInNewTab(
+        () => tab,
+        async () => {
+          throw failure
+        }
+      )
+    ).rejects.toBe(failure)
+    expect(tab.closed).toBe(1)
+    expect(tab.hrefs).toEqual([])
+    expect(tab.opener).toBeNull()
   })
 })

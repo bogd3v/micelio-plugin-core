@@ -118,6 +118,9 @@
   "preview.blocked.body": "La política de seguridad de contenido del panel no incluye {origin} en frame-src, así que el navegador se niega a mostrarlo. Añádelo a frame-src en la configuración de strapi::security del proyecto Strapi y reinícialo. La comprobación del host en la página de estado de Micelio también lo indica.",
   "preview.upgrade.title": "Actualiza el frontend",
   "preview.upgrade.body": "El frontend del sitio habla las versiones {versions} del protocolo de vista previa y este plugin no habla ninguna. La vista previa sigue siendo simple: muestra el borrador y lo carga de nuevo entero tras cada guardado.",
+  "preview.newTab": "Abrir en una pestaña nueva",
+  "preview.silent.title": "La vista previa no arrancó en este navegador",
+  "preview.silent.body": "El sitio cargó en el marco pero nunca avisó de que estaba listo. Algunos navegadores, Safari entre ellos, no envían la cookie del sitio en un marco de otro sitio, y un frontend antiguo nunca avisa. Abre la vista previa en una pestaña nueva para ver allí el borrador guardado. La pestaña no sigue tus guardados: recárgala para verlos y, pasados 15 minutos, pulsa el botón de nuevo.",
   "preview.error.entry": "No se pudo cargar la entrada.",
   "preview.error.missing": "Esta entrada no existe.",
   "preview.error.unavailable": "Este sitio no tiene vista previa: define su url en el Gestor de contenido (Sitio) y comprueba que el frontend funciona allí.",
@@ -125,6 +128,7 @@
   "preview.error.unsupported": "Este tipo no tiene vista previa: sus entradas no pertenecen a un sitio.",
   "preview.error.busy": "Demasiadas solicitudes de vista previa. Espera un minuto y recarga.",
   "preview.error.failed": "No se pudo cargar la vista previa. Recarga para intentarlo de nuevo.",
+  "preview.error.popup": "El navegador bloqueó la pestaña nueva. Permite las ventanas emergentes del panel e inténtalo de nuevo.",
   "action.preview": "Vista previa",
   "action.preview.unsaved": "Vista previa: guarda primero los cambios"
 }
