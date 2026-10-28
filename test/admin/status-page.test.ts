@@ -8,7 +8,7 @@ import en from '../../admin/src/translations/en.json'
 import es from '../../admin/src/translations/es.json'
 import packageJson from '../../package.json'
 import { SITE_UID } from '../../server/src/constants/site'
-import { closedOrigin, startFrontend, type FrontendStub } from '../strapi/frontend'
+import { startFrontend, type FrontendStub } from '../strapi/frontend'
 import { cleanupStrapi, setupStrapi } from '../strapi/harness'
 
 const EMAIL = 'admin@example.com'
@@ -79,11 +79,17 @@ describe('the status page in the admin', () => {
     const { port } = strapi.server.httpServer.address() as AddressInfo
     base = `http://127.0.0.1:${port}`
     // The blog's frontend is down when the check runs and up when the page loads, as at a boot.
-    const blogOrigin = await closedOrigin()
+    // Both stubs are open until both ports are known: two `closedOrigin()` calls in a row can give
+    // the same port, and then the two sites share one frontend and none is "Not available".
+    const blogStub = await startFrontend()
+    const docsStub = await startFrontend()
+    const blogOrigin = blogStub.origin
+    const docsOrigin = docsStub.origin
+    await Promise.all([blogStub.close(), docsStub.close()])
     const sites = strapi.documents(SITE_UID as UID.ContentType)
     for (const [slug, url] of [
       ['blog', blogOrigin],
-      ['docs', await closedOrigin()],
+      ['docs', docsOrigin],
     ]) {
       await sites.create({
         data: {

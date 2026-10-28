@@ -177,6 +177,9 @@ describe('the sub-navigation in the admin', () => {
     const page = await open('admin-es@example.com')
     const nav = page.getByRole('navigation', { name: 'Secciones de Micelio' })
     await nav.getByRole('link', { name: 'Estado' }).waitFor()
+    // The Site group holds only the sibling plugin's item, which arrives with its own request after
+    // the core's: the group exists once that item does.
+    await nav.getByRole('link', { name: 'Página de prueba' }).waitFor()
     for (const heading of ['Resumen', 'Sitio', 'Acerca de']) {
       await expect(nav.getByText(heading, { exact: true }).count(), heading).resolves.toBe(1)
     }
