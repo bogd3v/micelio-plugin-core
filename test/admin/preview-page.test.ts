@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import fs from 'node:fs'
 import type { AddressInfo } from 'node:net'
 import os from 'node:os'
@@ -855,7 +855,9 @@ describe('the preview page in the admin', () => {
           })
         )
         const [popup] = await Promise.all([page.waitForEvent('popup'), button(page).click()])
-        await popup.waitForEvent('close')
+        // Polled: the window may close before the click settles, and `waitForEvent('close')` on a
+        // page that has already closed never resolves.
+        await expect.poll(() => popup.isClosed()).toBe(true)
         const alert = page.getByRole('alert').filter({ hasText: en['preview.error.unavailable'] })
         await alert.waitFor()
         // Nothing was sent to the site by the failed click.
@@ -1228,12 +1230,18 @@ describe('the preview page in the admin', () => {
         // The save did not render the draft on the site by itself.
         await expect(lineOf(page).textContent()).resolves.toBe('10 kB of 120 kB')
         expect(site.weight.requests).toEqual([])
+        // The line shows the server's time of the measurement to the second: the server's clock
+        // (this process's `Date`, still running) moves on, so the second measurement is told apart
+        // from the first however fast the save and the request are.
+        vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+        vi.advanceTimersByTime(2000)
         await page.getByRole('button', { name: en['cost.measureAgain'] }).click()
         await eventually(() => lineOf(page).textContent()).toBe('12 kB of 120 kB')
         const second = await stale.textContent()
         expect(second).not.toBe(first)
         expect(second).toContain(en['cost.panel.saved'])
       } finally {
+        vi.useRealTimers()
         await saveDraft('Priced landing', 'en', { uid: LANDING_UID, documentId: landingId })
       }
     })
