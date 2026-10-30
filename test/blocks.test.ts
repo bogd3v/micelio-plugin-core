@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { BLOCKS, blockContentSchema, type Block } from '../contract/blocks'
+import { OPTION_NAMES } from '../contract/options'
 import { strapiComponents, type StrapiAttributes } from '../contract/strapi'
 import fixture from './fixtures/micelio-cms-v0.4.0-components.json'
 
@@ -103,7 +104,7 @@ describe('the block catalogue', () => {
   it.each(CATALOGUE)(
     '%s matches %s of micelio-cms v0.4.0, with every part it nests',
     (id, component) => {
-      const described = strapiComponents(blockOf(id)).components
+      const described = withoutVocabulary(strapiComponents(blockOf(id)).components, component)
       expect(described[component]).toBeDefined()
       for (const [uid, attributes] of Object.entries(described)) {
         expect(components[uid], `${uid} is in the fixture`).toBeDefined()
@@ -161,6 +162,20 @@ describe('the block catalogue', () => {
     ).toBe(false)
   })
 })
+
+// The options of the vocabulary (contract/options.ts) are new in the catalogue: the components of
+// micelio-cms v0.4.0 have only `variant`, and micelio-cms adds the rest in its own change (standard,
+// section 6: CMS first). test/block-options.test.ts covers them; everything else is compared as is.
+function withoutVocabulary(
+  components: Record<string, StrapiAttributes>,
+  uid: string
+): Record<string, StrapiAttributes> {
+  const names = new Set<string>(OPTION_NAMES)
+  return {
+    ...components,
+    [uid]: Object.fromEntries(Object.entries(components[uid]).filter(([name]) => !names.has(name))),
+  }
+}
 
 function blockOf(id: string): Block {
   const block = BLOCKS.find((entry) => entry.id === id)

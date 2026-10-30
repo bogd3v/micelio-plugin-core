@@ -3,6 +3,7 @@
 // it, and `npm run lint:blocks` fails when either drifts. Changing an entry follows ADR-0018,
 // section 2.
 import { z } from 'zod'
+import { OPTIONS, OPTION_NAMES, valuesFor, type OptionName } from './options'
 import {
   boolean,
   component,
@@ -18,8 +19,8 @@ import {
 } from './fields'
 
 /** A presentation option: a closed set of values from the theme contract and its default. */
-interface BlockOption {
-  /** The values an editor may pick, the default first. */
+export interface BlockOption {
+  /** The values an editor may pick, in the order a theme lists them. */
   values: readonly [string, ...string[]]
   default: string
 }
@@ -58,12 +59,18 @@ export interface Block {
   group: BlockGroup
   /** The Strapi component that stores the block's content, with its parts nested. */
   schema: Part
-  /** The presentation options. Today only `variant`, stored inside the component (ADR-0018). */
-  options: { variant?: BlockOption }
+  /**
+   * The presentation options the block exposes: `variant` and names of the vocabulary
+   * (`contract/options.ts`). Each is stored inside the component (ADR-0018).
+   */
+  options: BlockOptions
   cost: BlockCost
   /** What the block renders with no JavaScript: before hydration, and always in static builds. */
   static: string
 }
+
+/** The options a block exposes, by name. */
+export type BlockOptions = { variant?: BlockOption } & { [Name in OptionName]?: BlockOption }
 
 /** Where a block can be used today. */
 type BlockGroup = 'section' | 'article'
@@ -153,7 +160,10 @@ export const BLOCKS: readonly Block[] = [
       secondaryLink: component(link),
       media: media(['images', 'videos']),
     }),
-    options: { variant: variant('centered', 'split', 'full-bleed') },
+    options: {
+      variant: variant('centered', 'split', 'full-bleed'),
+      ...presentation('hero', 'section', 'layout', 'tone', 'height'),
+    },
     cost: { css: 737, js: 1556, island: null },
     static: ITSELF,
   },
@@ -165,7 +175,10 @@ export const BLOCKS: readonly Block[] = [
       text: text(),
       items: component(featureItem, { repeatable: true, min: 3, max: 6 }),
     }),
-    options: { variant: variant('grid', 'list', 'bento') },
+    options: {
+      variant: variant('grid', 'list', 'bento'),
+      ...presentation('feature-grid', 'section', 'columns', 'density'),
+    },
     cost: { css: 643, js: 1350, island: null },
     static: ITSELF,
   },
@@ -178,7 +191,10 @@ export const BLOCKS: readonly Block[] = [
       media: media(['images', 'videos'], { required: true }),
       link: component(link),
     }),
-    options: { variant: variant('left', 'right', 'stacked') },
+    options: {
+      variant: variant('left', 'right', 'stacked'),
+      ...presentation('media-showcase', 'section', 'ratio'),
+    },
     cost: { css: 214, js: 1423, island: null },
     static: 'Itself: the block needs no JavaScript, and a video shows its native controls.',
   },
@@ -189,7 +205,10 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       items: component(stat, { repeatable: true, min: 2, max: 4 }),
     }),
-    options: { variant: variant('row', 'cards') },
+    options: {
+      variant: variant('row', 'cards'),
+      ...presentation('stats', 'section', 'columns', 'align', 'tone'),
+    },
     cost: { css: 527, js: 540, island: null },
     static: ITSELF,
   },
@@ -200,7 +219,10 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       logos: component(logo, { repeatable: true, min: 1 }),
     }),
-    options: { variant: variant('row', 'marquee') },
+    options: {
+      variant: variant('row', 'marquee'),
+      ...presentation('logo-cloud', 'section', 'columns', 'density'),
+    },
     cost: { css: 497, js: 1446, island: null },
     static:
       'Itself: the marquee is CSS only, and it stops under reduced motion and when a logo is a link.',
@@ -212,7 +234,10 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       items: component(testimonial, { repeatable: true, min: 1 }),
     }),
-    options: { variant: variant('single', 'grid') },
+    options: {
+      variant: variant('single', 'grid'),
+      ...presentation('testimonials', 'section', 'layout', 'density'),
+    },
     cost: { css: 599, js: 1482, island: null },
     static: ITSELF,
   },
@@ -224,7 +249,10 @@ export const BLOCKS: readonly Block[] = [
       text: text(),
       plans: component(plan, { repeatable: true, min: 1 }),
     }),
-    options: { variant: variant('cards', 'table') },
+    options: {
+      variant: variant('cards', 'table'),
+      ...presentation('pricing', 'section', 'columns'),
+    },
     cost: { css: 805, js: 1186, island: null },
     static: ITSELF,
   },
@@ -235,7 +263,10 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       items: component(faqItem, { repeatable: true, min: 1 }),
     }),
-    options: { variant: variant('list', 'two-columns') },
+    options: {
+      variant: variant('list', 'two-columns'),
+      ...presentation('faq', 'section', 'density'),
+    },
     cost: { css: 527, js: 525, island: null },
     static: 'Itself: the answers open and close with the native `<details>` element.',
   },
@@ -248,7 +279,10 @@ export const BLOCKS: readonly Block[] = [
       primaryLink: component(link),
       secondaryLink: component(link),
     }),
-    options: { variant: variant('banner', 'card') },
+    options: {
+      variant: variant('banner', 'card'),
+      ...presentation('cta', 'section', 'layout', 'align', 'tone'),
+    },
     cost: { css: 483, js: 803, island: null },
     static: ITSELF,
   },
@@ -261,7 +295,10 @@ export const BLOCKS: readonly Block[] = [
       tag: relation('api::tag.tag'),
       count: integer({ required: true, min: 1, max: 12, default: 3 }),
     }),
-    options: { variant: variant('cards', 'list') },
+    options: {
+      variant: variant('cards', 'list'),
+      ...presentation('post-list', 'section', 'density'),
+    },
     cost: { css: 376, js: 768, island: null },
     static: 'Itself: the posts are rendered with the page.',
   },
@@ -273,7 +310,10 @@ export const BLOCKS: readonly Block[] = [
       text: text(),
       buttonLabel: string(),
     }),
-    options: { variant: variant('inline', 'card') },
+    options: {
+      variant: variant('inline', 'card'),
+      ...presentation('newsletter', 'section', 'align', 'tone'),
+    },
     cost: { css: 763, js: 1822, island: null },
     static:
       'In static builds, the static form (`MycNewsletterStatic`). In dynamic mode the form submits ' +
@@ -286,7 +326,7 @@ export const BLOCKS: readonly Block[] = [
     schema: part('section.rich-text', {
       body: richtext({ required: true }),
     }),
-    options: {},
+    options: { ...presentation('rich-text', 'section', 'width') },
     cost: { css: 1940, js: 226, island: null },
     static: ITSELF,
   },
@@ -297,7 +337,10 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       images: media(['images'], { required: true, multiple: true }),
     }),
-    options: { variant: variant('grid', 'masonry') },
+    options: {
+      variant: variant('grid', 'masonry'),
+      ...presentation('gallery', 'section', 'width', 'density'),
+    },
     cost: { css: 425, js: 1251, island: null },
     static: ITSELF,
   },
@@ -311,7 +354,10 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       text: text(),
     }),
-    options: { variant: variant('background', 'inline') },
+    options: {
+      variant: variant('background', 'inline'),
+      ...presentation('scene', 'section', 'height'),
+    },
     cost: { css: 601, js: 1303, island: { id: 'scene', budget: 'scene', js: 154900 } },
     static: 'The required poster, with the alt text of the scene.',
   },
@@ -334,7 +380,7 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       body: text(),
     }),
-    options: {},
+    options: { ...presentation('quote', 'article', 'width', 'align') },
     cost: { css: 293, js: 259, island: null },
     static: ITSELF,
   },
@@ -346,7 +392,7 @@ export const BLOCKS: readonly Block[] = [
       caption: text(),
       credit: component(imageCredit),
     }),
-    options: {},
+    options: { ...presentation('media', 'article', 'width', 'ratio') },
     cost: { css: 543, js: 1400, island: null },
     static: ITSELF,
   },
@@ -357,7 +403,7 @@ export const BLOCKS: readonly Block[] = [
       items: component(slide, { repeatable: true }),
       files: media(['images'], { multiple: true }),
     }),
-    options: {},
+    options: { ...presentation('slider', 'article', 'ratio') },
     cost: { css: 1545, js: 2615, island: null },
     static: 'The first slide, with its caption and credit; the controls work once hydrated.',
   },
@@ -371,21 +417,48 @@ export const BLOCKS: readonly Block[] = [
       setup: text({ maxLength: 20000 }),
       caption: text(),
     }),
-    options: {},
+    options: { ...presentation('playground', 'article', 'height') },
     cost: { css: 633, js: 1758, island: { id: 'playground', budget: 'playground', js: 67645 } },
     static: 'The highlighted code and its expected output.',
   },
 ]
 
+/**
+ * The options of a block as the content API answers them: each one's name with its values and
+ * default, `variant` first and then the vocabulary's order.
+ */
+export function optionsOf(block: Block): [string, BlockOption][] {
+  return (['variant', ...OPTION_NAMES] as const).flatMap((name) => {
+    const option = block.options[name]
+    return option ? [[name, option] as [string, BlockOption]] : []
+  })
+}
+
 /** The content of one block as the content API answers it, options included, for validation. */
 export function blockContentSchema(block: Block): z.ZodObject {
-  const variant = block.options.variant
-  if (!variant) return block.schema.fields
-  return block.schema.fields.extend({
-    variant: enumeration(variant.values, { required: true, default: variant.default }),
-  })
+  const options = optionsOf(block)
+  if (!options.length) return block.schema.fields
+  return block.schema.fields.extend(
+    Object.fromEntries(
+      options.map(([name, option]) => [
+        name,
+        // `variant` is required in Strapi; the vocabulary's options are optional and have a default.
+        enumeration(option.values, { required: name === 'variant', default: option.default }),
+      ])
+    )
+  )
 }
 
 function variant(...values: [string, ...string[]]): BlockOption {
   return { values, default: values[0] }
+}
+
+// The vocabulary's options a block exposes, with the values the vocabulary lets this block offer and its default.
+function presentation(id: string, group: BlockGroup, ...names: OptionName[]): BlockOptions {
+  return Object.fromEntries(
+    names.map((name) => [
+      name,
+      { values: valuesFor(name, { id, group }), default: OPTIONS[name].default },
+    ])
+  )
 }

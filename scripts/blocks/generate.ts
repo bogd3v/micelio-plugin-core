@@ -5,7 +5,7 @@
 //   npm run lint:blocks       # the same, as a check
 import { readFileSync, writeFileSync } from 'node:fs'
 import prettier from 'prettier'
-import { BLOCKS, type Block } from '../../contract/blocks'
+import { BLOCKS, optionsOf, type Block } from '../../contract/blocks'
 import { blockJsonSchema, strapiComponents, type StrapiAttribute } from '../../contract/strapi'
 
 const SCHEMA_FILE = new URL('../../contract/blocks.schema.json', import.meta.url)
@@ -77,24 +77,32 @@ function summaryTable(): string {
   const rows = BLOCKS.map((block) => {
     const island = block.cost.island ? `\`${block.cost.island.id}\`` : 'No'
     const variant = block.options.variant?.values.map((value) => `\`${value}\``).join(', ') ?? ''
-    return `| \`${block.id}\` | \`${block.schema.component}\` | ${variant} | ${block.cost.css} | ${block.cost.js} | ${island} |`
+    const options = optionsOf(block)
+      .filter(([name]) => name !== 'variant')
+      .map(([name]) => `\`${name}\``)
+      .join(', ')
+    return `| \`${block.id}\` | \`${block.schema.component}\` | ${variant} | ${options} | ${block.cost.css} | ${block.cost.js} | ${island} |`
   })
   return [
-    '| id | Component | `variant` (default first) | CSS (B gzip) | JS (B gzip) | Island |',
-    '| --- | --- | --- | --- | --- | --- |',
+    '| id | Component | `variant` (default first) | Other options | CSS (B gzip) | JS (B gzip) | Island |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
     ...rows,
   ].join('\n')
 }
 
 function blockSection(block: Block, attributes: Record<string, StrapiAttribute>): string {
+  const options = optionsOf(block)
   const content = Object.fromEntries(
-    Object.entries(attributes).filter(([name]) => name !== 'variant')
+    Object.entries(attributes).filter(([name]) => !options.some(([option]) => option === name))
   )
-  const variant = block.options.variant
   const island = block.cost.island
   const lines = [
     `- **Component:** \`${block.schema.component}\` (${block.group === 'section' ? 'page sections' : 'article and About blocks'})`,
-    `- **Options:** ${variant ? `\`variant\`: ${variant.values.map((value) => `\`${value}\``).join(', ')}; default \`${variant.default}\`` : 'none'}`,
+    `- **Options:**${options.length ? '' : ' none'}`,
+    ...options.map(
+      ([name, option]) =>
+        `  - \`${name}\`: ${option.values.map((value) => `\`${value}\``).join(', ')}; default \`${option.default}\``
+    ),
     `- **Cost:** ${block.cost.css} B of CSS and ${block.cost.js} B of JS, gzip${island ? `; the \`${island.id}\` island (budget \`${island.budget}\`) loads ${island.js} B of JS, gzip, once used` : ''}`,
     `- **Static:** ${block.static}`,
   ]

@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_section_feature_grids",
+  "info": {
+    "displayName": "Feature grid",
+    "icon": "apps",
+    "description": "The `feature-grid` block's options as micelio-cms will store them, for the block options suite; the items are left out. `width` is declared on purpose: the block does not expose it"
+  },
+  "options": {},
+  "attributes": {
+    "title": { "type": "string" },
+    "columns": { "type": "enumeration", "enum": ["2", "3", "4", "6"], "default": "3" },
+    "density": {
+      "type": "enumeration",
+      "enum": ["comfortable", "compact"],
+      "default": "comfortable"
+    },
+    "width": { "type": "enumeration", "enum": ["prose", "wide", "full"], "default": "prose" }
+  }
+}

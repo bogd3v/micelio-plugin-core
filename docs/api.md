@@ -134,6 +134,23 @@ A `site` that names no site answers `404` with `application/problem+json` (RFC 9
 
 A client branches on `code`, never on `detail`. The same code answers when the request names no site and no site is the default.
 
+A save whose blocks carry an option the catalogue does not allow (`create` or `update` of a type with a dynamic zone, on a route that has the `site-scope` middleware) answers `400` with `application/problem+json` and the code `blockOptionInvalid`; it writes nothing:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "The feature-grid block does not allow that value for columns; allowed: 2, 3, 4",
+  "code": "blockOptionInvalid",
+  "block": "feature-grid",
+  "option": "columns",
+  "allowed": ["2", "3", "4"]
+}
+```
+
+`allowed` is empty when the block does not expose the option. Where a route has no `site-scope` middleware (the Content Manager's, for one), Strapi answers its own `ValidationError` with the same members in `error.details`.
+
 ## Sites
 
 - `hosts` is a list of host names, stored in lower case: no scheme, port or path. Two sites cannot share a host name.
