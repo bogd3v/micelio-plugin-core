@@ -95,7 +95,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@jridgewell/sourcemap-codec": "^1.6.0",
-    "@micelio/eslint-config": "^0.1.2",
+    "@micelio/eslint-config": "^0.2.0",
     "@micelio/prettier-config": "^0.1.0",
     "@micelio/tsconfig": "^0.1.0",
     "@strapi/design-system": "^2.2.4",
