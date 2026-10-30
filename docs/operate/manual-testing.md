@@ -74,6 +74,37 @@ The stack needs a frontend with the weight route (bogd3v/micelio#730) and its an
 6. Point the site at nothing: in Content Manager → Site, set the default site's **url** to `http://localhost:3999` and publish another page (or republish the landing, `PUBLISH <landing documentId> published`): `409 previewUnavailable`, and the page keeps its state. Put `http://localhost:3000` back. (Stopping the frontend does the same, but restart it with `docker compose -f compose.dev.yml restart frontend`, which also restarts the forward that lives in its network.)
 7. Raise the budget: in `docker/cms/config/plugins.js` add `config: { budgets: { pageTypes: { standard: 200 } } }` to `micelio`, wait for Strapi to restart and publish the heavy page: `200`.
 
+## Try the block options
+
+The catalogue's presentation options (`contract/options.ts`: `layout`, `width`, `columns`, `density`, `align`, `tone`, `ratio` and `height`) are stored in the block's component and checked when a page is saved. `docker/cms/dev.mjs` adds the ones `micelio-cms` v0.4.0 does not store yet to the sections' schemas it writes, so the Content Manager shows them. A bad value is refused with `blockOptionInvalid`, as a problem detail on the content API.
+
+1. Create the first admin, as above. In Settings → API Tokens create a token of type **Full access** and keep it out of any file: `read -rs TOKEN && export TOKEN` (paste it, press Enter).
+2. In Content Manager → Page, create a page, add a **Feature grid** section and open it: next to **Variant** it has **Columns** (2, 3, 4), **Density**; a **Rich text** section has **Width** (prose, wide, full); a **Hero** has **Layout**, **Tone** and **Height**, and no **Columns**.
+3. Save with `columns: 3` through the API: it is accepted. (`?status=draft`: a page is editorial, and the content API saves a draft only when asked to.)
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST 'localhost:1337/api/pages?status=draft' \
+     -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+     -d '{"data":{"title":"Options","slug":"options","sections":[{"__component":"section.feature-grid","columns":3}]}}'
+   # 201
+   ```
+
+4. Save with `columns: 6` on the same block: refused, and no page is created.
+
+   ```bash
+   curl -s -i -X POST 'localhost:1337/api/pages?status=draft' \
+     -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+     -d '{"data":{"title":"Too many","slug":"too-many","sections":[{"__component":"section.feature-grid","columns":6}]}}'
+   # HTTP/1.1 400, content-type: application/problem+json
+   # "code":"blockOptionInvalid","block":"feature-grid","option":"columns","allowed":["2","3","4"]
+   ```
+
+   The Content Manager's own save route answers the same refusal as Strapi's `ValidationError`, with the code in `error.details`.
+
+5. `columns: 6` is for the logo cloud: the same call with `"__component":"section.logo-cloud","columns":6` is `201`. `"__component":"section.cta","align":"end"` is `400` `blockOptionInvalid` with `"allowed":["start","center"]`. `"__component":"section.hero","columns":3` is Strapi's own `400` ("Invalid key columns"): the hero does not expose `columns` and the stack's component does not declare it; the plugin answers `blockOptionInvalid` with `"allowed":[]` where a component declares an option its block does not expose (`npm test` covers it).
+6. In Content Manager → Page, open the first page, change **Columns** to 4 and **Save**: it saves.
+7. Articles never take `width: full`. Send the same call to `localhost:1337/api/articles?status=draft` with `{"data":{"title":"Wide","blocks":[{"__component":"shared.media","width":"full"}]}}`: `400`, `"block":"media"`, `"option":"width"`, `"allowed":["prose","wide"]`. With `"width":"wide"` it is `201`. A **Rich text** section of a page takes `"width":"full"`.
+
 ## Try the preview with curl
 
 To see what the routes do, one by one, play the frontend with `curl`. The seed gives you a custom API token for it, `PREVIEW_API_TOKEN` in `.env.docker`; load it without printing the file. A `.env.docker` written before the preview existed lacks it: run `npm run dev:docker -- down`, delete `.env.docker` and start again.

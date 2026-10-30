@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_shared_medias",
+  "info": {
+    "displayName": "Media",
+    "icon": "picture",
+    "description": "The `media` block (an article block) with its `width` and `ratio` as micelio-cms will store them, for the block options suite; the file is left out"
+  },
+  "options": {},
+  "attributes": {
+    "caption": { "type": "text" },
+    "width": { "type": "enumeration", "enum": ["prose", "wide", "full"], "default": "prose" },
+    "ratio": { "type": "enumeration", "enum": ["16:9", "4:3", "1:1", "auto"], "default": "16:9" }
+  }
+}

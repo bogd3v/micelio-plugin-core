@@ -15,6 +15,8 @@ const RELOAD_FILE = join(PROJECT, 'reload.txt')
 // The components of micelio-cms the block catalogue is tested against (test/fixtures/). The page
 // fixture lists them all because the frontend populates every section it knows.
 const COMPONENTS_FIXTURE = join(PLUGIN, 'test', 'fixtures', 'micelio-cms-v0.4.0-components.json')
+// The catalogue's JSON Schema: its options (`contract/options.ts`) that v0.4.0 does not store yet.
+const CATALOGUE_SCHEMA = join(PLUGIN, 'contract', 'blocks.schema.json')
 const BUNDLES = [join(DIST, 'server', 'index.js'), join(DIST, 'admin', 'index.js')]
 
 // A rebuild writes `dist/` in several steps (bundles, then declarations): Strapi loads it only after this long without a write.
@@ -68,9 +70,27 @@ const TAXONOMY_UIDS = {
   'api::tag.tag': 'plugin::micelio.tag',
 }
 
+/**
+ * The attributes the catalogue gives a block that the fixture's component lacks: the options of the
+ * vocabulary, as the enumerations micelio-cms will store (the fixture is its v0.4.0, which has only `variant`).
+ */
+function addCatalogueOptions(components) {
+  const { $defs } = JSON.parse(readFileSync(CATALOGUE_SCHEMA, 'utf8'))
+  for (const block of Object.values($defs)) {
+    const attributes = components[block['x-strapi'].component]?.attributes
+    if (!attributes) continue
+    for (const [name, field] of Object.entries(block.properties)) {
+      const property = field.anyOf?.find((option) => option.type !== 'null') ?? field
+      if (name in attributes || property['x-strapi']?.type !== 'enumeration') continue
+      attributes[name] = { type: 'enumeration', enum: property.enum, default: property.default }
+    }
+  }
+}
+
 /** Writes the fixture's components into the project's `src/components/` (gitignored), where Strapi loads them from. */
 function writeComponents() {
   const { components } = JSON.parse(readFileSync(COMPONENTS_FIXTURE, 'utf8'))
+  addCatalogueOptions(components)
   for (const [uid, schema] of Object.entries(components)) {
     const [category, name] = uid.split('.')
     const folder = join(PROJECT, 'src', 'components', category)

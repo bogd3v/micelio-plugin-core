@@ -1,10 +1,12 @@
 import type { Core } from '@strapi/strapi'
+import { BlockOptionError, BLOCK_OPTION_INVALID } from '../block-options/error'
 import { SITE_UID } from '../constants/site'
 import type { SiteScopeState } from '../site-scope'
 import { pickSite, type SiteSummary } from '../site-scope/resolve'
 import { sendProblem } from '../utils/problem'
 
 const UNKNOWN_SITE_STATUS = 404
+const BLOCK_OPTION_STATUS = 400
 
 /**
  * Resolves the site of a content API request and leaves it in `ctx.state.micelio.site`.
@@ -12,7 +14,9 @@ const UNKNOWN_SITE_STATUS = 404
  * @remarks
  * The site comes from the `site` query parameter (a slug), then from the host, then is the
  * default one. The parameter is removed before Strapi validates the query. A slug that no site
- * has answers a problem detail with the code `unknownSite`.
+ * has answers a problem detail with the code `unknownSite`. A save the catalogue refuses for an
+ * option a block does not allow answers `blockOptionInvalid`, naming the block, the option and the
+ * values it allows.
  */
 const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
   return async (ctx, next) => {
@@ -35,7 +39,22 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
     }
     const state = ctx.state as SiteScopeState
     state.micelio = { ...state.micelio, site }
-    await next()
+    try {
+      await next()
+    } catch (error) {
+      if (!(error instanceof BlockOptionError)) throw error
+      const { block, option, allowed } = error.violation
+      sendProblem(ctx, {
+        type: 'about:blank',
+        title: 'Bad Request',
+        status: BLOCK_OPTION_STATUS,
+        detail: error.message,
+        code: BLOCK_OPTION_INVALID,
+        block,
+        option,
+        allowed,
+      })
+    }
   }
 }
 

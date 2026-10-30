@@ -67,6 +67,39 @@
           "enum": ["centered", "split", "full-bleed"],
           "x-strapi": { "type": "enumeration" },
           "default": "centered"
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["centered", "split", "stacked"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "centered"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["s", "m", "l", "full"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "m"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["title", "variant"],
@@ -130,6 +163,28 @@
           "enum": ["grid", "list", "bento"],
           "x-strapi": { "type": "enumeration" },
           "default": "grid"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["2", "3", "4"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "3"
+            },
+            { "type": "null" }
+          ]
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["comfortable", "compact"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "comfortable"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -181,6 +236,17 @@
           "enum": ["left", "right", "stacked"],
           "x-strapi": { "type": "enumeration" },
           "default": "left"
+        },
+        "ratio": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["16:9", "4:3", "1:1", "auto"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "16:9"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["media", "variant"],
@@ -220,6 +286,39 @@
           "enum": ["row", "cards"],
           "x-strapi": { "type": "enumeration" },
           "default": "row"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["2", "3", "4"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "3"
+            },
+            { "type": "null" }
+          ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -270,6 +369,28 @@
           "enum": ["row", "marquee"],
           "x-strapi": { "type": "enumeration" },
           "default": "row"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["2", "3", "4", "6"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "3"
+            },
+            { "type": "null" }
+          ]
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["comfortable", "compact"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "comfortable"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -330,6 +451,28 @@
           "enum": ["single", "grid"],
           "x-strapi": { "type": "enumeration" },
           "default": "single"
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["centered", "split", "stacked"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "centered"
+            },
+            { "type": "null" }
+          ]
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["comfortable", "compact"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "comfortable"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -411,6 +554,17 @@
           "enum": ["cards", "table"],
           "x-strapi": { "type": "enumeration" },
           "default": "cards"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["2", "3", "4"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "3"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -453,6 +607,17 @@
           "enum": ["list", "two-columns"],
           "x-strapi": { "type": "enumeration" },
           "default": "list"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["comfortable", "compact"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "comfortable"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -506,6 +671,39 @@
           "enum": ["banner", "card"],
           "x-strapi": { "type": "enumeration" },
           "default": "banner"
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["centered", "split", "stacked"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "centered"
+            },
+            { "type": "null" }
+          ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["title", "variant"],
@@ -557,6 +755,17 @@
           "enum": ["cards", "list"],
           "x-strapi": { "type": "enumeration" },
           "default": "cards"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["comfortable", "compact"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "comfortable"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["count", "variant"],
@@ -579,6 +788,28 @@
           "enum": ["inline", "card"],
           "x-strapi": { "type": "enumeration" },
           "default": "inline"
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -591,6 +822,17 @@
           "type": "string",
           "x-strapi": { "type": "richtext" },
           "contentMediaType": "text/markdown"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["prose", "wide", "full"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "prose"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["body"],
@@ -617,6 +859,28 @@
           "enum": ["grid", "masonry"],
           "x-strapi": { "type": "enumeration" },
           "default": "grid"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["prose", "wide", "full"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "prose"
+            },
+            { "type": "null" }
+          ]
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["comfortable", "compact"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "comfortable"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["images", "variant"],
@@ -651,6 +915,17 @@
           "enum": ["background", "inline"],
           "x-strapi": { "type": "enumeration" },
           "default": "background"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["s", "m", "l", "full"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "m"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["model", "poster", "alt", "variant"],
@@ -680,6 +955,28 @@
         },
         "body": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "text" } }, { "type": "null" }]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["prose", "wide"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "prose"
+            },
+            { "type": "null" }
+          ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "x-strapi": { "type": "component", "component": "shared.quote", "repeatable": false }
@@ -787,6 +1084,28 @@
                 "component": "shared.image-credit",
                 "repeatable": false
               }
+            },
+            { "type": "null" }
+          ]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["prose", "wide"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "prose"
+            },
+            { "type": "null" }
+          ]
+        },
+        "ratio": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["16:9", "4:3", "1:1", "auto"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "16:9"
             },
             { "type": "null" }
           ]
@@ -924,6 +1243,17 @@
             },
             { "type": "null" }
           ]
+        },
+        "ratio": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["16:9", "4:3", "1:1", "auto"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "16:9"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "x-strapi": { "type": "component", "component": "shared.slider", "repeatable": false }
@@ -951,6 +1281,17 @@
         },
         "caption": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "text" } }, { "type": "null" }]
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["s", "m", "l", "full"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "m"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["runtime", "code"],

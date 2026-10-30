@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_section_logo_clouds",
+  "info": {
+    "displayName": "Logo cloud",
+    "icon": "apps",
+    "description": "The `logo-cloud` block's `columns`, the only block that takes 6, for the block options suite; the logos are left out"
+  },
+  "options": {},
+  "attributes": {
+    "title": { "type": "string" },
+    "columns": { "type": "enumeration", "enum": ["2", "3", "4", "6"], "default": "3" }
+  }
+}
