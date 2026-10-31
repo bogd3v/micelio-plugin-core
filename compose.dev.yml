@@ -53,6 +53,8 @@ services:
       FRONTEND_API_TOKEN: ${FRONTEND_API_TOKEN:-}
       # A custom token that may exchange preview tokens and read drafts by grant (docs/operate/preview.md).
       PREVIEW_API_TOKEN: ${PREVIEW_API_TOKEN:-}
+      # The About page reads the release feed at boot and once a day; false asks nothing (docs/operate/about-page.md).
+      MICELIO_UPDATE_CHECK: ${MICELIO_UPDATE_CHECK:-true}
       FRONTEND_ORIGIN: http://localhost:3000
       # Where the frontend is inside the network: dev.mjs forwards the port of FRONTEND_ORIGIN to it, so the
       # site's url, which a browser opens, also answers when the plugin measures a page at publish.

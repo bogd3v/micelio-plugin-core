@@ -16,11 +16,26 @@ import {
 } from './constants'
 import { ExportError } from './errors'
 import { digestFile, openFile, type LocatedFile } from './media'
-import { attributesOf, compare, documentsOf, exportedTypes, siteRowsOf, type Row } from './model'
+import {
+  attributesOf,
+  compare,
+  documentsOf,
+  exportedTypes,
+  siteRowsOf,
+  type ExportedType,
+  type Row,
+} from './model'
 import { selectSections, writeSections } from './sections'
 import { populateOf, type Attributes, type SerialiseContext, type StoredFile } from './serialise'
 import { tarChunks, type TarFile } from './tar'
-import type { ContentFile, FileDigest, Manifest, MediaEntry, MediaRef } from './types'
+import type {
+  ContentFile,
+  ExportDocument,
+  FileDigest,
+  Manifest,
+  MediaEntry,
+  MediaRef,
+} from './types'
 
 /** What to export. */
 export interface ExportRequest {
@@ -33,9 +48,37 @@ export interface ExportRequest {
    * always included. The caller who has an admin user checks the section's `permission` first.
    */
   include?: string[]
+  /** What the archive holds besides the personal data; each part is on unless it is `false`. */
+  scope?: ExportScope
   /** When the export is made; the only value that differs between two exports of a site. */
   now?: Date
 }
+
+/**
+ * The parts of a site an archive may leave out. An archive without a part stays a valid archive
+ * that an importer reads whole: it never holds a reference to what it left out.
+ */
+export interface ExportScope {
+  /** The documents of the site's content types. Off writes the types with no documents. */
+  content?: boolean
+  /** The media files and the references to them. Off writes no media and no media attribute. */
+  media?: boolean
+  /** The site's own document beyond its identity: modules, overrides and the theme pin. */
+  settings?: boolean
+  /** Documents that were never published, with their editorial state. Off keeps published ones. */
+  drafts?: boolean
+}
+
+/** The attributes of the site document that are its identity: kept when `settings` is off. */
+const IDENTITY_ATTRIBUTES = [
+  'name',
+  'slug',
+  'hosts',
+  'url',
+  'defaultLocale',
+  'isDefault',
+  'modules',
+]
 
 interface SiteRow extends Row {
   slug: string
@@ -63,6 +106,8 @@ export async function exportSite(
   output: Writable
 ): Promise<Manifest> {
   const personal = request.personal ?? false
+  const scope = { content: true, media: true, settings: true, drafts: true, ...request.scope }
+  const settings = scope.settings
   const sections = selectSections(strapi, request.include ?? [])
   const types = exportedTypes(strapi, personal)
   const names = new Map(types.map((type) => [type.uid, type.name]))
@@ -72,6 +117,7 @@ export async function exportSite(
       (strapi.components[uid as UID.Component]?.attributes ?? {}) as Attributes,
     exportNameOf: (uid) => names.get(uid),
     mediaRef(file: StoredFile) {
+      if (!scope.media) return null
       const ref: MediaRef = { media: '' }
       const entry = media.get(file.id) ?? { file: file as LocatedFile, refs: [] }
       entry.refs.push(ref)
@@ -90,8 +136,28 @@ export async function exportSite(
 
   const contents: ContentFile[] = []
   for (const type of types) {
-    const rows = type.uid === SITE_UID ? siteRows : await siteRowsOf(strapi, type, site, context)
-    contents.push({ type: type.name, documents: documentsOf(type, rows, context) })
+    contents.push({ type: type.name, documents: await documentsToExport(type) })
+  }
+  async function documentsToExport(type: ExportedType): Promise<ExportDocument[]> {
+    if (type.uid === SITE_UID) return siteDocuments(type)
+    if (!scope.content) return []
+    const rows = await siteRowsOf(strapi, type, site!, context)
+    return documentsOf(type, scope.drafts ? rows : publishedRows(type, rows), context)
+  }
+
+  // Without settings the site document keeps its identity; its media is not collected.
+  function siteDocuments(type: ExportedType): ExportDocument[] {
+    if (settings) return documentsOf(type, siteRows, context)
+    const documents = documentsOf(type, siteRows, { ...context, mediaRef: () => null })
+    return documents.map((document) => ({
+      ...document,
+      versions: document.versions.map((version) => ({
+        ...version,
+        data: Object.fromEntries(
+          Object.entries(version.data).filter(([name]) => IDENTITY_ATTRIBUTES.includes(name))
+        ),
+      })),
+    }))
   }
 
   const index = await mediaIndex(strapi, media)
@@ -119,13 +185,14 @@ export async function exportSite(
     strapi: String(strapi.config.get('info.strapi') ?? ''),
     site: { documentId: site.documentId, slug: site.slug },
     locales: await localesOf(strapi, contents),
-    theme: site.theme?.themeId
-      ? {
-          id: site.theme.themeId,
-          version: site.theme.themeVersion ?? null,
-          digest: site.theme.themeDigest ?? null,
-        }
-      : null,
+    theme:
+      settings && site.theme?.themeId
+        ? {
+            id: site.theme.themeId,
+            version: site.theme.themeVersion ?? null,
+            digest: site.theme.themeDigest ?? null,
+          }
+        : null,
     // The actor belongs to the fediverse plugin, which this core does not know yet.
     fediverse: null,
     personal: personal || written.plugins.some((plugin) => plugin.personalData),
@@ -150,6 +217,13 @@ export async function exportSite(
   )
   await pipeline(Readable.from(tarChunks(ordered)), createGzip(), output)
   return manifest
+}
+
+// Only the documents that have a published row: what was never published is a draft's content.
+function publishedRows(type: ExportedType, rows: Row[]): Row[] {
+  if (!type.hasDrafts) return rows
+  const published = new Set(rows.filter((row) => row.publishedAt).map((row) => row.documentId))
+  return rows.filter((row) => published.has(row.documentId))
 }
 
 async function mediaIndex(

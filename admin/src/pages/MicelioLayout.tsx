@@ -14,6 +14,7 @@ import { localised } from '../utils/localised'
 import AboutPage from './AboutPage'
 import PreviewPage from './PreviewPage'
 import StatusPage from './StatusPage'
+import TransferPage from './TransferPage'
 
 /**
  * The Micelio section of the admin: its sub-navigation and the page of each item.
@@ -79,6 +80,7 @@ export default function MicelioLayout() {
     >
       <Routes>
         <Route index element={canReadStatus ? <StatusPage /> : <Navigate to="about" replace />} />
+        <Route path="_export-import" element={<TransferPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="preview/:uid/:documentId" element={<PreviewPage />} />
         <Route path="*" element={<ExtensionPage pages={pages} isLoading={isLoading} />} />

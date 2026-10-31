@@ -3,6 +3,8 @@
 import { createHash } from 'node:crypto'
 import { createWriteStream, type WriteStream } from 'node:fs'
 import { once } from 'node:events'
+import { mkdtemp, rm } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { createGunzip } from 'node:zlib'
@@ -105,10 +107,17 @@ const mediaIndexSchema = z.looseObject({
  * be in the manifest, and every content file is checked for shape, before this answers. Media
  * files are staged in `directory`, which the caller removes.
  *
+ * @param maxBytes - The most the files of the archive may hold together, uncompressed; checked as
+ * each entry opens, before its bytes are written. No limit by default.
  * @throws `ExportError` `exportArchiveCorrupt`, `exportFormatUnsupported` or
  * `exportDocumentInvalid`.
  */
-export async function stageArchive(source: Readable, directory: string): Promise<StagedArchive> {
+export async function stageArchive(
+  source: Readable,
+  directory: string,
+  maxBytes: number = Infinity
+): Promise<StagedArchive> {
+  let totalBytes = 0
   const json = new Map<string, Buffer>()
   const seen = new Map<string, { sha256: string; bytes: number }>()
   const mediaFiles = new Map<string, string>()
@@ -119,6 +128,9 @@ export async function stageArchive(source: Readable, directory: string): Promise
     const name = entry.type === 'directory' ? entry.path.replace(/\/$/, '') : entry.path
     if (!SAFE_PATH.test(name)) throw corrupt(`"${entry.path}" is not a path an archive may hold`)
     if (entry.type === 'directory') return { write() {}, end() {} }
+    // A header's size is the bytes the reader takes for the entry, so this stops a bomb early.
+    totalBytes += entry.bytes
+    if (totalBytes > maxBytes) throw corrupt(`The archive holds more than ${maxBytes} bytes`)
     if (seen.has(name) || json.has(name)) throw corrupt(`${name} is in the archive twice`)
     const listed = manifest?.files[name]
     if (manifest && !listed) throw corrupt(`${name} is not in the manifest`)
@@ -268,4 +280,22 @@ function corrupt(message: string): ExportError {
 
 function invalid(message: string): ExportError {
   return new ExportError('exportDocumentInvalid', message)
+}
+
+/**
+ * Stages an archive in a folder of its own, runs `work` on it and removes the folder.
+ *
+ * @throws What {@link stageArchive} throws.
+ */
+export async function withStagedArchive<T>(
+  source: Readable,
+  work: (staged: StagedArchive) => Promise<T>,
+  maxBytes?: number
+): Promise<T> {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'micelio-import-'))
+  try {
+    return await work(await stageArchive(source, directory, maxBytes))
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
 }

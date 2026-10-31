@@ -8,6 +8,16 @@ import { backfillSite } from './migrations/site-backfill'
 import { registerPreviewPermission } from './preview/permissions'
 import { registerPreviewRevocation } from './preview/revocation'
 import { registerStatusPermission } from './status/permissions'
+import { registerTransferPermissions } from './transfers/permissions'
+
+/** The first look at the frontends and the release feed; a failure is logged, never a failed boot. */
+async function refreshAbout(strapi: Core.Strapi): Promise<void> {
+  try {
+    await strapi.plugin('micelio').service('about').refresh()
+  } catch (error) {
+    strapi.log.warn(`[micelio] the first check of the frontends failed: ${String(error)}`)
+  }
+}
 
 /** Bootstrap phase: runs once the database and the other plugins are ready. */
 const bootstrap = async ({ strapi }: { strapi: Core.Strapi }): Promise<void> => {
@@ -20,8 +30,12 @@ const bootstrap = async ({ strapi }: { strapi: Core.Strapi }): Promise<void> => 
   await strapi.plugin('micelio').service('hostCheck').enforce()
   registerScheduler(strapi)
   registerStatusRefresh(strapi)
+  // In the background: the boot does not wait for a frontend or a feed.
+  void refreshAbout(strapi)
   await registerStatusPermission(strapi)
   await registerPreviewPermission(strapi)
+  await registerTransferPermissions(strapi)
+  await strapi.plugin('micelio').service('transfers').failInterrupted()
   registerPreviewRevocation(strapi)
   // Last: a boot the host check refuses announces no change.
   await syncBlockCatalogue(strapi)

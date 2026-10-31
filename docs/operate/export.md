@@ -1,6 +1,6 @@
 # Export and import a site
 
-**Kind:** how-to. Write one site of a Micelio CMS as an archive of the [site export format](../export-format.md), to keep it, move it to another host or hand it to its owner, and write such an archive into a CMS.
+**Kind:** how-to. The admin does the same from [Export and import](transfer-page.md); this page is the command line and the service. Write one site of a Micelio CMS as an archive of the [site export format](../export-format.md), to keep it, move it to another host or hand it to its owner, and write such an archive into a CMS.
 
 ## Write the archive
 
@@ -34,10 +34,17 @@ The command reads and checks the whole archive before it writes anything: sizes 
 
 - **`--into <site slug>`** writes the archive's site into an existing site of the target, which keeps its slug and stays the default if it was. A fresh CMS already has a `default` site, so moving a one-site CMS is `--into default`. Without `--into`, the import finds the archive's site by its `documentId` or creates it, and refuses when another site has its slug (`exportSiteSlugTaken`) or one of its hosts (`exportHostTaken`).
 - **`--replace`** also deletes the site's documents the archive does not hold, for each type the archive holds. Without it, they are left as they are.
+- **`existing`** (the service's option; the page's choice) says what to do with a document the target already holds: `update` (the default, and what the command does) rewrites it, `skip` leaves it as it is, `keep-both` writes the archive's document as a new one, under a `documentId` derived from the target site and the archive's, so that the same archive imported into the same site again writes nothing, and into another site makes copies of its own. Only `update` rewrites the site's own settings, and the page asks for `keepIdentity`, which leaves an existing site's `name`, `hosts`, `url` and default locale as they are; the command does not. The page also passes `canPublish`, and a type the user may not publish arrives as drafts, with no schedule and with nothing unpublished. A document that another site of the target holds under the same `documentId` is refused with `skip` and `update`, as the format says; `keep-both` imports it.
 - **Locales** belong to the CMS and its other sites: an archive that uses a locale the target lacks is refused (`exportLocaleMissing`). Add the locale in the admin and run the import again.
 - **Run it again** whenever you like: an archive the target already holds writes nothing.
 
 The import is a restore. Published entries are published as they were, with their dates, without the editorial transitions; the target's own upload rules (size limit, denied and allowed types) still apply to every media file.
+
+## Dry run and scope
+
+`siteExport.preview(source, request)` reads and checks an archive as `import` does and answers what the same request would do, without storing a media file or touching a document: per export name how many documents it would create, update and skip, how many media files the library already holds, the theme pin, and what it would leave out. The figures are the ones `import` reports when the target has not changed in between.
+
+`export` takes `scope: { content, media, settings, drafts }`, each on unless `false` (see [the page](transfer-page.md#what-an-export-holds)).
 
 ## From code
 

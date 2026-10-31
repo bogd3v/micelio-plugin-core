@@ -47,6 +47,21 @@ export interface PluginConfig {
   statusRefreshRule: string | false
   /** The weight budgets a publish is refused above. */
   budgets: BudgetsConfig
+  /**
+   * The folder that holds the archives of the Export and import page for the 24 hours they can be
+   * downloaded, and an uploaded archive until its import. Create it outside the project when the
+   * project's folder is read-only.
+   *
+   * @defaultValue `<project>/.tmp/micelio-transfers`
+   */
+  transfersDirectory?: string
+  /**
+   * The most an uploaded archive may hold once uncompressed, in bytes; an archive over it is
+   * refused before it is written.
+   *
+   * @defaultValue 1 GiB
+   */
+  transferMaxBytes?: number
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -109,6 +124,13 @@ export default {
           'micelio: budgets.sites must map each site slug to a map of page types to kB above 0'
         )
       }
+    }
+    const directory = (config as { transfersDirectory?: unknown }).transfersDirectory
+    if (directory !== undefined && (typeof directory !== 'string' || directory.trim() === '')) {
+      throw new Error('micelio: transfersDirectory must be a folder path')
+    }
+    if (!isBudget(config.transferMaxBytes) && config.transferMaxBytes !== undefined) {
+      throw new Error('micelio: transferMaxBytes must be a number of bytes above 0')
     }
     for (const key of ['scheduledPublishRule', 'statusRefreshRule'] as const) {
       const rule = config[key]

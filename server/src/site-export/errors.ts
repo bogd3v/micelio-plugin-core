@@ -17,7 +17,12 @@ export type ExportErrorCode =
 export class ExportError extends Error {
   constructor(
     readonly code: ExportErrorCode,
-    message: string
+    message: string,
+    /**
+     * `otherSite` when an `exportDocumentInvalid` is a document that another site of the target
+     * holds under the same `documentId`: only the policy `keep-both` can import it.
+     */
+    readonly reason?: 'otherSite'
   ) {
     super(message)
     this.name = 'ExportError'

@@ -1,13 +1,15 @@
 // What an import checks and resolves before it writes anything (`docs/export-format.md`,
 // "Integrity" and "Import").
 import type { Core, UID } from '@strapi/strapi'
+import { findBlockOptionViolation } from '../block-options/rules'
 import { EDITORIAL_ATTRIBUTE } from '../constants/editorial'
 import { SITE_UID } from '../constants/site'
 import { isEditorial } from '../editorial'
 import type { StagedArchive } from './archive'
 import { deserialiseData, type DeserialiseContext, type RefState } from './deserialise'
 import { ExportError } from './errors'
-import type { ImportRequest } from './importer'
+import type { ExistingPolicy, ImportRequest } from './importer'
+import { keepBoth } from './keep-both'
 import { exportedTypes, type ExportedType, type Row } from './model'
 import type { Attributes } from './serialise'
 import type { ExportDocument } from './types'
@@ -25,6 +27,11 @@ export interface Plan {
   staged: StagedArchive
   types: ExportedType[]
   site: SiteRow & { isNew: boolean }
+  existing: ExistingPolicy
+  /** An existing site keeps its identity: the import does not rewrite its name, hosts or url. */
+  keepIdentity: boolean
+  /** Whether the caller may publish a type; unset, nothing is held back. */
+  canPublish: ((uid: string) => boolean) | undefined
   defaultLocale: string | undefined
   /** `<export name>:<documentId>` of every document the target or the archive holds. */
   targetHas: Set<string>
@@ -74,17 +81,22 @@ export async function planImport(
     )
   }
 
+  const site = await targetSite(strapi, staged, request)
+  const existing = request.existing ?? 'update'
   const plan: Plan = {
-    staged,
+    staged: existing === 'keep-both' ? keepBoth(staged, site) : staged,
     types,
-    site: await targetSite(strapi, staged, request),
+    site,
+    existing,
+    keepIdentity: request.keepIdentity === true,
+    canPublish: request.canPublish,
     defaultLocale,
     targetHas: new Set(),
     inArchive: new Set(),
   }
   const referenced = new Map<string, Set<string>>()
   for (const type of types) {
-    for (const document of staged.contents.get(type.name)!.documents) {
+    for (const document of plan.staged.contents.get(type.name)!.documents) {
       plan.inArchive.add(`${type.name}:${document.documentId}`)
       add(referenced, type.name, document.documentId)
       for (const version of document.versions) collectRefs(version.data, referenced)
@@ -136,7 +148,11 @@ async function targetSite(
       ? { ...found, isNew: false }
       : { documentId: archived.documentId, slug: String(data.slug), isNew: true }
   }
-  const hosts = new Set(asStrings(data.hosts).map((host) => host.toLowerCase()))
+  // Only a site the import writes takes the archive's hosts: with `skip`, `keep-both` and
+  // `keepIdentity` an existing site keeps its own.
+  const writesHosts =
+    site.isNew || ((request.existing ?? 'update') === 'update' && request.keepIdentity !== true)
+  const hosts = new Set(writesHosts ? asStrings(data.hosts).map((host) => host.toLowerCase()) : [])
   for (const other of sites) {
     if (other.documentId === site.documentId) continue
     const shared = asStrings(other.hosts).find((host) => hosts.has(host.toLowerCase()))
@@ -177,11 +193,30 @@ export function validate(strapi: Core.Strapi, plan: Plan): number {
     for (const document of plan.staged.contents.get(type.name)!.documents) {
       for (const version of document.versions) {
         const where = `${type.name} ${document.documentId} (${version.locale ?? 'no locale'})`
-        missing += deserialiseData(type.attributes, version.data, context, where).missing
+        const result = deserialiseData(type.attributes, version.data, context, where)
+        missing += result.missing
+        checkBlockOptions(type, result.data, where)
       }
     }
   }
   return missing
+}
+
+// The save of the importer refuses an option the catalogue does not allow (ADR-0018); checking it
+// here refuses the archive before any write instead of halfway through.
+function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, where: string): void {
+  for (const [name, attribute] of Object.entries(type.attributes)) {
+    const zone = data[name]
+    if ((attribute as { type?: string }).type !== 'dynamiczone' || !Array.isArray(zone)) continue
+    const violation = findBlockOptionViolation(zone)
+    if (!violation) continue
+    const allowed = violation.allowed.length ? `; allowed: ${violation.allowed.join(', ')}` : ''
+    throw new ExportError(
+      'exportDocumentInvalid',
+      `${where}.${name}: the ${violation.block} block does not allow that value for ` +
+        `${violation.option}${allowed}`
+    )
+  }
 }
 
 /**
