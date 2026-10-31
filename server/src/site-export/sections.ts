@@ -103,23 +103,35 @@ export async function readSections(
   site: ExtensionSite
 ): Promise<SectionsReport> {
   const registered = extensionsOf(strapi).exportSections()
-  const report: SectionsReport = { sections: {}, skipped: [] }
+  const report: SectionsReport = { sections: {}, skipped: skippedSections(strapi, archived) }
   for (const plugin of archived) {
     const section = registered.find(({ id }) => id === plugin.id)
-    if (!section) {
-      report.skipped.push({ id: plugin.id, reason: 'unknown' })
-    } else if (majorOf(section.version) !== majorOf(plugin.version)) {
-      report.skipped.push({ id: plugin.id, reason: 'version' })
-    } else {
-      try {
-        report.sections[plugin.id] = await section.read(site, entriesOf.get(plugin.id) ?? [])
-      } catch (error) {
-        strapi.log.error(`micelio: the import section ${plugin.id} failed: ${String(error)}`)
-        throw new ExportError('exportSectionFailed', `The import section "${plugin.id}" failed`)
-      }
+    if (!section || report.skipped.some(({ id }) => id === plugin.id)) continue
+    try {
+      report.sections[plugin.id] = await section.read(site, entriesOf.get(plugin.id) ?? [])
+    } catch (error) {
+      strapi.log.error(`micelio: the import section ${plugin.id} failed: ${String(error)}`)
+      throw new ExportError('exportSectionFailed', `The import section "${plugin.id}" failed`)
     }
   }
   return report
+}
+
+/** The sections of an archive no plugin reads: nobody registered them, or another major. */
+export function skippedSections(
+  strapi: Core.Strapi,
+  archived: ManifestPlugin[]
+): SectionsReport['skipped'] {
+  const registered = extensionsOf(strapi).exportSections()
+  const skipped: SectionsReport['skipped'] = []
+  for (const plugin of archived) {
+    const section = registered.find(({ id }) => id === plugin.id)
+    if (!section) skipped.push({ id: plugin.id, reason: 'unknown' })
+    else if (majorOf(section.version) !== majorOf(plugin.version)) {
+      skipped.push({ id: plugin.id, reason: 'version' })
+    }
+  }
+  return skipped
 }
 
 function majorOf(version: string): string | undefined {

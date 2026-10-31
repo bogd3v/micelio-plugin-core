@@ -40,6 +40,7 @@ const exportSection = z.object({
   id,
   version: z.string().regex(FORMAT_VERSION, 'must be "major.minor"'),
   personalData: z.boolean(),
+  label: text.optional(),
   permission,
   write: handler,
   read: handler,

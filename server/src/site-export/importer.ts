@@ -1,15 +1,11 @@
 // Writes an archive of format 1.x into an instance (`docs/export-format.md`, "Import").
-import { mkdtemp, rm } from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
 import type { Readable } from 'node:stream'
 import type { Core, UID } from '@strapi/strapi'
 import { SITE_UID } from '../constants/site'
 import { runAsTransition } from '../editorial/context'
 import { SITE_ATTRIBUTE } from '../site-scope'
-import { stageArchive, type StagedArchive } from './archive'
+import { withStagedArchive, type StagedArchive } from './archive'
 import {
-  all,
   deserialiseContext,
   planImport,
   siteData,
@@ -17,21 +13,21 @@ import {
   validate,
   type Plan,
 } from './import-plan'
-import { deserialiseData, knownData, type DeserialiseContext } from './deserialise'
-import { ExportError } from './errors'
+import { deserialiseData, type DeserialiseContext } from './deserialise'
 import {
-  compare,
-  documentsOf,
-  exportedTypes,
-  siteRowsOf,
-  type ExportedType,
-  type Row,
-} from './model'
-import { populateOf, type Attributes, type SerialiseContext, type StoredFile } from './serialise'
+  canonical,
+  inspectDocument,
+  isDraftOnly as inspectDraftOnly,
+  serialiseContext,
+} from './inspect'
+import { compare, exportedTypes, siteRowsOf, type ExportedType } from './model'
 import { readSections } from './sections'
 import { removeMedia, storeMedia } from './store-media'
 import type { SectionImportReport } from '../types/extensions'
 import type { ExportDocument, ExportVersion } from './types'
+
+/** What an import does with a document the target already holds. */
+export type ExistingPolicy = 'skip' | 'update' | 'keep-both'
 
 /** How to import. */
 export interface ImportRequest {
@@ -42,10 +38,38 @@ export interface ImportRequest {
    */
   mode?: 'merge' | 'replace'
   /**
+   * What to do with a document the target already holds: `update` rewrites it with the archive's
+   * versions, `skip` leaves it as it is, `keep-both` writes the archive's document as a new one,
+   * with a `documentId` derived from the target's site and the archive's, so that importing the
+   * same archive again writes nothing.
+   *
+   * @remarks
+   * The site's own settings are rewritten only by `update`. `replace` mode and `skip` do not mix
+   * well: `replace` still deletes what the archive does not hold.
+   *
+   * @defaultValue 'update', which is what `merge` always did.
+   */
+  existing?: ExistingPolicy
+  /**
    * The slug of an existing site of the target to import into, instead of the archive's own site.
    * It keeps its slug and whether it is the default.
    */
   into?: string
+  /**
+   * An existing site keeps its `name`, `hosts`, `url` and default locale whatever the policy; the
+   * rest of its settings follow `existing`. The Export and import page always sets it.
+   *
+   * @defaultValue false
+   */
+  keepIdentity?: boolean
+  /**
+   * Whether the caller may publish a type. A type it may not publish arrives as a draft: its
+   * published versions are written as drafts and nothing is unpublished. Unset, the import is a
+   * restore and writes what the archive says.
+   */
+  canPublish?: (uid: string) => boolean
+  /** The most the archive may hold uncompressed, in bytes; an archive over it is refused. */
+  maxBytes?: number
 }
 
 /** What an import did to the documents of one export name. */
@@ -91,13 +115,11 @@ export async function importSite(
   source: Readable,
   request: ImportRequest = {}
 ): Promise<ImportReport> {
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'micelio-import-'))
-  try {
-    const staged = await stageArchive(source, directory)
-    return await importStaged(strapi, staged, request)
-  } finally {
-    await rm(directory, { recursive: true, force: true })
-  }
+  return withStagedArchive(
+    source,
+    (staged) => importStaged(strapi, staged, request),
+    request.maxBytes
+  )
 }
 
 async function importStaged(
@@ -199,20 +221,10 @@ async function writeDocument(
 ): Promise<{ result: 'created' | 'replaced' | 'skipped'; pending: boolean }> {
   const isSite = type.uid === SITE_UID
   const documentId = isSite ? plan.site.documentId : document.documentId
-  const skip = new Set(isSite ? [] : [SITE_ATTRIBUTE])
   const query = strapi.db.query(type.uid as UID.ContentType)
-  const rows = (await query.findMany({
-    where: { documentId },
-    populate: populateOf(type.attributes, serialiseContext(strapi, plan, shaOf), skip),
-  })) as Row[]
-  if (!isSite && rows.length > 0) await checkOwner(strapi, type, documentId, plan.site.documentId)
-  const existing = documentsOf(type, rows, serialiseContext(strapi, plan, shaOf))[0]
-  const desired = document.versions.map((version) => ({
-    ...version,
-    locale: type.isLocalized ? (version.locale ?? plan.defaultLocale ?? null) : null,
-    data: desiredData(type, version, plan, rows),
-  }))
-  if (existing && isSame(existing.versions, desired)) return { result: 'skipped', pending: false }
+  const { rows, desired, result } = await inspectDocument(strapi, plan, type, document, shaOf)
+  const isDraftOnly = inspectDraftOnly(plan, type)
+  if (result === 'skipped') return { result, pending: false }
 
   const documents = strapi.documents(type.uid as UID.ContentType)
   let exists = rows.length > 0
@@ -250,7 +262,8 @@ async function writeDocument(
       if (draft && canonical(draft.data) !== canonical(published.data)) await put(draft, locale)
     } else {
       if (draft) await put(draft, locale)
-      if (rows.some((row) => (row.locale ?? null) === code && row.publishedAt)) {
+      // Unpublishing is publishing's permission too: a draft-only import leaves it as it is.
+      if (!isDraftOnly && rows.some((row) => (row.locale ?? null) === code && row.publishedAt)) {
         await documents.unpublish({ documentId, locale } as never)
       }
     }
@@ -276,83 +289,4 @@ async function writeDocument(
     })
   }
   return { result: rows.length > 0 ? 'replaced' : 'created', pending }
-}
-
-// What the target should hold for a version: the attributes it knows, and for the site its own
-// default flag, and its slug when the archive is imported into another site.
-function desiredData(
-  type: ExportedType,
-  version: ExportVersion,
-  plan: Plan,
-  rows: Row[]
-): Record<string, never> {
-  const data = knownData(type.attributes, version.data)
-  if (type.uid === SITE_UID) {
-    data.isDefault = rows[0]?.isDefault === true
-    if (!plan.site.isNew) data.slug = plan.site.slug
-  }
-  return data as Record<string, never>
-}
-
-async function checkOwner(
-  strapi: Core.Strapi,
-  type: ExportedType,
-  documentId: string,
-  site: string
-): Promise<void> {
-  const rows = (await strapi.db.query(type.uid as UID.ContentType).findMany({
-    where: { documentId },
-    populate: { [SITE_ATTRIBUTE]: { select: ['documentId'] } },
-  })) as { site?: { documentId?: string } | null }[]
-  if (rows.some((row) => row.site?.documentId && row.site.documentId !== site)) {
-    throw new ExportError(
-      'exportDocumentInvalid',
-      `${type.name} ${documentId} belongs to another site of the target`
-    )
-  }
-}
-
-function serialiseContext(
-  strapi: Core.Strapi,
-  plan: Plan,
-  shaOf: Map<number, string>
-): SerialiseContext {
-  const names = new Map(all(plan.types, strapi).map((type) => [type.uid, type.name]))
-  return {
-    componentAttributes: (uid) =>
-      (strapi.components[uid as UID.Component]?.attributes ?? {}) as Attributes,
-    exportNameOf: (uid) => names.get(uid),
-    mediaRef: (file: StoredFile) => ({ media: shaOf.get(file.id) ?? `file:${file.id}` }),
-    personal: true,
-  }
-}
-
-// The archive's versions equal the target's on everything the archive says.
-function isSame(existing: ExportVersion[], desired: ExportVersion[]): boolean {
-  if (existing.length !== desired.length) return false
-  return desired.every((version) => {
-    const match = existing.find(
-      (other) => other.locale === version.locale && other.status === version.status
-    )
-    if (!match) return false
-    const stored = Object.fromEntries(
-      Object.keys(version.data).map((key) => [key, match.data[key]])
-    )
-    return (
-      match.createdAt === version.createdAt &&
-      match.updatedAt === version.updatedAt &&
-      match.publishedAt === version.publishedAt &&
-      canonical(stored) === canonical(version.data)
-    )
-  })
-}
-
-function canonical(value: unknown): string {
-  return JSON.stringify(value, (_key, item: unknown) =>
-    item && typeof item === 'object' && !Array.isArray(item)
-      ? Object.fromEntries(
-          Object.entries(item as Record<string, unknown>).sort(([a], [b]) => compare(a, b))
-        )
-      : item
-  )
 }

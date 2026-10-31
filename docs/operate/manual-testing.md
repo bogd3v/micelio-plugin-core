@@ -105,6 +105,19 @@ The catalogue's presentation options (`contract/options.ts`: `layout`, `width`, 
 6. In Content Manager → Page, open the first page, change **Columns** to 4 and **Save**: it saves.
 7. Articles never take `width: full`. Send the same call to `localhost:1337/api/articles?status=draft` with `{"data":{"title":"Wide","blocks":[{"__component":"shared.media","width":"full"}]}}`: `400`, `"block":"media"`, `"option":"width"`, `"allowed":["prose","wide"]`. With `"width":"wide"` it is `201`. A **Rich text** section of a page takes `"width":"full"`.
 
+## Try export and import
+
+The plugin's **Export and import** and **About Micelio** pages, in the admin at `http://localhost:1337/admin/plugins/micelio/_export-import` and `.../about`.
+
+1. In **Content Manager → Site**, create a second site: name `Second`, slug `second`, `modules` all off. Leave the hosts empty.
+2. Open **Micelio → Export and import**. With the site **Example Site (default)** chosen, leave the four checkboxes on and press **Prepare the export**. The row under **Previous exports** goes from _Waiting_ to a **Download** button; press it and keep the `.micelio.tar.gz`.
+3. Choose the site **Second**. Under **Import into Second** choose the file. The page shows **Dry run · nothing written yet**: with the default policy _Skip_ it says that the file's entries belong to another site of this CMS, and _Import_ is disabled. Choose **Keep both**: the table lists, per kind, how many entries are in the file and how many would be created, updated and skipped. Nothing is written yet (check the **Second** site's entries in the Content Manager: none).
+4. Press **Import n items**. The report under **Import report** repeats the table's _Create_ figures as _created_. The entries are now in **Second**, and **Example Site** keeps its own.
+5. Choose the same file again with **Keep both**: the dry run says _Skip_ for every kind and _Import_ is disabled (`0 items`): importing twice changes nothing.
+6. Try **Update** on **Example Site**: choose the file for it; the entries it already has show under _Update_ or _Skip_.
+7. Open **Micelio → About Micelio**: versions, the connected frontend with _OK_, the diagnostics block and **Copy diagnostics**. Paste the clipboard anywhere: it holds versions and counts, no email, token or content.
+8. The update check: `docker compose -f compose.dev.yml logs cms` shows no line for it; to see what leaves the CMS, run the stack with `MICELIO_UPDATE_CHECK=false npm run dev:docker` and press **Run checks again**: the _Update available_ row says the check is off, and `docker compose -f compose.dev.yml exec cms sh -c 'ss -tn | grep -c :443'` stays at `0` (the only other connection is to the frontend, on port 8080). With the default, the row says whether the release feed answered.
+
 ## Try the preview with curl
 
 To see what the routes do, one by one, play the frontend with `curl`. The seed gives you a custom API token for it, `PREVIEW_API_TOKEN` in `.env.docker`; load it without printing the file. A `.env.docker` written before the preview existed lacks it: run `npm run dev:docker -- down`, delete `.env.docker` and start again.

@@ -1,0 +1,77 @@
+{
+  "kind": "collectionType",
+  "collectionName": "micelio_transfers",
+  "info": {
+    "singularName": "transfer",
+    "pluralName": "transfers",
+    "displayName": "Transfer",
+    "description": "An export job or an import of the Export and import page: what was asked, who asked, the archive's file while it is kept, and the report"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    },
+    "i18n": {
+      "localized": false
+    },
+    "micelio": {
+      "export": "never"
+    }
+  },
+  "attributes": {
+    "kind": {
+      "type": "enumeration",
+      "enum": ["export", "import"],
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["queued", "running", "ready", "failed", "staged", "applied"],
+      "required": true
+    },
+    "siteSlug": {
+      "type": "string",
+      "required": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "operator": {
+      "type": "string"
+    },
+    "operatorId": {
+      "type": "integer"
+    },
+    "downloadToken": {
+      "type": "string"
+    },
+    "options": {
+      "type": "json"
+    },
+    "summary": {
+      "type": "json"
+    },
+    "bytes": {
+      "type": "biginteger"
+    },
+    "error": {
+      "type": "text"
+    },
+    "hasFile": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
+    "expiresAt": {
+      "type": "datetime",
+      "required": true
+    }
+  }
+}

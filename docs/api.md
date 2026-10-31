@@ -279,6 +279,31 @@ Admin API routes, behind the status page of the admin ([docs/operate/status-page
 
 The shape is `StatusReport` in `server/src/types/status.ts`. On both routes, a role without the permission gets `403` with the `code` `statusForbidden`, as `application/problem+json`; a request without an admin token gets Strapi's `401`.
 
+## Export, import and About
+
+Admin API routes behind the Export and import page ([docs/operate/transfer-page.md](operate/transfer-page.md)) and the About page ([docs/operate/about-page.md](operate/about-page.md)). The transfer routes need the admin permission `plugin::micelio.transfer`; an export that holds personal data also needs `plugin::micelio.transfer.personal` and, for each section of a sibling plugin it names, the permission that section registered. The About routes are open to every admin user.
+
+| Method | Path                               | Answers                                                                                                                                                        |
+| ------ | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/micelio/transfers/sites`         | `{ "data": [{ slug, name, isDefault }] }`                                                                                                                      |
+| `GET`  | `/micelio/transfers/options`       | `?site=<slug>`: the counts of a default export and the personal sections the caller may add                                                                    |
+| `GET`  | `/micelio/transfers`               | `?site=<slug>&kind=export\|import`: the history, newest first, at most 50 rows                                                                                 |
+| `POST` | `/micelio/exports`                 | `202` with the queued record. Body: `{ site, scope?, personal?, include? }`                                                                                    |
+| `GET`  | `/micelio/exports/:token/download` | The archive, as `application/gzip`, for 24 hours, to the user who made it (the record's `downloadToken`); `404` for anyone else; `410` `transferExpired` after |
+| `POST` | `/micelio/imports/dry-run`         | Multipart `file`, `site` and `existing`: keeps the archive 24 hours and answers its dry run                                                                    |
+| `POST` | `/micelio/imports/:id/dry-run`     | `{ existing }`: the dry run again with another policy                                                                                                          |
+| `POST` | `/micelio/imports/:id/apply`       | `{ existing }`: imports the staged archive, only with the policy of its last dry run                                                                           |
+| `GET`  | `/micelio/about`                   | `{ "data": AboutReport }`: versions, the last checks and the diagnostics text; no request                                                                      |
+| `POST` | `/micelio/about/refresh`           | Checks the frontends now, the feed if the last read is over 24 hours old; at most five a minute per user (`429` `aboutRefreshLimited`)                         |
+
+- `scope` is `{ content, media, settings, drafts }`, each on unless `false`. An archive without a part is still whole: `media: false` leaves out the files and the attributes that point to them, `settings: false` keeps the site's identity and modules, `drafts: false` keeps the documents that have a published version.
+- An export runs in the background, one at a time, and a record moves `queued`, `running`, `ready` or `failed`. A restart marks the ones it interrupted `failed`. Past 24 hours the file is removed and the record stays in the history.
+- `existing` is `skip`, `update` or `keep-both` (`docs/operate/export.md`). The dry run answers a record whose `details.preview` holds `types` (`inFile`, `create`, `update`, `skip` per export name), `media`, `theme`, and what the import would leave out. `apply` answers the record with `details.report`, the import's report. An apply with a policy other than the last dry run's, or after the file expired, is refused with `importNotConfirmed` or `transferExpired`.
+- An import is made with the caller's abilities: a type the user may not publish arrives as drafts, published or scheduled entries included (`asDraft` in the dry run), an existing site keeps its name, hosts and `url`, and an archive over `transferMaxBytes` is refused with `exportArchiveCorrupt`. A user keeps at most three staged uploads (`429` `importQueueFull`), and another user's import answers `404` `transferNotFound`.
+- Errors are problem details. A caller without the permission gets `403` `transferForbidden`, or `transferPersonalForbidden`; an archive the import refuses answers with its code (`exportArchiveCorrupt`, `exportLocaleMissing`, …) and `422`, or `404` and `409` for the site codes. An archive whose documents another site holds is staged with `details.conflict` instead of a `preview`: only `keep-both` imports it.
+
+The shapes are in `server/src/types/transfer.ts`, `server/src/types/about.ts` and `ImportPreview` in `server/src/site-export/dry-run.ts`.
+
 ## Preview
 
 Three routes carry a draft from the admin to the frontend's iframe without a long-lived credential (ADR-0019, section 3). [docs/operate/preview.md](operate/preview.md) sets it up and says what the frontend does with them. Every answer to a credential is `private, no-store`, and tokens and grants appear in no log, problem detail or message.

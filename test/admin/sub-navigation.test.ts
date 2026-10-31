@@ -71,6 +71,7 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Fixture page' }).waitFor()
     await expect(nav.getByRole('link').allTextContents()).resolves.toEqual([
       'Status',
+      'Export and import',
       'Fixture page',
       'About Micelio',
     ])
@@ -128,6 +129,7 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Status' }).waitFor()
     await nav.getByRole('link', { name: 'Status' }).focus()
     for (const [name, path] of [
+      ['Export and import', /\/plugins\/micelio\/_export-import$/],
       ['Fixture page', /\/plugins\/micelio\/fixture$/],
       ['About Micelio', /\/plugins\/micelio\/about$/],
     ] as const) {
@@ -177,9 +179,9 @@ describe('the sub-navigation in the admin', () => {
     const page = await open('admin-es@example.com')
     const nav = page.getByRole('navigation', { name: 'Secciones de Micelio' })
     await nav.getByRole('link', { name: 'Estado' }).waitFor()
-    // The Site group holds only the sibling plugin's item, which arrives with its own request after
-    // the core's: the group exists once that item does.
+    // The sibling plugin's item arrives with its own request after the core's.
     await nav.getByRole('link', { name: 'Página de prueba' }).waitFor()
+    await expect(nav.getByRole('link', { name: 'Exportar e importar' }).count()).resolves.toBe(1)
     for (const heading of ['Resumen', 'Sitio', 'Acerca de']) {
       await expect(nav.getByText(heading, { exact: true }).count(), heading).resolves.toBe(1)
     }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CORE_NAV_ITEMS, visibleNavItems, type CoreNavItem } from '../admin/src/navigation'
-import { STATUS_READ_PERMISSION } from '../admin/src/permissions'
+import { STATUS_READ_PERMISSION, TRANSFER_PERMISSION } from '../admin/src/permissions'
 
 const REPORTS = { action: 'plugin::micelio.reports.read', subject: null }
 const items: CoreNavItem[] = [
@@ -19,5 +19,6 @@ describe('the items of the core a role sees', () => {
     expect(ids([STATUS_READ_PERMISSION])).toEqual(['status', 'about'])
     expect(ids([REPORTS])).toEqual(['about', 'reports'])
     expect(ids([STATUS_READ_PERMISSION, REPORTS])).toEqual(['status', 'about', 'reports'])
+    expect(ids([TRANSFER_PERMISSION])).toEqual(['transfer', 'about'])
   })
 })

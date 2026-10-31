@@ -53,6 +53,7 @@ module.exports = {
       id: 'fixture-members',
       version: '1.0',
       personalData: true,
+      label: { en: 'Fixture members', es: 'Miembros de la prueba' },
       permission: MANAGE,
       async *write(site) {
         yield {

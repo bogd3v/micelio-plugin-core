@@ -31,6 +31,8 @@ export function testEnvironment(environment = 'test'): Record<string, string> {
     PORT: '0',
     STRAPI_TELEMETRY_DISABLED: 'true',
     STRAPI_DISABLE_CRON: 'true',
+    // The release feed is asked only by the suite that stubs it (test/strapi/about.test.ts).
+    MICELIO_UPDATE_CHECK: 'false',
     DATABASE_FILENAME,
     APP_KEYS: 'testKeyOne,testKeyTwo',
     API_TOKEN_SALT: 'test-api-token-salt',

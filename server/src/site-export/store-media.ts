@@ -87,6 +87,22 @@ export async function storeMedia(
   return result
 }
 
+/**
+ * The target's file for each media entry of an archive that the library already holds, by
+ * SHA-256, without storing anything.
+ */
+export async function findMedia(
+  strapi: Core.Strapi,
+  media: MediaEntry[]
+): Promise<Map<string, number>> {
+  const found = new Map<string, number>()
+  for (const entry of media) {
+    const id = await findStored(strapi, entry)
+    if (id !== undefined) found.set(entry.sha256, id)
+  }
+  return found
+}
+
 /** Removes files an import stored, when the import fails after storing them. */
 export async function removeMedia(strapi: Core.Strapi, ids: number[]): Promise<void> {
   const upload = strapi.plugin('upload').service('upload')

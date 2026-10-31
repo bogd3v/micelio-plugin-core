@@ -134,6 +134,12 @@ export interface ExportSectionRegistration {
    */
   personalData: boolean
   /**
+   * What the Export and import page calls the section, next to its checkbox.
+   *
+   * @defaultValue The section's `id`.
+   */
+  label?: LocalisedText
+  /**
    * The admin permission that manages the section. A caller that has an admin user (the export
    * dialog) must check it before it asks for the section; the CLI has no user.
    */

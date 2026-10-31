@@ -146,6 +146,15 @@ describe('the extension points', () => {
       )
     })
 
+    it('leaves the path of the Export and import page to the core, and `export-import` to a sibling', () => {
+      expect(() =>
+        extensions().registerAdminPage({ ...page, id: 'core-path', to: '_export-import' })
+      ).toThrow(/lower case letters, digits, hyphens/)
+      expect(() =>
+        extensions().registerAdminPage({ ...page, id: 'sibling-export', to: 'export-import' })
+      ).not.toThrow()
+    })
+
     it('refuses a site section once the models are built, and one with an unknown component', () => {
       const section = {
         id: 'late',

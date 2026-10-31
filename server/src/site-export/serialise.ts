@@ -32,8 +32,8 @@ export interface SerialiseContext {
   componentAttributes(uid: string): Attributes
   /** The export name of a relation's target, or `undefined` when the archive does not hold it. */
   exportNameOf(uid: string): string | undefined
-  /** The reference that stands for a file in `data`. */
-  mediaRef(file: StoredFile): MediaRef
+  /** The reference that stands for a file in `data`; `null` when the export leaves media out. */
+  mediaRef(file: StoredFile): MediaRef | null
   personal: boolean
 }
 
@@ -167,7 +167,11 @@ function serialiseValue(
     case 'blocks':
       return value === undefined ? null : (value as ExportValue)
     case 'media':
-      if (attribute.multiple) return asList(value).map((file) => mediaOf(file, context))
+      if (attribute.multiple) {
+        return asList(value)
+          .map((file) => mediaOf(file, context))
+          .filter((ref) => ref !== null)
+      }
       return value ? mediaOf(value, context) : null
     case 'relation':
       return relationOf(attribute, value, context)

@@ -6,7 +6,7 @@ The **Micelio** entry of the admin's menu, marked with the Micelio icon, opens t
 
 A role with the permission **Read the Micelio status page** (`plugin::micelio.status.read`, in Settings → Roles → Plugins → Micelio). The super admin has it; the Editor and Author roles do not, since the page shows the host's configuration. Give it to another role there.
 
-The menu entry itself needs no permission: any admin user sees it. A role without the status permission does not see **Status** in the sub-navigation and lands on **About Micelio**, which shows no configuration; the pages of sibling plugins show to the roles that have their permission.
+The menu entry itself needs no permission: any admin user sees it. A role without the status permission does not see **Status** in the sub-navigation and lands on **About Micelio**, which shows no configuration ([about-page.md](about-page.md)); the pages of sibling plugins show to the roles that have their permission.
 
 ## What it shows
 

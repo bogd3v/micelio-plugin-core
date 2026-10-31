@@ -21,6 +21,11 @@ export function registerStatusRefresh(strapi: Core.Strapi): boolean {
         } catch (error) {
           strapi.log.error(`micelio: the daily status refresh failed: ${String(error)}`)
         }
+        try {
+          await strapi.plugin('micelio').service('about').refresh({ force: true })
+        } catch (error) {
+          strapi.log.error(`micelio: the daily About refresh failed: ${String(error)}`)
+        }
       },
       options: { rule },
     },

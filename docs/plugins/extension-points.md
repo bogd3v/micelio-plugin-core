@@ -33,7 +33,7 @@ extensions.registerAdminPage({
 })
 ```
 
-`to` cannot be `about`: the core's About page uses it, and the registration throws a `TypeError`. The index (Status) is the empty path, which `to` never matches.
+`to` cannot be `about`: the core's About page uses it, and the registration throws a `TypeError`. The core's Export and import page lives at `_export-import`, which `to` can never be (it starts with an underscore), so every other path stays yours. The index (Status) is the empty path, which `to` never matches.
 
 The item appears in its group of the Micelio sub-navigation (`GET /micelio/admin-pages` lists those the admin user's permissions allow). Provide the page itself from your admin, in `bootstrap` (the Micelio admin plugin is registered by then, whatever the order):
 
@@ -106,6 +106,7 @@ extensions.registerExportSection({
   id: 'fediverse',
   version: '1.0',
   personalData: true,
+  label: { en: 'Fediverse followers and keys', es: 'Seguidores y claves del fediverso' },
   permission: 'plugin::fediverse.manage',
   async *write(site) {
     yield { path: 'blocked.json', body: JSON.stringify(await blockedFollowers(site)) }
