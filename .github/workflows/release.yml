@@ -38,7 +38,7 @@ jobs:
       pull-requests: read
       actions: read
       id-token: write
-    uses: bogd3v/micelio-engineering/.github/workflows/release.yml@1f80915d13b9052c9df8cd5b15960389f412b945 # main
+    uses: bogd3v/micelio-engineering/.github/workflows/release.yml@2d3087d5ee4f3f6cb078ed69a7d91e128e2d289f # main
     with:
       dry-run: ${{ inputs.dry_run }}
       release-candidate: ${{ inputs.release_candidate }}
