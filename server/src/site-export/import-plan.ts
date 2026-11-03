@@ -2,6 +2,7 @@
 // "Integrity" and "Import").
 import type { Core, UID } from '@strapi/strapi'
 import { findBlockOptionViolation } from '../block-options/rules'
+import { findBlockNotAllowedIn } from '../block-settings/check'
 import { EDITORIAL_ATTRIBUTE } from '../constants/editorial'
 import { SITE_UID } from '../constants/site'
 import { isEditorial } from '../editorial'
@@ -12,7 +13,7 @@ import type { ExistingPolicy, ImportRequest } from './importer'
 import { keepBoth } from './keep-both'
 import { exportedTypes, type ExportedType, type Row } from './model'
 import type { Attributes } from './serialise'
-import type { ExportDocument } from './types'
+import type { ExportDocument, ExportVersion } from './types'
 
 /** The target's site, as an import resolves it. */
 interface SiteRow {
@@ -184,9 +185,10 @@ function checkEditorial(type: ExportedType, document: ExportDocument): void {
  * target's schema refuses the archive before any write.
  *
  * @returns The references that resolve nowhere.
- * @throws `ExportError` `exportDocumentInvalid`.
+ * @throws `ExportError` `exportDocumentInvalid`, also for a block the target's site disabled or
+ * does not allow on the page's type (`blockNotAllowed` at save).
  */
-export function validate(strapi: Core.Strapi, plan: Plan): number {
+export async function validate(strapi: Core.Strapi, plan: Plan): Promise<number> {
   const context = deserialiseContext(strapi, plan, new Map(), undefined)
   let missing = 0
   for (const type of plan.types) {
@@ -196,6 +198,7 @@ export function validate(strapi: Core.Strapi, plan: Plan): number {
         const result = deserialiseData(type.attributes, version.data, context, where)
         missing += result.missing
         checkBlockOptions(type, result.data, where)
+        await checkBlocksAllowed(strapi, plan, type, document, version, result.data, where)
       }
     }
   }
@@ -217,6 +220,39 @@ function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, wh
         `${violation.option}${allowed}`
     )
   }
+}
+
+// The save of the importer refuses a block the target's site disabled or does not allow on the
+// page's type (`blockNotAllowed`); checking it here refuses the archive before any write. A site the
+// import creates has no settings, and a document the policy leaves alone is not written.
+async function checkBlocksAllowed(
+  strapi: Core.Strapi,
+  plan: Plan,
+  type: ExportedType,
+  document: ExportDocument,
+  version: ExportVersion,
+  data: Record<string, unknown>,
+  where: string
+): Promise<void> {
+  if (plan.site.isNew || type.uid === SITE_UID) return
+  const isThere = plan.targetHas.has(`${type.name}:${document.documentId}`)
+  if (isThere && plan.existing === 'skip') return
+  const violation = await findBlockNotAllowedIn(strapi, {
+    uid: type.uid as UID.ContentType,
+    action: isThere && plan.existing === 'update' ? 'update' : 'create',
+    site: { documentId: plan.site.documentId, slug: plan.site.slug },
+    documentId: document.documentId,
+    locale: version.locale ?? undefined,
+    data,
+  })
+  if (!violation) return
+  throw new ExportError(
+    'exportDocumentInvalid',
+    `${where}: the ${violation.block} block ` +
+      (violation.reason === 'disabled'
+        ? 'is disabled on the target site'
+        : `is not allowed on ${violation.pageType} pages of the target site`)
+  )
 }
 
 /**

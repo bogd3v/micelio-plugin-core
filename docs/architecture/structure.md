@@ -10,6 +10,26 @@ The long descriptions of the subsystems that `AGENTS.md` summarises. Read the se
 
 `budget/` is the page weight budget (ADR-0019, amendment of 2026-10-25): `rules.ts` (pure: the budget of a page type and site, the excess, the report's schema, which types are measured), `weight-client.ts` (the request to the frontend's weight route with a system grant: no redirect, bounded retries on `429`, fail closed). The `budget` service measures a draft and `performTransition` calls it on every publish of a type that `budgets.contentTypes` lists (by default `api::page.page` and `api::article.article`, the types the frontend previews; the default is applied in code, not in the config's defaults, since Strapi merges arrays index by index) and that is site-scoped, editorial and has a dynamic zone, refusing with `pageOverBudget` or `previewUnavailable`; `POST /micelio/budget/measure` (`controllers/budget.ts`) serves the cost meter with the report the admin read from the frontend with the editor's own grant, and mints no grant. The budgets are `budgets` in the plugin's config. `docs/operate/budgets.md` is the how-to.
 
+## Block settings
+
+`block-settings/` is what a site manages of the catalogue (#51; `docs/operate/block-catalogue.md`).
+`rules.ts` is pure: it checks a setting against the contract (`findSettingViolation`), merges a
+site's defaults over the core's (`mergedOptions`), finds the catalogue blocks in the data of a
+document wherever they sit (`blockIdsIn`: dynamic zones, component attributes and the parts
+nested in a component) and decides which of them a save may not add (`findBlockNotAllowed`: an
+addition is more of a block than the stored draft holds). `check.ts` reads the site's settings and
+the stored draft for one write and is the one check behind both `documents.ts`, the document
+service middleware on `create`, `update` and `clone`, and the dry run of an import
+(`site-export/import-plan.ts`), so an archive is refused before anything is written. The same
+middleware validates the writes to `plugin::micelio.block-setting`. `error.ts` has
+`BlockNotAllowedError` and `BlockSettingError`, which the `site-scope` route middleware (content
+API) and `controllers/block-settings.ts` (admin) answer as problem details. The `blockSettings`
+service (`services/block-settings.ts`) reads and writes the rows through the document service,
+builds the merged view of `GET /micelio/blocks?site=` and the Block catalogue page's view, and
+scans the site's pages for the blocks they hold (database only). `permissions.ts` registers
+`plugin::micelio.blocks.read` and `.manage`. The type has `export: never` and is hidden from the
+Content Manager: the page is its editor.
+
 ## Site export and import
 
 `site-export/` writes and reads the site archive of `docs/export-format.md`, behind the `siteExport` service: `exporter.ts` (with its `scope`) and `importer.ts`, `dry-run.ts` (`preview`: what an import would do, written nowhere), `inspect.ts` (the decision for one document, shared by the import and its dry run), `keep-both.ts` (the policy that gives the archive's documents ids of their own), the types and documents they share (`model.ts`), the export names and policies a type declares (`names.ts`), each attribute to the archive and back (`serialise.ts`, `deserialise.ts`), what an import checks before it writes (`archive.ts`, `import-plan.ts`), the media bytes (`media.ts`, `store-media.ts`) and a ustar writer and reader (`tar.ts`).

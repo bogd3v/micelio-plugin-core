@@ -3,6 +3,7 @@ import { SITE_UID } from '../constants/site'
 import { CATEGORY_UID, TAG_UID } from '../constants/taxonomy'
 import about from './about'
 import blocks from './blocks'
+import blockSettings from './block-settings'
 import budget from './budget'
 import preview from './preview'
 import extensions from './extensions'
@@ -15,6 +16,7 @@ export default {
   category: factories.createCoreController(CATEGORY_UID as UID.ContentType),
   tag: factories.createCoreController(TAG_UID as UID.ContentType),
   blocks,
+  blockSettings,
   budget,
   transitions,
   status,

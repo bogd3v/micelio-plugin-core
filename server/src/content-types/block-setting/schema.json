@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "micelio_block_settings",
+  "info": {
+    "singularName": "block-setting",
+    "pluralName": "block-settings",
+    "displayName": "Block setting",
+    "description": "What one site manages of a block of the catalogue: whether it is enabled, the page types it is allowed in, the options a new block starts with and its label in the palette"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    },
+    "i18n": {
+      "localized": false
+    },
+    "micelio": {
+      "export": "never"
+    }
+  },
+  "attributes": {
+    "block": {
+      "type": "string",
+      "required": true,
+      "maxLength": 64
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "allowedPageTypes": {
+      "type": "json"
+    },
+    "defaultOptions": {
+      "type": "json"
+    },
+    "labels": {
+      "type": "json"
+    }
+  }
+}

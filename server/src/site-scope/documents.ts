@@ -144,9 +144,11 @@ async function refuseMoveAwayFromOtherLocales(
   }
 }
 
-// The documentIds of the sites a relation value connects: it may name them by `documentId` or `id`,
-// bare, in a list, or in `connect` or `set`.
-async function namedSites(strapi: Core.Strapi, value: unknown): Promise<string[]> {
+/**
+ * The documentIds of the sites a relation value connects: it may name them by `documentId` or `id`,
+ * bare, in a list, or in `connect` or `set`.
+ */
+export async function namedSites(strapi: Core.Strapi, value: unknown): Promise<string[]> {
   if (typeof value === 'string') return [value]
   if (typeof value === 'number') return [await documentIdOfSite(strapi, value)]
   if (Array.isArray(value))

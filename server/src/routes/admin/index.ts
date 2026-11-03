@@ -21,6 +21,36 @@ export default (): Core.RouterInput => ({
     },
     {
       method: 'GET',
+      path: '/block-settings/sites',
+      handler: 'blockSettings.sites',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
+      path: '/block-settings',
+      handler: 'blockSettings.find',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
+      path: '/block-settings/:block/usage',
+      handler: 'blockSettings.usage',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'PUT',
+      path: '/block-settings/:block',
+      handler: 'blockSettings.update',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'DELETE',
+      path: '/block-settings/:block',
+      handler: 'blockSettings.reset',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
       path: '/status',
       handler: 'status.find',
       config: { policies: ['admin::isAuthenticatedAdmin'] },

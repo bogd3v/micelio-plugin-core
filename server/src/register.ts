@@ -1,5 +1,6 @@
 import type { Core } from '@strapi/strapi'
 import { blockOptionsDocuments } from './block-options/documents'
+import { blockSettingsDocuments } from './block-settings/documents'
 import { registerComponents } from './components'
 import { editorialGuard } from './editorial/guard'
 import { siteSectionInstances } from './extensions/site-sections'
@@ -29,6 +30,7 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   strapi.documents.use(siteSectionInstances(strapi))
   strapi.documents.use(siteScopeDocuments(strapi))
   strapi.documents.use(blockOptionsDocuments(strapi))
+  strapi.documents.use(blockSettingsDocuments(strapi))
   strapi.documents.use(editorialGuard(strapi))
   // `strapi.plugin('micelio').hooks`: the `hooks` service under the name the API documents.
   Object.defineProperty(strapi.plugin('micelio'), 'hooks', {

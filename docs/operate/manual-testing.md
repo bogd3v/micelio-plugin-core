@@ -105,6 +105,79 @@ The catalogue's presentation options (`contract/options.ts`: `layout`, `width`, 
 6. In Content Manager → Page, open the first page, change **Columns** to 4 and **Save**: it saves.
 7. Articles never take `width: full`. Send the same call to `localhost:1337/api/articles?status=draft` with `{"data":{"title":"Wide","blocks":[{"__component":"shared.media","width":"full"}]}}`: `400`, `"block":"media"`, `"option":"width"`, `"allowed":["prose","wide"]`. With `"width":"wide"` it is `201`. A **Rich text** section of a page takes `"width":"full"`.
 
+## Try the block catalogue
+
+**Micelio → Block catalogue** (`http://localhost:1337/admin/plugins/micelio/blocks`) is where a site
+enables and configures the blocks of the catalogue ([block-catalogue.md](block-catalogue.md)). The
+stack's `page` is site-scoped and holds every block, so it shows what the page does.
+
+1. Create the first admin, as above. In Settings → API Tokens create a **Full access** token and
+   keep it out of any file: `read -rs TOKEN && export TOKEN` (paste it, press Enter). Log in on the
+   API for the admin routes (the password is the one you chose):
+
+   ```bash
+   ADMIN=$(curl -s -X POST localhost:1337/admin/login -H 'Content-Type: application/json' \
+     -d '{"email":"<your email>","password":"<your password>"}' | jq -r .data.token)
+   PALETTE() { curl -s "localhost:1337/micelio/blocks?site=default" -H "Authorization: Bearer $ADMIN" \
+     | jq -c '[.data[].id]'; }
+   NEW() { curl -s -w '\n%{http_code}\n' -X POST 'localhost:1337/api/pages?status=draft' \
+     -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+     -d "{\"data\":{\"title\":\"$1\",\"slug\":\"$1\",\"sections\":[$2]}}"; }
+   ```
+
+2. Open the page. The table lists the 19 blocks of the catalogue, all on, and the line above it
+   reads "0 disabled on default · 19 enabled". `PALETTE` lists 19 ids, `hero` among them.
+3. Switch **Hero** off. The row turns grey and the line reads "1 disabled on default · 18
+   enabled". `PALETTE` lists 18 ids and no `hero`. **Disabled only** leaves that one row.
+4. Try to add the disabled block:
+
+   ```bash
+   NEW hero-page '{"__component":"section.hero","title":"Hi","variant":"centered"}'
+   # 400, "code":"blockNotAllowed","block":"hero","reason":"disabled"; no page is created
+   NEW cta-page '{"__component":"section.cta","title":"Hi","variant":"banner"}'
+   # 201: the other blocks still insert
+   ```
+
+5. Pages that already use a block keep rendering. Switch **Scene** off, then open the preview of
+   "Open source, in plain words" (Content Manager → Page, its **Preview** button): the scene is
+   still there. Change that page's title and **Save**: it saves. Switch **Scene** on again.
+6. Press **Feature grid**. The drawer lists Landing, Standard and Long read ("core default: yes"),
+   a choice for `variant`, `columns` (2, 3 and 4: **no 6**) and `density`, the labels, **Cost**
+   and the pages that use the block. Choose `columns` **2**, type "Grid of features" as the English
+   label and **Save**: the row shows the label, and the merged view reads `"default":"2"` and
+   `"coreDefault":"3"` for it:
+
+   ```bash
+   curl -s "localhost:1337/micelio/blocks?site=default" -H "Authorization: Bearer $ADMIN" \
+     | jq '.data[] | select(.id=="feature-grid") | {label, columns: .options.columns}'
+   ```
+
+7. A default outside the contract is refused by the API too:
+
+   ```bash
+   curl -s -w '\n%{http_code}\n' -X PUT "localhost:1337/micelio/block-settings/feature-grid?site=default" \
+     -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+     -d '{"defaultOptions":{"columns":6}}'
+   # 400, "code":"blockOptionInvalid","block":"feature-grid","option":"columns","allowed":["2","3","4"]
+   ```
+
+8. In the drawer untick **Standard** and **Save**. Every page of the stack is a standard page, so
+   `NEW grid-page '{"__component":"section.feature-grid","variant":"grid"}'` is
+   `400` with `"code":"blockNotAllowed","reason":"pageType","pageType":"standard"`. **Reset to
+   core defaults** brings it back.
+9. **Measure again** (needs a frontend with the weight route, as in
+   [Try the page budget](#try-the-page-budget)): open **Scene**. The drawer reads "Declared 1.9 kB."
+   and nothing was asked of the frontend: in the browser's network panel there is no
+   `/_preview?token=…` and no `/api/preview/…/weight` request. Press **Measure again**: one
+   `/_preview?token=…` request through a frame that is not shown, then the weight request, and
+   the line reads "Declared 1.9 kB · measured now … kB on Open source, in plain words (…)".
+10. In Settings → Administration Panel → Roles create a role with **Read the block catalogue of a
+    site** only; invite a user with it and open the page as them: the switches are disabled and
+    the drawer has no **Save**. Give the role **Manage the block catalogue of a site** and the
+    switches work.
+11. Set the language of your profile to Español and reload: the page, the drawer and the counts
+    are in Spanish.
+
 ## Try export and import
 
 The plugin's **Export and import** and **About Micelio** pages, in the admin at `http://localhost:1337/admin/plugins/micelio/_export-import` and `.../about`.

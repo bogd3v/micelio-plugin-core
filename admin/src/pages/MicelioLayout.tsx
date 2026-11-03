@@ -12,6 +12,7 @@ import { STATUS_READ_PERMISSION } from '../permissions'
 import { PLUGIN_ID } from '../pluginId'
 import { localised } from '../utils/localised'
 import AboutPage from './AboutPage'
+import BlocksPage from './BlocksPage'
 import PreviewPage from './PreviewPage'
 import StatusPage from './StatusPage'
 import TransferPage from './TransferPage'
@@ -80,6 +81,7 @@ export default function MicelioLayout() {
     >
       <Routes>
         <Route index element={canReadStatus ? <StatusPage /> : <Navigate to="about" replace />} />
+        <Route path="blocks" element={<BlocksPage />} />
         <Route path="_export-import" element={<TransferPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="preview/:uid/:documentId" element={<PreviewPage />} />

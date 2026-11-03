@@ -146,7 +146,7 @@ async function importStaged(
   const plan = await planImport(strapi, staged, types, request)
   report.site = { documentId: plan.site.documentId, slug: plan.site.slug }
   report.unknownRoles = await unknownRoles(strapi, siteData(plan))
-  report.missingReferences = validate(strapi, plan)
+  report.missingReferences = await validate(strapi, plan)
 
   const media = await storeMedia(strapi, staged.media, staged.mediaFiles)
   report.media = { stored: media.uploaded.length, reused: media.reused }

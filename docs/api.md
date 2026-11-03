@@ -151,6 +151,25 @@ A save whose blocks carry an option the catalogue does not allow (`create` or `u
 
 `allowed` is empty when the block does not expose the option. Where a route has no `site-scope` middleware (the Content Manager's, for one), Strapi answers its own `ValidationError` with the same members in `error.details`.
 
+A save that adds a block the site disabled, or does not allow on the page's type, answers `400`
+with the code `blockNotAllowed`; it writes nothing:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "The feature-grid block is disabled on this site",
+  "code": "blockNotAllowed",
+  "block": "feature-grid",
+  "reason": "disabled"
+}
+```
+
+`reason` is `disabled`, or `pageType` with the page's `pageType` beside it. Like
+`blockOptionInvalid`, it is the problem detail where the route has the `site-scope` middleware and
+Strapi's `ValidationError` (the code in `error.details`) where it has not.
+
 ## Sites
 
 - `hosts` is a list of host names, stored in lower case: no scheme, port or path. Two sites cannot share a host name.
@@ -251,13 +270,95 @@ The body is `{ "uid", "documentId", "locale", "report" }`: the first three as fo
 
 ## Block catalogue
 
-An admin API route, for the admin panel and its builder; any admin user may read it.
+Admin API routes, for the admin panel and its builder. The catalogue itself is the core's and read
+only; what a site manages on top of it is stored in `plugin::micelio.block-setting`, one row per
+site and block, and is written only by the routes below (the type is hidden from the Content
+Manager and has no content API route).
 
-| Method | Path              | Answers                                                                 |
-| ------ | ----------------- | ----------------------------------------------------------------------- |
-| `GET`  | `/micelio/blocks` | `{ "data": [{ id, group, component, schema, options, cost, static }] }` |
+| Method   | Path                                                | Needs                           | Answers                                             |
+| -------- | --------------------------------------------------- | ------------------------------- | --------------------------------------------------- |
+| `GET`    | `/micelio/blocks`                                   | any admin user                  | The catalogue, unmerged                             |
+| `GET`    | `/micelio/blocks?site=<slug>`                       | any admin user                  | The catalogue as the site sees it (the merged view) |
+| `GET`    | `/micelio/block-settings/sites`                     | `plugin::micelio.blocks.read`   | `{ "data": [{ slug, name, isDefault }] }`           |
+| `GET`    | `/micelio/block-settings?site=<slug>`               | `plugin::micelio.blocks.read`   | The Block catalogue page's view of the site         |
+| `GET`    | `/micelio/block-settings/<block>/usage?site=<slug>` | `plugin::micelio.blocks.read`   | The pages with the block that you may read          |
+| `PUT`    | `/micelio/block-settings/<block>?site=<slug>`       | `plugin::micelio.blocks.manage` | Stores the site's settings of the block             |
+| `DELETE` | `/micelio/block-settings/<block>?site=<slug>`       | `plugin::micelio.blocks.manage` | Removes them: `204`, the core's defaults again      |
 
-One entry per block of the catalogue, in its order. `schema` is the block's JSON Schema, the one under `$defs` in `contract/blocks.schema.json`; [`docs/blocks.md`](blocks.md) describes the fields and the reference of every block.
+The usage route lists a page only when the caller may read it in the Content Manager (its type,
+its locale and the conditions of the caller's role), so a role with `blocks.read` alone gets an
+empty list. A page's `title` is the first of its `title`, `name` and `slug` fields that the role
+may read; when it may read none, the title is the page's `documentId`. The `used` count of the view does not depend on the caller.
+
+`GET /micelio/blocks` answers `{ "data": [{ id, group, component, schema, options, cost,
+static }] }`:
+one entry per block of the catalogue, in its order. `schema` is the block's JSON Schema, the one
+under `$defs` in `contract/blocks.schema.json`; [`docs/blocks.md`](blocks.md) describes the fields
+and the reference of every block.
+
+### The merged view
+
+`GET /micelio/blocks?site=<slug>` is what the palette of the builder reads. It answers the same
+entries for the blocks the site has not disabled, so a disabled block is not in it, with three
+changes:
+
+- each entry of `options` is `{ values, default, coreDefault }`: `default` is what a new block of
+  this site starts with (the site's choice, else the core's) and `coreDefault` the contract's;
+- `label` holds the site's label of the block in the palette by locale (`en`, `es`), `{}` when it
+  set none;
+- `pageTypes` lists the page types the block may be inserted in: the site's choice, else every
+  page type the site knows (the keys of `budgets.pageTypes`, and the site's own under
+  `budgets.sites`).
+
+An unknown `site` answers `unknownSite`. The answer is `Cache-Control: private, no-store`, since a
+role change or a toggle must show at once. The plugin applies no default itself: a block saved
+without an option keeps what the content API stores for it (the contract's default), so the palette
+is what makes a new block start with the site's.
+
+### The settings
+
+`PUT` takes any of these fields and leaves the others as they are (a body with another key is
+refused):
+
+| Field              | Value                                                                            |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `enabled`          | `false` hides the block from the merged view and refuses it at save              |
+| `allowedPageTypes` | A list of the site's page types, or `null` for the core's default (every one)    |
+| `defaultOptions`   | The value a new block starts with, by option name; `null` or `{}` for the core's |
+| `labels`           | `{ "en": "…", "es": "…" }`, at most 60 characters each; an empty text removes it |
+
+A default must be a value the block offers (`columns: 6` is refused for `feature-grid`, `2` is
+accepted): the answer is `400` `blockOptionInvalid` with the block, the option and the values it
+allows, and nothing is stored. The same check guards every write to the type, not only the route.
+A block that is not in the catalogue, a page type the site does not have, a label of another locale
+or over the limit, and a second setting for the same block answer `400` `blockSettingInvalid` with
+the `field`.
+
+The reading routes answer `403` `blocksForbidden` without their permission, the writing ones
+without `plugin::micelio.blocks.manage`. Both are registered at boot, so a role can be given them
+in Settings → Roles; the super admin has them at once. Both are global, as Strapi's roles are
+(ADR-0017, trade-offs): a role holding `.read` reads the settings of every site and one holding
+`.manage` changes the settings of every site, so neither is limited to one site. `.manage` changes
+what every editor of a site may insert, so give it to whoever owns the catalogues, not to every
+editor.
+
+### What a disabled block does
+
+A disabled block, or one outside the page types a site allows, cannot be **added** to a page. Every
+path that writes content is checked, because they all go through the document service: the content
+API, the Content Manager, other plugins, the Content Manager's duplicate and the import of a site
+archive. The save is refused with `blockNotAllowed` (below) and writes nothing; the dry run of an
+import refuses the archive before any write.
+
+Only an addition is refused. A page that already uses the block can still be saved, edited and
+reordered, and keeps rendering: the check compares the save with the stored draft, and a block the
+draft already holds is not an addition. A second block of a kind the draft holds once is. A
+duplicate carries every attribute of its source that the request does not replace, so it is checked
+in full: the source's draft with the request laid over it, whether or not the request names blocks.
+A page moved to another site (a `site` the page does not have) is new there, so all of its blocks
+are checked against that site's settings. Moving a page to another page type is not checked: only
+the blocks a save adds are. The page type is the page's `pageType` when the budgets list it, else
+`standard` (`docs/operate/budgets.md`), after the save.
 
 ## Status
 

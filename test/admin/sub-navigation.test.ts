@@ -71,15 +71,14 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Fixture page' }).waitFor()
     await expect(nav.getByRole('link').allTextContents()).resolves.toEqual([
       'Status',
+      'Block catalogue',
       'Export and import',
       'Fixture page',
       'About Micelio',
     ])
-    for (const heading of ['Overview', 'Site', 'About']) {
+    for (const heading of ['Overview', 'Content', 'Site', 'About']) {
       await expect(nav.getByText(heading, { exact: true }).count(), heading).resolves.toBe(1)
     }
-    // A group with no item is not listed.
-    await expect(nav.getByText('Content', { exact: true }).count()).resolves.toBe(0)
     expect(page.url()).toMatch(/\/admin\/plugins\/micelio$/)
     await expect(
       nav.getByRole('link', { name: 'Status' }).getAttribute('aria-current')
@@ -121,6 +120,10 @@ describe('the sub-navigation in the admin', () => {
     const nav = page.getByRole('navigation', { name: 'Micelio sections' })
     await nav.getByRole('link', { name: 'About Micelio' }).waitFor()
     await expect(nav.getByRole('link').allTextContents()).resolves.toEqual(['About Micelio'])
+    // A group with no item is not listed.
+    for (const heading of ['Overview', 'Content', 'Site']) {
+      await expect(nav.getByText(heading, { exact: true }).count(), heading).resolves.toBe(0)
+    }
   })
 
   it('reaches every item with Tab and opens it with Enter', async () => {
@@ -129,6 +132,7 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Status' }).waitFor()
     await nav.getByRole('link', { name: 'Status' }).focus()
     for (const [name, path] of [
+      ['Block catalogue', /\/plugins\/micelio\/blocks$/],
       ['Export and import', /\/plugins\/micelio\/_export-import$/],
       ['Fixture page', /\/plugins\/micelio\/fixture$/],
       ['About Micelio', /\/plugins\/micelio\/about$/],

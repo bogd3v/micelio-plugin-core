@@ -44,6 +44,15 @@ Each is stored in the block's component as an optional Strapi `enumeration` with
 
 **Validation at save.** On `create`, `update` and `clone` (the Content Manager's duplicate) of any type with a dynamic zone, the plugin checks every option in the blocks the data names and refuses the save with `blockOptionInvalid` ([`docs/api.md`](api.md#errors)) when a block does not expose the option or the value is not one the block offers: the problem detail names the block, the option and the allowed values. An absent or `null` option takes its default. Stored content is not re-checked, and a component that is not a block of the catalogue is left alone. The components must declare the attributes (the host's, or `micelio-cms`'s once it adds them: the components of `v0.4.0` store only `variant`), or Strapi refuses the unknown key first.
 
+**What a site manages.** The catalogue is the core's and read only; a site manages a layer on top
+of it (the Block catalogue page, [`docs/operate/block-catalogue.md`](operate/block-catalogue.md)):
+whether a block is enabled, the page types it is allowed in, the options a new block starts with
+and its label in the palette. A default is checked against this file's values when it is saved and
+is refused with `blockOptionInvalid` if the block does not offer it, so a site cannot make a block
+start with something the save would refuse. A stored default that a later release withdraws falls
+back to the core's.
+The merged view is `GET /micelio/blocks?site=` ([`docs/api.md`](api.md#block-catalogue)).
+
 Adding an option to a block, or a value to an option, changes the block's fingerprint, so `blockCatalogueChanged` runs with the block in `changed` on the next boot.
 
 ## How a schema maps to Strapi

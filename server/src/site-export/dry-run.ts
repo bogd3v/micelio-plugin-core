@@ -73,7 +73,7 @@ export async function previewImport(
       const archived = new Set(staged.manifest.types.map((type) => type.name))
       const types = all.filter((type) => archived.has(type.name))
       const plan = await planImport(strapi, staged, types, request)
-      const missingReferences = validate(strapi, plan)
+      const missingReferences = await validate(strapi, plan)
 
       const files = await findMedia(strapi, staged.media)
       const shaOf = new Map([...files.entries()].map(([sha256, id]) => [id, sha256]))
