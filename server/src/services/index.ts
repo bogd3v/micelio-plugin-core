@@ -2,6 +2,7 @@ import { factories, type UID } from '@strapi/strapi'
 import { SITE_UID } from '../constants/site'
 import { CATEGORY_UID, TAG_UID } from '../constants/taxonomy'
 import about from './about'
+import blockSettings from './block-settings'
 import budget from './budget'
 import extensions from './extensions'
 import hooks from './hooks'
@@ -23,6 +24,7 @@ export default {
   status,
   preview,
   budget,
+  blockSettings,
   siteExport,
   transfers,
   about,

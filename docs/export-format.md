@@ -242,6 +242,11 @@ An archive **never** holds, whatever is asked:
 - Accounts and sessions: admin users, roles and permissions; reader accounts (`plugin::users-permissions.user`); sessions and refresh tokens.
 - Instance configuration: environment variables, plugin stores (the users-permissions settings, the Content Manager layouts), API tokens, the upload provider's settings, rate-limit keys and counters.
 - History that is Strapi's: content history versions, releases.
+- The per-site settings of the block catalogue (`plugin::micelio.block-setting`):
+  which blocks a site enables, where it allows them, the defaults and labels it set.
+  They are configuration of the site on this CMS, set again on the target.
+  An import still checks the archive's pages against the target site's settings (`blockNotAllowed`,
+  [api.md](api.md#what-a-disabled-block-does)).
 
 ## How a type declares its export
 

@@ -1,5 +1,7 @@
 import type { Core } from '@strapi/strapi'
 import { BlockOptionError, BLOCK_OPTION_INVALID } from '../block-options/error'
+import { BlockNotAllowedError } from '../block-settings/error'
+import { BLOCK_NOT_ALLOWED } from '../constants/blocks'
 import { SITE_UID } from '../constants/site'
 import type { SiteScopeState } from '../site-scope'
 import { pickSite, type SiteSummary } from '../site-scope/resolve'
@@ -16,7 +18,8 @@ const BLOCK_OPTION_STATUS = 400
  * default one. The parameter is removed before Strapi validates the query. A slug that no site
  * has answers a problem detail with the code `unknownSite`. A save the catalogue refuses for an
  * option a block does not allow answers `blockOptionInvalid`, naming the block, the option and the
- * values it allows.
+ * values it allows, and one that adds a block the site disabled or does not allow on the page's type
+ * answers `blockNotAllowed`, naming the block and why.
  */
 const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
   return async (ctx, next) => {
@@ -42,6 +45,20 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
     try {
       await next()
     } catch (error) {
+      if (error instanceof BlockNotAllowedError) {
+        const { block, reason, pageType } = error.violation
+        sendProblem(ctx, {
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: BLOCK_OPTION_STATUS,
+          detail: error.message,
+          code: BLOCK_NOT_ALLOWED,
+          block,
+          reason,
+          ...(pageType === undefined ? {} : { pageType }),
+        })
+        return
+      }
       if (!(error instanceof BlockOptionError)) throw error
       const { block, option, allowed } = error.violation
       sendProblem(ctx, {

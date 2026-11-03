@@ -37,14 +37,15 @@ const budgetText = (reason: BudgetError) =>
   reason === 'unsupported' ? 'cost.panel.unsupported' : `cost.error.${reason}`
 
 /** How one run of the measurement ended: the weight, or the id of the text that says why not. */
-type Outcome = { kind: 'ready'; measurement: BudgetMeasurement } | { kind: 'error'; text: string }
+export type Outcome =
+  { kind: 'ready'; measurement: BudgetMeasurement } | { kind: 'error'; text: string }
 
 /**
  * One measurement: gets the editor's grant with a frame that is never shown, reads the weight route
  * with it and reports the outcome once. The parent unmounts it then, so the frame is gone and no
  * new token is asked for.
  */
-function Measurement({
+export function Measurement({
   entry,
   onSettled,
 }: {

@@ -25,6 +25,13 @@ module.exports = withSiteScope(
         ],
         pluginOptions: localized,
       },
+      // A component that is not a block and holds one, for the block settings suite.
+      panel: {
+        type: 'component',
+        component: 'fixture.panel',
+        repeatable: false,
+        pluginOptions: localized,
+      },
     },
   })
 )

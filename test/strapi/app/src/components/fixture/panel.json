@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_fixture_panels",
+  "info": {
+    "displayName": "Panel",
+    "description": "A fixture component that is not a block and holds one: a block nested in a component attribute, for the block settings suite"
+  },
+  "options": {},
+  "attributes": {
+    "inner": {
+      "type": "component",
+      "component": "section.feature-grid",
+      "repeatable": false
+    }
+  }
+}
