@@ -62,7 +62,11 @@ The page is `/admin/plugins/micelio/preview/<content type uid>/<documentId>` (fo
 
 - Its **API token** and the permissions of step 3.
 - The **admin origin**, from its configuration (an optional variable of the frontend; without it the preview is off). It is the `frame-ancestors` of the draft route and the origin its messages are checked against ([ADR-0019](https://github.com/bogd3v/micelio/blob/main/docs/adr/0019-visual-editing-protocol.md), sections 4 and 5). It must match the `adminOrigin` bound in the grant: the frontend refuses a grant whose `adminOrigin` differs, and never frames itself for the origin an answer names, because that origin is the `Origin` header of whoever asked for the token. The grant cookie, `frame-ancestors` and the `/_preview` route are built in bogd3v/micelio#729.
-- The message schema, `@micelio/strapi-plugin-core/preview.schema.json`, to validate `ready` and `load-draft`.
+- The message schema, `@micelio/strapi-plugin-core/preview.schema.json`,
+  to validate the messages of both phases.
+- To be edited in [the builder](../guide/builder.md), the block messages of
+  bogd3v/micelio#732 (`micelio:blocks`, `micelio:selected`, `micelio:select`, `micelio:patch`…):
+  a frontend without them still previews, and the builder shows no outline over it.
 
 Never put a token or a grant in a log, a cache key, an error or a `Referer`.
 

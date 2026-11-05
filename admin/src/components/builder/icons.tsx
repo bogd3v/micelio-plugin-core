@@ -1,0 +1,87 @@
+import type { ReactNode } from 'react'
+
+/** A 16 px line icon, drawn in the current colour and hidden from assistive technology. */
+function Icon({ children, size = 16 }: { children: ReactNode; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {children}
+    </svg>
+  )
+}
+
+export const ChevronLeftIcon = () => (
+  <Icon>
+    <path d="M10 3 5 8l5 5" />
+  </Icon>
+)
+export const ChevronRightIcon = () => (
+  <Icon>
+    <path d="m6 3 5 5-5 5" />
+  </Icon>
+)
+export const UpIcon = () => (
+  <Icon>
+    <path d="m3 10 5-5 5 5" />
+  </Icon>
+)
+export const DownIcon = () => (
+  <Icon>
+    <path d="m3 6 5 5 5-5" />
+  </Icon>
+)
+export const DuplicateIcon = () => (
+  <Icon>
+    <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+    <path d="M10.5 3.5v-1h-8v8h1" />
+  </Icon>
+)
+export const TrashIcon = () => (
+  <Icon>
+    <path d="M3 4.5h10M6.5 4.5v-2h3v2M4.5 4.5l.6 9h5.8l.6-9" />
+  </Icon>
+)
+export const PhoneIcon = () => (
+  <Icon>
+    <rect x="4.5" y="1.5" width="7" height="13" rx="1.5" />
+    <path d="M7 12.5h2" />
+  </Icon>
+)
+export const TabletIcon = () => (
+  <Icon>
+    <rect x="2.5" y="1.5" width="11" height="13" rx="1.5" />
+    <path d="M7 12.5h2" />
+  </Icon>
+)
+export const DesktopIcon = () => (
+  <Icon>
+    <rect x="1.5" y="2.5" width="13" height="8.5" rx="1.5" />
+    <path d="M5.5 14h5M8 11v3" />
+  </Icon>
+)
+export const ClockIcon = () => (
+  <Icon size={12}>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M8 4.5V8l2.5 1.5" />
+  </Icon>
+)
+export const GripIcon = () => (
+  <Icon>
+    <path d="M6 3.5v.01M10 3.5v.01M6 8v.01M10 8v.01M6 12.5v.01M10 12.5v.01" strokeWidth="2.4" />
+  </Icon>
+)
+export const BlockGlyph = ({ isIsland }: { isIsland: boolean }) => (
+  <Icon>
+    {isIsland ? <path d="M3 12 8 3l5 9z" /> : <rect x="3" y="3" width="10" height="10" rx="2" />}
+  </Icon>
+)

@@ -2,6 +2,7 @@ import type { Core } from '@strapi/strapi'
 import { blockOptionsDocuments } from './block-options/documents'
 import { blockSettingsDocuments } from './block-settings/documents'
 import { registerComponents } from './components'
+import { documentVersionDocuments } from './document-version/documents'
 import { editorialGuard } from './editorial/guard'
 import { siteSectionInstances } from './extensions/site-sections'
 import { hooksOf } from './hooks'
@@ -27,6 +28,7 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   // Outermost, so the hook runs once `siteRules` has finished, the default switch included.
   strapi.documents.use(siteCreatedHook(strapi))
   strapi.documents.use(siteRules(strapi))
+  strapi.documents.use(documentVersionDocuments(strapi))
   strapi.documents.use(siteSectionInstances(strapi))
   strapi.documents.use(siteScopeDocuments(strapi))
   strapi.documents.use(blockOptionsDocuments(strapi))

@@ -5,6 +5,7 @@ import {
   useImperativeHandle,
   useRef,
   useState,
+  type ReactNode,
   type Ref,
 } from 'react'
 import styled from 'styled-components'
@@ -14,6 +15,7 @@ import {
   parsePreviewMessage,
   type PreviewMessage,
 } from '../../../contract/preview'
+import type { OutgoingMessage } from '../utils/builder/messages'
 import { READY_WAIT_SECONDS, SPOKEN_VERSIONS } from '../utils/previewPane'
 
 /** Whether the frame said it speaks a version the admin speaks. */
@@ -25,6 +27,8 @@ export interface FrameState {
   protocol: FrameProtocol
   /** The versions the frame listed in its `ready`, once it sent one. */
   versions: number[]
+  /** The `updatedAt` of the draft the frame in view showed in its `ready`; blocks are addressed by it. */
+  version: string | undefined
   /** A frame is loading, or the one in view is loading the draft again after a `load-draft`. */
   isBusy: boolean
   /**
@@ -44,6 +48,12 @@ export interface PreviewFrameHandle {
    * sent, and the page loads the preview again with a new token.
    */
   loadDraft: () => boolean
+  /**
+   * Posts a message of phase 2 to the frame in view, to the site's origin only (ADR-0019, amendment of 2026-11-02).
+   *
+   * @returns `false` when the frame has not said `ready` with a version the admin speaks: nothing was sent.
+   */
+  post: (message: OutgoingMessage) => boolean
 }
 
 interface PreviewFrameProps {
@@ -65,6 +75,13 @@ interface PreviewFrameProps {
    * messages, so a late `ready` can lift the cover.
    */
   isCovered?: boolean
+  /**
+   * Gets the messages of phase 2 (`micelio:blocks`, `micelio:selected`, `micelio:hovered`) of the
+   * frame in view, from the site's origin and that frame's window only.
+   */
+  onMessage?: (message: PreviewMessage) => void
+  /** Drawn over the frame, inside its stage (the builder's overlays). */
+  children?: ReactNode
 }
 
 type Phase = 'loading' | 'shown' | 'leaving'
@@ -126,6 +143,7 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
   ref: Ref<PreviewFrameHandle>
 ) {
   const { src, origin, documentId, locale, title, width, onChange, onBlocked, isCovered } = props
+  const { onMessage: onBlockMessage, children } = props
   const [layers, setLayers] = useState<Layer[]>([])
   const [isUpdating, setIsUpdating] = useState(false)
   // The origin whose frame stayed silent: a new frame of it (a reload) keeps the notice until one says `ready`.
@@ -134,9 +152,12 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
     key: number
     protocol: FrameProtocol
     versions: number[]
-  }>({ key: -1, protocol: 'waiting', versions: NO_VERSIONS })
+    version: string | undefined
+  }>({ key: -1, protocol: 'waiting', versions: NO_VERSIONS, version: undefined })
   const frames = useRef(new Map<number, HTMLIFrameElement>())
-  const protocols = useRef(new Map<number, { protocol: FrameProtocol; versions: number[] }>())
+  const protocols = useRef(
+    new Map<number, { protocol: FrameProtocol; versions: number[]; version: string }>()
+  )
   const nextKey = useRef(0)
   const shown = layers.find((layer) => layer.phase === 'shown')
   const shownKey = shown?.key
@@ -146,6 +167,10 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
   onChangeRef.current = onChange
   const onBlockedRef = useRef(onBlocked)
   onBlockedRef.current = onBlocked
+  const onBlockMessageRef = useRef(onBlockMessage)
+  onBlockMessageRef.current = onBlockMessage
+  const shownKeyRef = useRef<number>()
+  shownKeyRef.current = shownKey
 
   useEffect(
     () => () => {
@@ -212,6 +237,11 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
       const key = [...frames.current].find(([, frame]) => frame.contentWindow === event.source)?.[0]
       if (key === undefined) return
       const message = parsePreviewMessage(event.data)
+      if (message && message.type !== 'ready') {
+        // Phase 2 messages count only from the frame in view: the old render under a new one is stale.
+        if (key === shownKeyRef.current) onBlockMessageRef.current?.(message)
+        return
+      }
       if (message?.type !== 'ready') return
       if (message.payload.documentId !== documentId || message.payload.locale !== locale) return
       const versions = message.payload.v
@@ -220,6 +250,7 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
           ? ('ok' as const)
           : ('upgrade' as const),
         versions,
+        version: message.payload.version,
       }
       protocols.current.set(key, state)
       setProtocol({ key, ...state })
@@ -251,6 +282,18 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
         setIsUpdating(true)
         return true
       },
+      post(message) {
+        const frame = shownKey === undefined ? undefined : frames.current.get(shownKey)
+        if (
+          !origin ||
+          !frame?.contentWindow ||
+          protocols.current.get(shownKey ?? -1)?.protocol !== 'ok'
+        ) {
+          return false
+        }
+        frame.contentWindow.postMessage(message, origin)
+        return true
+      },
     }),
     [shownKey, origin, documentId, locale]
   )
@@ -264,7 +307,9 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
   }, [shownKey, isShownLoaded, hasSaidReady, origin])
 
   const inView =
-    protocol.key === shownKey ? protocol : { protocol: 'waiting' as const, versions: NO_VERSIONS }
+    protocol.key === shownKey
+      ? protocol
+      : { protocol: 'waiting' as const, versions: NO_VERSIONS, version: undefined }
   const isBusy = isUpdating || layers.some((layer) => layer.phase === 'loading')
   const isSilent =
     shownKey !== undefined && origin !== undefined && silentOrigin === origin && !hasSaidReady
@@ -272,10 +317,11 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
     onChangeRef.current({
       protocol: inView.protocol,
       versions: inView.versions,
+      version: inView.version,
       isBusy,
       isSilent,
     })
-  }, [inView.protocol, inView.versions, isBusy, isSilent])
+  }, [inView.protocol, inView.versions, inView.version, isBusy, isSilent])
 
   return (
     <Stage $width={width}>
@@ -302,6 +348,7 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
           }}
         />
       ))}
+      {children}
     </Stage>
   )
 })

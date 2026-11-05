@@ -38,6 +38,33 @@ Content Manager: the page is its editor.
 
 `admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`), the **Micelio** menu entry (no permission of its own; `pages/MicelioLayout.tsx`: the sub-navigation, with the core's items from `navigation.ts`, each shown to a role with its permission, and the pages of sibling plugins from `GET /micelio/admin-pages` and the components they provide through `pageRegistry.ts`), the status page (`pages/StatusPage.tsx`), Export and import (`pages/TransferPage.tsx` with `components/ExportPanel.tsx` and `ImportPanel.tsx`, `utils/transfer.ts`) and About (`pages/AboutPage.tsx`, which shows what `GET /micelio/about` gathers), the preview page (ADR-0019; `pages/PreviewPage.tsx` at `preview/:uid/:documentId`, which no menu item opens: the **Preview** button of the Content Manager's edit view does, `components/PreviewHeaderAction.tsx`, registered in `bootstrap` and shown by `utils/previewAction.ts` for a site-scoped type with a dynamic zone; with `components/PreviewFrame.tsx`, which also tells the page when a loaded frame stayed silent (`READY_WAIT_SECONDS`) for the notice and **Open in a new tab**, `hooks/useEntry.ts`, `hooks/usePreviewSource.ts` (the token request, for the frame and for the new tab) and the pure helpers of `utils/previewPane.ts`; `docs/operate/preview.md`), whose entry column carries the cost meter (`components/CostMeter.tsx`, `hooks/useBudget.ts`, which reads the weight route of the site once the frame holds the grant, the pure thresholds of `utils/costMeter.ts`), the cost line in the edit view's side panel (`components/CostPanelAction.tsx`, registered in `bootstrap` with `addEditViewSidePanel`, and `CostPanel.tsx`, which measures on demand, `docs/operate/budgets.md`), and the notification of a refused publish (`utils/refusal.ts` reads the problem detail, `hooks/useRefusalNotification.ts` shows it; nothing calls it until bogd3v/micelio-plugin-core#57 adds the control), and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them). It imports the server's types (`server/src/types/`) type-only, and nothing from `@strapi/icons`: that package cannot be required in Node (`components/MicelioIcon.tsx`, the mark of the menu entry).
 
+### Builder
+
+The builder page (issue #49, [the guide](../guide/builder.md)) is `pages/BuilderPage.tsx` at
+`builder/:uid/:documentId`. It is split by concern:
+
+- `components/builder/` has one file for each panel: `Palette`, `BlockList`, `BlockPanel`,
+  `Overlay` (what the admin draws over the frame), `BuilderHeader`, `layout` and `Motion`
+  (the tokens of the Motion artboard).
+- `hooks/useBuilderDocument.ts` reads the draft and autosaves it: each save names the version it
+  read (`X-Micelio-Expected-Version`, checked by `server/src/document-version/`, see
+  [Saving over a version](../api.md#saving-over-a-version)), and a block that lacks a required
+  field holds the save. `useBuilderCatalogue.ts` reads the site's merged
+  catalogue (`GET /micelio/blocks?site=`) and the components of the Content Manager.
+  `useBuilderFrame.ts` is the conversation with the frame (phase 2 of the protocol),
+  `useBuilderEdits.ts` the changes, `useBlockLookup.ts` what the catalogue says of each block
+  of the page, and `useRefusalNotice.ts` the notification of a refused save
+  (the way to the block it names is a button in `BuilderPage`).
+- `utils/builder/` is pure: the document model, the fields of the panel, the palette, the
+  overlay's geometry, the messages, the undo history and the reading of a refusal.
+- `components/PreviewFrame.tsx` gives the page the messages of the frame in view
+  (`onMessage`), posts to it (`post`) and holds the overlay inside its stage.
+
+A block is addressed by its position among the blocks of the zone at a version (`blocksAt` keeps
+the blocks of each saved version, the ones the catalogue no longer lists included), so a message
+is mapped through the version it names and not through the page's current list. The builder
+composes the zone `sections` only, as the protocol addresses it.
+
 ## The dev stack
 
 `compose.dev.yml`, `docker/cms/` — the stack for testing by hand (`npm run dev:docker`, `scripts/dev-docker.mjs`, which writes the gitignored `.env.docker`): a clean Strapi 5 project (`docker/cms/`, with the seed in `src/index.js` and fixture types, `src/api/note/` (`withSiteScope`), `src/api/article/` (`withSiteScope` and `withEditorial`, with the attributes of the `article` of `micelio-cms` that the frontend populates, and `src/api/author/`; the seed creates a draft article with a cover and an author) and `src/api/page/` with `category` and `tag` (the shape of the `page` of `micelio-cms`, which the frontend previews; `dev.mjs` writes the sections' schemas into the gitignored `src/components/` from `test/fixtures/`, and the seed creates a draft landing with an island)) that loads the working tree's `server/`, `admin/` and `contract/` mounted at `/plugin`, PostgreSQL and the frontend image (`FRONTEND_IMAGE`; the published one by default; the page budget needs one with the weight route). Two forwards (`docker/cms/forward.mjs`) make the site's `url` and the media URL, which are browser addresses, answer inside the containers: the CMS reaches the frontend through `dev.mjs`, the frontend reaches the CMS through the `media-forward` service. Like `test/strapi/app/` it adds nothing of the distribution.

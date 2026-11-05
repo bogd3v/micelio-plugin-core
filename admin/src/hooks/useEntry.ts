@@ -13,6 +13,8 @@ export interface Entry {
   locales: string[]
   /** When the draft was last saved, as an ISO 8601 date. */
   updatedAt: string
+  /** Whether the entry has the dynamic zone `sections`, which the builder composes. */
+  hasSections: boolean
 }
 
 /** What the page knows of the entry. */
@@ -41,6 +43,7 @@ function toEntry(answer: CmAnswer, documentId: string): Entry {
     locale,
     locales: locale === null ? [] : [...new Set([locale, ...others])],
     updatedAt: text(answer.data.updatedAt) ?? '',
+    hasSections: Array.isArray(answer.data.sections),
   }
 }
 

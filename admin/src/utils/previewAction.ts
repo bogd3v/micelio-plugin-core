@@ -26,3 +26,9 @@ export function previewPagePath(uid: string, documentId: string, locale: string 
   const page = `/plugins/${PLUGIN_ID}/preview/${encodeURIComponent(uid)}/${encodeURIComponent(documentId)}`
   return locale ? `${page}?locale=${encodeURIComponent(locale)}` : page
 }
+
+/** The admin path of the builder for an entry, which `BuilderPage` reads (`builder/:uid/:documentId`). */
+export function builderPagePath(uid: string, documentId: string, locale: string | null): string {
+  const page = `/plugins/${PLUGIN_ID}/builder/${encodeURIComponent(uid)}/${encodeURIComponent(documentId)}`
+  return locale ? `${page}?locale=${encodeURIComponent(locale)}` : page
+}

@@ -1,11 +1,12 @@
 import { Badge, Box, Button, Flex, Link, Typography } from '@strapi/design-system'
 import { Layouts, Page, useAuth } from '@strapi/strapi/admin'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useIntl } from 'react-intl'
 import { NavLink, useHref, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import styled from 'styled-components'
 
 import { CostMeter } from '../components/CostMeter'
+import { Notice } from '../components/Notice'
 import { PreviewFrame, type FrameState, type PreviewFrameHandle } from '../components/PreviewFrame'
 import { useBudget } from '../hooks/useBudget'
 import { useEntry, type Entry } from '../hooks/useEntry'
@@ -13,6 +14,7 @@ import { useNewTab, usePreviewSource, type PreviewSourceError } from '../hooks/u
 import { useMessages } from '../messages'
 import { PREVIEW_PERMISSION } from '../permissions'
 import { weightRoute } from '../utils/costMeter'
+import { builderPagePath } from '../utils/previewAction'
 import { DEVICES, previewShortcut, type DeviceId, type PreviewMode } from '../utils/previewPane'
 
 // The motion tokens of the Motion artboard: fast 120 ms, base 200 ms, slow 320 ms. With
@@ -94,6 +96,7 @@ function PreviewPane() {
   const [frameState, setFrameState] = useState<FrameState>({
     protocol: 'waiting',
     versions: [],
+    version: undefined,
     isBusy: false,
     isSilent: false,
   })
@@ -194,7 +197,13 @@ function PreviewPane() {
         <Layouts.Content>
           <Columns>
             <div>
-              <EntryColumn entry={entry} canEdit={canEdit} entryPath={entryPath} date={date} />
+              <EntryColumn
+                entry={entry}
+                canEdit={canEdit}
+                entryPath={entryPath}
+                builderPath={builderPagePath(uid, documentId, entry?.locale ?? null)}
+                date={date}
+              />
               <CostMeter resource={budget} onMeasureAgain={measureAgain} />
             </div>
             <section aria-label={t('preview.pane')}>
@@ -316,11 +325,13 @@ function EntryColumn(props: {
   entry: Entry | undefined
   canEdit: boolean
   entryPath: string
+  /** Where the builder edits the entry. */
+  builderPath: string
   date: (iso: string) => string
 }) {
   const { t } = useMessages()
   const { locale } = useIntl()
-  const { entry, canEdit, entryPath, date } = props
+  const { entry, canEdit, entryPath, builderPath, date } = props
   // A new tab, so this page stays open and notices the save.
   const href = useHref(entryPath)
   return (
@@ -348,33 +359,12 @@ function EntryColumn(props: {
         <Link href={href} isExternal>
           {t(canEdit ? 'preview.entry.open' : 'preview.entry.view')}
         </Link>
+        {canEdit && entry?.hasSections ? (
+          <Link tag={NavLink} to={builderPath}>
+            {t('preview.entry.builder')}
+          </Link>
+        ) : null}
       </Flex>
     </section>
-  )
-}
-
-function Notice(props: {
-  role: 'alert' | 'status'
-  title?: string
-  text: string
-  children?: ReactNode
-}) {
-  return (
-    <Box
-      role={props.role}
-      padding={3}
-      marginBottom={2}
-      background="warning100"
-      borderColor="warning200"
-      hasRadius
-    >
-      {props.title ? (
-        <Typography fontWeight="bold" tag="p">
-          {props.title}
-        </Typography>
-      ) : null}
-      <Typography tag="p">{props.text}</Typography>
-      {props.children ? <Box marginTop={3}>{props.children}</Box> : null}
-    </Box>
   )
 }
