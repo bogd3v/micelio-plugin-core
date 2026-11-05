@@ -268,6 +268,23 @@ The body is `{ "uid", "documentId", "locale", "report" }`: the first three as fo
 | 403    | `previewForbidden`       | The role lacks the preview permission, or may not read the entry                                                           |
 | 404    | `editorialEntryNotFound` | No such entry                                                                                                              |
 
+## Saving over a version
+
+The Content Manager's `PUT /content-manager/collection-types/<uid>/<documentId>` has no version
+check of its own. A request that sends `X-Micelio-Expected-Version: <updatedAt>`, the `updatedAt`
+of the draft it read, is saved only when the draft still has that `updatedAt`; otherwise it answers
+`400` with Strapi's `ValidationError` and `error.details.code` `versionConflict`, and writes
+nothing. The check and the write run in one turn per document, so two saves that cross are
+decided: the second is refused. A value that is not a date is refused with a `ValidationError`.
+A request without the header saves as before. The turns are kept in the Strapi process; with
+several processes on one database the window is a database round trip.
+
+The header is not one of the request headers that Strapi's default CORS list allows
+(`Content-Type`, `Authorization`, `Origin`, `Accept`). The admin is served by Strapi itself and
+calls it from the same origin, so nothing changes there; a host that serves the admin from another
+origin must add `X-Micelio-Expected-Version` to `headers` in the `strapi::cors` middleware, or the
+preflight of every builder save is refused.
+
 ## Block catalogue
 
 Admin API routes, for the admin panel and its builder. The catalogue itself is the core's and read
@@ -462,7 +479,19 @@ Every refusal is `application/problem+json`:
 
 The rate limits are counted by each process of the host separately, so with several processes the limit is multiplied.
 
-The messages between the admin and the frame are in `contract/preview.ts`; its JSON Schema, `contract/preview.schema.json`, is published as `@micelio/strapi-plugin-core/preview.schema.json`. Phase 1 has `ready` (frame → admin: the `v` values the frame speaks, `documentId`, `locale`, `version`) and `load-draft` (admin → frame: `documentId`, `locale`), in the envelope `{ "v": 1, "type", "payload" }`. A receiver drops any other `v`, any `type` it does not know, and any payload that fails the schema (ADR-0019, section 4).
+The messages between the admin and the frame are in `contract/preview.ts`;
+its JSON Schema, `contract/preview.schema.json`,
+is published as `@micelio/strapi-plugin-core/preview.schema.json`.
+Phase 1 has `ready` (frame → admin: the `v` values the frame speaks, `documentId`, `locale`,
+`version`) and `load-draft` (admin → frame: `documentId`, `locale`),
+in the envelope `{ "v": 1, "type", "payload" }`.
+Phase 2 adds the block messages of the amendment of 2026-11-02 (bogd3v/micelio#732),
+whose `type` carries the namespace `micelio:`:
+`select`, `hover`, `insertGap` and `patch` (admin → frame), and `blocks`, `selected` and `hovered`
+(frame → admin).
+A block is addressed by `{ zone, index, block, version }`, never by Strapi's component id.
+A receiver drops any other `v`, any `type` it does not know, and any payload that fails the
+schema (ADR-0019, section 4).
 
 ## Extension points
 

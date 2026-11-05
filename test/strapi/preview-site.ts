@@ -5,6 +5,7 @@
 
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { blocksScript, markBlocks } from './preview-site-blocks'
 import { answerWeight, newWeightBehaviour, type WeightBehaviour } from './weight-site'
 
 /** The stub site of the browser suite. */
@@ -39,6 +40,8 @@ interface Section {
   body?: string
   alt?: string
   title?: string
+  columns?: string
+  items?: { title?: string }[]
   poster?: { url?: string }
 }
 
@@ -59,13 +62,25 @@ function escapeHtml(text: string): string {
 // A heavy island on the page, or its static alternative: the poster, described by the scene's alt text.
 function sectionHtml(section: Section, isStatic: boolean, cmsBase: string): string {
   if (section.__component === 'section.rich-text') {
-    return `<section data-section="rich-text"><p>${escapeHtml(section.body ?? '')}</p></section>`
+    return `<section data-section="rich-text"><p data-field="body">${escapeHtml(section.body ?? '')}</p></section>`
   }
   if (section.__component === 'section.scene') {
     const alt = escapeHtml(section.alt ?? '')
     return isStatic
       ? `<section data-section="scene" data-static-alternative><img src="${escapeHtml(cmsBase + (section.poster?.url ?? ''))}" alt="${alt}" width="120" height="80"></section>`
       : `<section data-section="scene" data-island="scene"><div role="img" aria-label="${alt}">3D scene: ${alt}</div></section>`
+  }
+  if (section.__component === 'section.feature-grid') {
+    const items = (section.items ?? [])
+      .map(
+        (item) =>
+          `<li class="myc-section-item"><span data-field="title">${escapeHtml(item.title ?? '')}</span></li>`
+      )
+      .join('')
+    return `<section data-section="feature-grid" data-columns="${escapeHtml(section.columns ?? '')}"><h2 data-field="title">${escapeHtml(section.title ?? '')}</h2><ul>${items}</ul></section>`
+  }
+  if (section.__component === 'section.logo-cloud') {
+    return `<section data-section="logo-cloud"><h2 data-field="title">${escapeHtml(section.title ?? '')}</h2></section>`
   }
   return ''
 }
@@ -89,7 +104,7 @@ function pageHtml(
 <body>
 <main>
 <h1>${escapeHtml(draft.title)}</h1>
-${(draft.sections ?? []).map((section) => sectionHtml(section, isStatic, cms.base)).join('\n')}
+${markBlocks(draft.sections ?? [], (section) => sectionHtml(section, isStatic, cms.base))}
 </main>
 <script>
 const adminOrigin = ${JSON.stringify(cms.adminOrigin)}
@@ -100,7 +115,7 @@ window.addEventListener('message', (event) => {
       message.payload.documentId === ${JSON.stringify(draft.documentId)} &&
       message.payload.locale === ${JSON.stringify(locale)}) window.location.reload()
 })
-${isSilent ? '' : `if (window.parent !== window) window.parent.postMessage(${ready}, adminOrigin)`}
+${isSilent ? '' : `if (window.parent !== window) { window.parent.postMessage(${ready}, adminOrigin); ${blocksScript(cms.adminOrigin, draft.updatedAt)} }`}
 </script>
 </body>
 </html>`
@@ -191,9 +206,18 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     query.set('populate[sections][on][section.rich-text][populate]', '*')
     const locale = url.searchParams.get('locale')
     if (locale) query.set('locale', locale)
-    const answer = await fetch(`${cms.base}/api/micelio/preview/draft?${query}`, {
-      headers: { ...auth, 'X-Micelio-Preview-Grant': grant },
-    })
+    const cmsBase = cms.base
+    const read = (extra: URLSearchParams) =>
+      fetch(`${cmsBase}/api/micelio/preview/draft?${extra}`, {
+        headers: { ...auth, 'X-Micelio-Preview-Grant': grant },
+      })
+    // The sections of the builder's landing; a type whose zone does not hold them refuses the populate,
+    // and the plain read is the page's.
+    const withMore = new URLSearchParams(query)
+    withMore.set('populate[sections][on][section.feature-grid][populate]', '*')
+    withMore.set('populate[sections][on][section.logo-cloud][populate]', '*')
+    let answer = await read(withMore)
+    if (!answer.ok) answer = await read(query)
     if (!answer.ok) {
       response.writeHead(404).end('Page not found')
       return

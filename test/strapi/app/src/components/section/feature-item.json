@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_section_feature_items",
+  "info": {
+    "displayName": "Feature item",
+    "icon": "apps",
+    "description": "An item of the `feature-grid` block, so the builder suite has items to edit one level down"
+  },
+  "options": {},
+  "attributes": {
+    "title": { "type": "string", "required": true },
+    "text": { "type": "text" }
+  }
+}

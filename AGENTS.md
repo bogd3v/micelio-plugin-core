@@ -67,6 +67,7 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
     on every write path, the dry run of an import included, and a default outside the contract
     with `blockOptionInvalid`. Permissions `plugin::micelio.blocks.read` and `.manage`.
     Details: [docs/architecture/structure.md](docs/architecture/structure.md#block-settings).
+  - `document-version/` is the version check of a save (#49): the document service middleware that refuses an `update` whose `X-Micelio-Expected-Version` is not the draft's `updatedAt` (`versionConflict`), one `update` of a document at a time. `docs/api.md`, "Saving over a version".
   - `hooks/` is the hooks registry behind `strapi.plugin('micelio').hooks` and the `hooks` service: registration, ordering and running a hook. The hooks and their payloads are declared in `types/hooks.ts`, a contract (section 6); `docs/hooks.md` is generated from its TSDoc and from that of `types/extensions.ts`. `performTransition` runs the transition hooks, so every path that publishes runs them; `sites/hooks.ts` runs `siteCreated`.
   - `transfers/` and the `transfers` service are the Export and import page's jobs (#58): `permissions.ts` registers `plugin::micelio.transfer` and `.transfer.personal`, `summary.ts` counts a site for the page, and the service queues exports (one at a time, in the background), keeps an uploaded archive for its dry run and applies it only with the policy of the last dry run, with the caller's own abilities: the maker alone downloads an export (by a token), a type the caller may not publish arrives as drafts, and an existing site keeps its identity. Both live 24 hours as files in `transfersDirectory`; the history is the internal type `transfer` (hidden, `export: never`). `controllers/transfers.ts` checks the permissions. `docs/operate/transfer-page.md` describes the page.
   - `about/` is what the About page shows (#58): `read.ts` gathers versions and writes the diagnostics text, `update-check.ts` reads the release feed only while `MICELIO_UPDATE_CHECK` is not `false`. The `about` service keeps the last checks in memory and refreshes them at boot, with the daily status job and on `POST /micelio/about/refresh`; `GET /micelio/about` never makes a request. `docs/operate/about-page.md` describes it.
@@ -100,6 +101,12 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
   the pages (`StatusPage`, `TransferPage` with `ExportPanel` and `ImportPanel`, `AboutPage`,
   `PreviewPage`, `BlocksPage` with `BlockDrawer`),
   the cost meter and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them).
+  The builder (`pages/BuilderPage.tsx` at `builder/:uid/:documentId`, #49): its panels in
+  `components/builder/`, its hooks (`useBuilderDocument`, `useBuilderCatalogue`,
+  `useBuilderFrame`, `useBuilderEdits`, `useBlockLookup`) and pure helpers in `utils/builder/`; it talks to the
+  frame with the phase 2 messages of `contract/preview.ts`. Details:
+  [docs/architecture/structure.md](docs/architecture/structure.md#builder), guide
+  `docs/guide/builder.md`.
   It imports the server's types (`server/src/types/`) type-only, and nothing from `@strapi/icons`:
   that package cannot be required in Node. Details:
   [docs/architecture/structure.md](docs/architecture/structure.md#admin).

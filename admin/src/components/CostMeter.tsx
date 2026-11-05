@@ -28,6 +28,27 @@ const Fill = styled.div<{ $level: MeterLevel; $percent: number }>`
   background: ${(props) => FILL[props.$level]};
 `
 
+// The toolbar meter of the builder (the Builder artboard): the fill moves with the slow token, and
+// the colour changes at the thresholds, not along the way.
+const CompactTrack = styled.div`
+  height: 6px;
+  border-radius: 3px;
+  background: ${({ theme }) => theme.colors.neutral150};
+  overflow: hidden;
+`
+
+const CompactFill = styled.div<{ $level: MeterLevel; $percent: number }>`
+  height: 100%;
+  width: ${(props) => props.$percent}%;
+  background: ${({ $level, theme }) =>
+    $level === 'ok'
+      ? theme.colors.success600
+      : $level === 'near'
+        ? theme.colors.warning600
+        : theme.colors.danger600};
+  transition: width var(--m-slow, 320ms) var(--m-ease, cubic-bezier(0.2, 0, 0, 1));
+`
+
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -65,10 +86,16 @@ function standing(
  * against the budget (`useBudget`); it never estimates. A type
  * with no budget (`unsupported`) shows nothing.
  */
-export function CostMeter(props: { resource: BudgetResource; onMeasureAgain: () => void }) {
+export function CostMeter(props: {
+  resource: BudgetResource
+  onMeasureAgain: () => void
+  /** The one-line meter of the builder's toolbar, instead of the card of the preview pane. */
+  isCompact?: boolean
+}) {
   const { t } = useMessages()
   const { resource, onMeasureAgain } = props
   if (resource.kind === 'error' && resource.reason === 'unsupported') return null
+  if (props.isCompact) return <CompactMeter resource={resource} />
   return (
     <Box
       tag="section"
@@ -185,5 +212,50 @@ function Measured(props: {
         </Button>
       </Flex>
     </>
+  )
+}
+
+/** The meter of the builder's toolbar: the same measurement and thresholds as the card, in one line. */
+function CompactMeter({ resource }: { resource: BudgetResource }) {
+  const { t } = useMessages()
+  if (resource.kind !== 'ready') {
+    return (
+      <div
+        style={{ width: 160, fontSize: 12 }}
+        role={resource.kind === 'error' ? 'alert' : 'status'}
+      >
+        {t(resource.kind === 'error' ? 'builder.meter.error' : 'builder.meter.loading')}
+      </div>
+    )
+  }
+  const { blocksKb, budgetKb } = resource.measurement
+  const level = meterLevel(blocksKb, budgetKb)
+  const used = formatKb(blocksKb)
+  const budget = formatKb(budgetKb)
+  return (
+    <div style={{ width: 160 }} data-testid="toolbar-meter">
+      <div
+        style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}
+      >
+        <span>{t('builder.meter.title')}</span>
+        <span>{t('builder.meter.value', { used, budget })}</span>
+      </div>
+      <div
+        role="meter"
+        aria-label={t('builder.meter.label', { used, budget })}
+        aria-valuemin={0}
+        aria-valuemax={budgetKb}
+        aria-valuenow={Math.min(blocksKb, budgetKb)}
+        aria-valuetext={t(`cost.level.${level}`, {
+          over: formatKb(resource.measurement.overByKb),
+          left: formatKb(budgetKb - blocksKb),
+        })}
+        data-level={level}
+      >
+        <CompactTrack>
+          <CompactFill $level={level} $percent={meterPercent(blocksKb, budgetKb)} />
+        </CompactTrack>
+      </div>
+    </div>
   )
 }

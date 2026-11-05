@@ -39,6 +39,51 @@ The admin's preview page shows a draft beside its form, rendered by the real fro
 10. In `docker/cms/config/middlewares.js` remove the `frame-src` line, save, wait for Strapi to restart and reload the page: the pane does not show a broken frame; it says the admin does not allow `http://localhost:3000` in a frame and what to change. The **Micelio** status page says the same under the host check, `frame-src for the preview`. Put the line back.
 11. The stack's admin (`localhost:1337`) and frontend (`localhost:3000`) are one site to a browser, which ignores ports, so the frame is expected to show in every engine here. To see what WebKit does when the admin and the site are two sites, put the two behind names under different registrable domains with `https` (the cookie is `__Host-`), and set `CMS_PUBLIC_URL`, `FRONTEND_ORIGIN`, `NUXT_PUBLIC_SITE_URL`, `NUXT_PREVIEW_ADMIN_ORIGIN` and `NUXT_MEDIA_URL` in `compose.dev.yml` to match. WebKit then sends no cookie in the frame, which shows the site's 404 page. About 10 seconds after it loads, the pane covers it with **The preview did not start in this browser** and a button, **Open in a new tab**, which is also in the toolbar. Press it: a tab opens on the draft, and the address of the admin's tab never holds a token. Save the entry and reload the tab to see the change; after 15 minutes press the button again.
 
+## Try the builder
+
+The builder composes a page from the palette beside the frontend's own render.
+It needs a frontend that speaks phase 2 of the preview protocol (bogd3v/micelio#732),
+so use an `edge` image that has it, or build one: see "Use a local build of the frontend".
+Without it the page still previews, and the builder shows no outline over it.
+
+1. Bring the stack up and create the first admin, as above.
+   In Content Manager → Page, open "Open source, in plain words" and copy its `documentId`.
+   Open `http://localhost:1337/admin/plugins/micelio/preview/api::page.page/<documentId>`
+   and press **Open in the builder**, or open
+   `http://localhost:1337/admin/plugins/micelio/builder/api::page.page/<documentId>` directly.
+2. The toolbar shows the title, **Draft**, and the page weight meter.
+   The palette lists the blocks of the site's catalogue that the Page type accepts,
+   each with its cost, and a blue _island_ badge on the heavy ones.
+   Click the search box and type `scene`: the match is in bold and the count reads "1 of N match".
+3. Click the "Open source, in plain words" text in the frame: it gets a solid outline,
+   a label with its name and position, and up, down and duplicate buttons.
+   The panel on the right shows its fields.
+   Change the text: the frame shows it as you type, and about a second later the toolbar says
+   _Saved_ and the frame loads the draft once.
+4. Select a block in **Page blocks** and click **Rich text** in the palette:
+   it is inserted after the selection, selected, and saved.
+   Press `⌥↑` (`Alt+ArrowUp`) with the new block selected: it moves up in the list and the frame.
+5. Drag a row of the palette into the frame: the gaps between blocks appear,
+   the one under the pointer says _DROP HERE_ and the frame opens a space there.
+   Drop it: the block is inserted at that gap. The dragged card is not tilted.
+6. **Remove** the new block, then press **Undo** in the message at the bottom:
+   it comes back. Reload the page: the saved state is the one you left.
+7. Open the same builder URL in a second tab and change a block's text there.
+   In the first tab, change another text: within a few seconds it shows
+   _This page was saved somewhere else_, and **Content Manager** shows the second tab's text,
+   not the first's. **Load their version** shows theirs.
+8. Turn on reduced motion in your operating system and reload:
+   the cross-fade after a save and the outline appear at once.
+9. Check the Axe result with a block selected (the browser's accessibility tools): no violations.
+10. Set the language of your profile to Español and reload: the page is in Spanish.
+11. Insert a **Rich text** block and leave its text empty: the toolbar says
+    _Not saved: a required field is empty_ and the Content Manager shows no new block.
+    Type some text: it saves.
+12. A role that may read the page but not edit it (Roles → _Update_ off on Page) opens the
+    builder read-only, with a notice, and the palette does nothing.
+
+The builder does not offer **Send to review** until bogd3v/micelio-plugin-core#57.
+
 ## Try the preview of an article
 
 The frontend reads an article draft with a `populate` of its cover, author, category, tags, blocks, references and translations (`ARTICLE_POPULATE` in `micelio`). The seed creates a draft article, "A draft article", with a cover and an author, of the fixture `docker/cms/src/api/article/`, which has the shape of the `article` of `micelio-cms`.

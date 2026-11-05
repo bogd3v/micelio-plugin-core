@@ -31,7 +31,13 @@ const SOURCE_TEXT: Record<PreviewSourceError, string> = {
   popup: 'cost.error.failed',
 }
 
-const NO_FRAME: FrameState = { protocol: 'waiting', versions: [], isBusy: false, isSilent: false }
+const NO_FRAME: FrameState = {
+  protocol: 'waiting',
+  versions: [],
+  version: undefined,
+  isBusy: false,
+  isSilent: false,
+}
 
 const budgetText = (reason: BudgetError) =>
   reason === 'unsupported' ? 'cost.panel.unsupported' : `cost.error.${reason}`
