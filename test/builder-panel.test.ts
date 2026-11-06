@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   fieldsOf,
+  filesOf,
   isIncomplete,
   itemsOf,
   missingRequired,
@@ -241,5 +242,53 @@ describe('the messages the builder sends', () => {
     ]
     for (const message of messages) expect(parsePreviewMessage(message)).toEqual(message)
     expect(messages.map((m) => m.v)).toEqual([1, 1, 1, 1])
+  })
+})
+
+describe('the media fields of the panel', () => {
+  const gallery = {
+    uid: 'section.gallery',
+    attributes: {
+      title: { type: 'string' },
+      images: { type: 'media', multiple: true, allowedTypes: ['images'], required: true },
+      cover: { type: 'media', multiple: false },
+    },
+  }
+  const image = { id: 4, name: 'a.png', mime: 'image/png', size: 1.2, alternativeText: null }
+
+  it('lists the media of a component with what the Media Library dialog needs', () => {
+    expect(fieldsOf(gallery, {}).media).toEqual([
+      { name: 'images', multiple: true, allowedTypes: ['images'], required: true },
+      { name: 'cover', multiple: false, allowedTypes: [], required: false },
+    ])
+  })
+
+  it('reads the files of a single or a multiple field and skips what is not a file', () => {
+    expect(filesOf({ images: [image, null, 3] }, 'images')).toEqual([image])
+    expect(filesOf({ cover: image }, 'cover')).toEqual([image])
+    expect(filesOf({ cover: null }, 'cover')).toEqual([])
+    expect(filesOf({}, 'images')).toEqual([])
+  })
+
+  it('counts a required media field with no file as missing, which holds the save', () => {
+    const fields = fieldsOf(gallery, {})
+    expect(missingRequired(fields, { images: [] })).toEqual(['images'])
+    expect(missingRequired(fields, { images: null })).toEqual(['images'])
+    expect(missingRequired(fields, { images: [image] })).toEqual([])
+    // An optional one never does.
+    expect(missingRequired(fields, { images: [image], cover: null })).toEqual([])
+    expect(isIncomplete(fields, {}, { images: [] })).toBe(true)
+    expect(isIncomplete(fields, {}, { images: [image] })).toBe(false)
+  })
+
+  it('counts an item’s required media in the page’s check', () => {
+    const outer = fieldsOf(grid, {})
+    const inner = fieldsOf(
+      { uid: 'section.feature-item', attributes: { icon: { type: 'media', required: true } } },
+      {}
+    )
+    const items = (icon: unknown) => ({ text: 'x', items: [{ icon }] })
+    expect(isIncomplete(outer, { items: inner }, items(null))).toBe(true)
+    expect(isIncomplete(outer, { items: inner }, items(image))).toBe(false)
   })
 })

@@ -84,6 +84,35 @@ Without it the page still previews, and the builder shows no outline over it.
 
 The builder does not offer **Send to review** until bogd3v/micelio-plugin-core#57.
 
+### Try the media fields of the builder
+
+Open the builder on "Open source, in plain words", as above, with two images at hand to upload.
+
+1. Click **Gallery** in the palette. The panel on the right shows **Images \***, **+ Add files**
+   and _A file is required_. The toolbar says _Not saved: a required field is empty_, the block is
+   marked _Needs content_ in the list, and the Content Manager's Page shows no gallery.
+2. Press **+ Add files**. Strapi's own Media Library opens (the one the Content Manager opens):
+   **Add more assets**, upload the two images, select them and press **Finish**. Each file shows
+   its thumbnail, name and size, **Replace**, **Remove** and two arrows, and under it **Alternative
+   text \*** with _Required by the accessibility check_ and **Decorative, no text needed**.
+   About a second later the toolbar says _Saved_, and the frame shows both images.
+3. Press the down arrow of the first image: the order changes in the panel and, after the save,
+   in the frame. Press **Remove** on one: it goes from the panel and the frame. In the Content
+   Manager the gallery holds the one that is left.
+4. Type a text in **Alternative text** and leave the field: the frame shows it as the image's
+   `alt` after the save, and the Media Library (Media Library → the file → Alternative text) holds
+   the same text. Tick **Decorative, no text needed** on the other: the field is disabled and the
+   Media Library's text for that file is empty.
+5. Press **Replace** on the image that is left and pick another file: it is replaced, the block's
+   other fields stay, and the message says _Files changed_. Press **Undo**: the first file is back,
+   and the frame shows it after the save.
+6. Select a **Feature grid**, add an item and open it: if its component has an **Icon**, it shows
+   **Choose a file**. Pick a file, press **Replace**, pick another, then **Undo**: the item keeps
+   its title and its place.
+7. Open the same builder in a second tab and save a change there. In the first, change the
+   gallery's order and press **Keep my version**: the images are still the ones you left.
+8. Turn on reduced motion and set the language to Español, and reload: the labels are in Spanish.
+
 ## Try the preview of an article
 
 The frontend reads an article draft with a `populate` of its cover, author, category, tags, blocks, references and translations (`ARTICLE_POPULATE` in `micelio`). The seed creates a draft article, "A draft article", with a cover and an author, of the fixture `docker/cms/src/api/article/`, which has the shape of the `article` of `micelio-cms`.

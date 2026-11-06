@@ -45,7 +45,10 @@ The builder page (issue #49, [the guide](../guide/builder.md)) is `pages/Builder
 
 - `components/builder/` has one file for each panel: `Palette`, `BlockList`, `BlockPanel`,
   `Overlay` (what the admin draws over the frame), `BuilderHeader`, `layout` and `Motion`
-  (the tokens of the Motion artboard).
+  (the tokens of the Motion artboard). `MediaInputs` is the panel's media fields (#133): it opens
+  the Media Library dialog the upload plugin registers as `components['media-library']` (read with
+  `useStrapiApp`, the admin's public API) and writes an image's alternative text to the file with
+  `PUT /upload/files/:id`; it never uploads. `fieldStyle` holds what the panel's fields share.
 - `hooks/useBuilderDocument.ts` reads the draft and autosaves it: each save names the version it
   read (`X-Micelio-Expected-Version`, checked by `server/src/document-version/`, see
   [Saving over a version](../api.md#saving-over-a-version)), and a block that lacks a required

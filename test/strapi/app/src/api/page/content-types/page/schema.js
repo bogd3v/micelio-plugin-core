@@ -28,7 +28,7 @@ module.exports = withSiteScope({
     },
     sections: {
       type: 'dynamiczone',
-      components: ['section.rich-text', 'section.scene'],
+      components: ['section.rich-text', 'section.scene', 'section.feature-grid', 'section.gallery'],
       pluginOptions: localized,
     },
   },

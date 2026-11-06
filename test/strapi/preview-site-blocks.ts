@@ -8,7 +8,7 @@ export const blockIdOf = (component: string | undefined): string =>
   (component ?? '').slice((component ?? '').indexOf('.') + 1)
 
 /** The components the stub renders, by catalogue id; others are not rendered, as the frontend skips unknown ones. */
-export const RENDERED = new Set(['rich-text', 'scene', 'feature-grid', 'logo-cloud'])
+export const RENDERED = new Set(['rich-text', 'scene', 'feature-grid', 'gallery', 'logo-cloud'])
 
 /** Wraps the HTML of each rendered section in the root the frontend marks (`data-myc-block`, `data-myc-index`). */
 export function markBlocks(
