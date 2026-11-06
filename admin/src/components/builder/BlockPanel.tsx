@@ -66,6 +66,10 @@ const Textarea = styled.textarea`
   &[aria-invalid='true'] {
     border-color: ${({ theme }) => theme.colors.danger600};
   }
+  &[data-sample='true'] {
+    color: ${({ theme }) => theme.colors.neutral500};
+    font-style: italic;
+  }
 `
 
 const ItemRow = styled.button`
@@ -193,6 +197,8 @@ interface BlockPanelProps {
   cost: { kb: number; isIsland: boolean } | undefined
   /** The island the block renders: its badge, what it costs the visitor and its static alternative. */
   island?: IslandInfo
+  /** The sample texts of the page's template not replaced yet: greyed in the fields. */
+  samples?: ReadonlySet<string>
   isReadOnly: boolean
   onSetFields: (values: Record<string, unknown>, isStep?: boolean) => void
   onSetItem: (
@@ -217,6 +223,8 @@ function TextInputs(props: {
   missing: string[]
   /** The fields of the block's island alternative: required before the page goes to review. */
   alternative?: readonly string[]
+  /** The sample texts of the page's template that the editor has not replaced: shown greyed. */
+  samples?: ReadonlySet<string>
 }) {
   const { colors } = useTheme()
   const { t } = useMessages()
@@ -230,7 +238,9 @@ function TextInputs(props: {
         const isAlternative = props.alternative?.includes(field.name) === true
         const isAlternativeMissing = isAlternative && !isInvalid && value.trim() === ''
         const isRequired = field.required || isAlternative
+        const isSample = props.samples?.has(value.trim()) === true && value.trim() !== ''
         const common = {
+          'data-sample': isSample ? 'true' : undefined,
           id,
           value,
           readOnly: props.isReadOnly,
@@ -240,7 +250,9 @@ function TextInputs(props: {
             ? `${id}-error`
             : isAlternativeMissing
               ? `${id}-alternative`
-              : undefined,
+              : isSample
+                ? `${id}-sample`
+                : undefined,
           placeholder: isRequired ? undefined : t('builder.panel.optional'),
         }
         return (
@@ -263,6 +275,15 @@ function TextInputs(props: {
             {isInvalid ? (
               <span id={`${id}-error`} style={{ fontSize: 12, color: colors.danger700 }}>
                 {t('builder.panel.required')}
+              </span>
+            ) : null}
+            {isSample ? (
+              <span
+                id={`${id}-sample`}
+                data-testid="sample-text"
+                style={{ fontSize: 12, color: colors.neutral600 }}
+              >
+                {t('builder.sample.hint')}
               </span>
             ) : null}
             {isAlternativeMissing ? (
@@ -396,6 +417,7 @@ export function BlockPanel(props: BlockPanelProps) {
               idPrefix={`${id}-item`}
               isReadOnly={props.isReadOnly}
               missing={missing}
+              samples={props.samples}
               onChange={(name, value) => props.onSetItem(item.field, item.index, { [name]: value })}
             />
             <MediaInputs
@@ -457,6 +479,7 @@ export function BlockPanel(props: BlockPanelProps) {
               isReadOnly={props.isReadOnly}
               missing={missing}
               alternative={props.island?.alternative}
+              samples={props.samples}
               onChange={(name, value) => props.onSetFields({ [name]: value })}
             />
             {props.island?.kind === 'runtime' ? <RunHere /> : null}

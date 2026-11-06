@@ -1,14 +1,23 @@
 import {
   PAGE_TYPE_ATTRIBUTE,
+  TEMPLATE_ID_ATTRIBUTE,
+  TEMPLATE_SAMPLES_ATTRIBUTE,
+  TEMPLATE_VERSION_ATTRIBUTE,
   VISIBILITY_ATTRIBUTE,
   VISIBILITY_COMPONENT_UID,
 } from '../constants/page-settings'
 import type { ContentTypeSchema } from '../site-scope'
 
 /**
- * The schema of a page type with the page settings: its `pageType` and its `visibility`.
+ * The schema of a page type with the page settings: its `pageType`, its `visibility` and the record of
+ * its template.
  *
  * @remarks
+ * `templateId` and `templateVersion` record the template a page was created from (a copy, never a
+ * link: the template may change or go, the page keeps its blocks), and `templateSamples` the sample
+ * texts the page copied and has not replaced yet, which `performTransition` refuses to publish
+ * (`sampleTextPresent`, `docs/guide/templates.md`).
+ *
  * `pageType` is a string, not an enumeration: the budgets list the page types a site has
  * (`budgets.pageTypes`, custom ones included), and a page whose type nobody configured keeps the
  * `standard` budget (`docs/operate/budgets.md`). `visibility` is the component of the menu, the
@@ -43,6 +52,26 @@ export function withPageSettings<T extends ContentTypeSchema>(schema: T): T {
         repeatable: false,
         component: VISIBILITY_COMPONENT_UID,
         pluginOptions: { i18n: { localized: false } },
+      },
+      [TEMPLATE_ID_ATTRIBUTE]: {
+        type: 'string',
+        maxLength: 64,
+        visible: false,
+        pluginOptions: { i18n: { localized: false } },
+      },
+      [TEMPLATE_VERSION_ATTRIBUTE]: {
+        type: 'integer',
+        min: 1,
+        visible: false,
+        pluginOptions: { i18n: { localized: false } },
+      },
+      [TEMPLATE_SAMPLES_ATTRIBUTE]: {
+        type: 'json',
+        private: true,
+        visible: false,
+        // Private for the content API, and still in a site archive: a page that moves keeps the sample
+        // texts it must replace before it is published.
+        pluginOptions: { i18n: { localized: false }, micelio: { export: 'always' } },
       },
     },
   }

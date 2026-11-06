@@ -1,0 +1,66 @@
+{
+  "kind": "collectionType",
+  "collectionName": "micelio_page_templates",
+  "info": {
+    "singularName": "page-template",
+    "pluralName": "page-templates",
+    "displayName": "Page template",
+    "description": "A saved sequence of blocks with their options, which a new page copies and never links to. Written through the Save as template dialog and the template import, never by hand"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    },
+    "i18n": {
+      "localized": false
+    },
+    "micelio": {
+      "export": "never"
+    }
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 80
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": ["site", "cms"],
+      "default": "site",
+      "required": true
+    },
+    "origin": {
+      "type": "enumeration",
+      "enum": ["site", "theme"],
+      "default": "site",
+      "required": true
+    },
+    "pageTypes": {
+      "type": "json"
+    },
+    "blocks": {
+      "type": "json",
+      "required": true
+    },
+    "version": {
+      "type": "integer",
+      "default": 1,
+      "min": 1,
+      "required": true
+    },
+    "thumbnail": {
+      "type": "json"
+    }
+  }
+}

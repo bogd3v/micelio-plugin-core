@@ -284,6 +284,11 @@ An archive **never** holds, whatever is asked:
   They are configuration of the site on this CMS, set again on the target.
   An import still checks the archive's pages against the target site's settings (`blockNotAllowed`,
   [api.md](api.md#what-a-disabled-block-does)).
+- The page templates of a site (`plugin::micelio.page-template`, [the guide](guide/templates.md)):
+  a template moves as a JSON file of its own (`micelio template export` and `import`), not in the
+  archive. A page made from one still carries `templateId`, `templateVersion` and the private
+  `templateSamples` (declared `always`), so a page that moves keeps the sample texts it must
+  replace before it is published.
 
 ## How a type declares its export
 

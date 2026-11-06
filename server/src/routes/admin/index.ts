@@ -51,6 +51,48 @@ export default (): Core.RouterInput => ({
     },
     {
       method: 'GET',
+      path: '/templates/sites',
+      handler: 'pageTemplates.sites',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
+      path: '/templates',
+      handler: 'pageTemplates.list',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/templates/inspect',
+      handler: 'pageTemplates.inspect',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/templates',
+      handler: 'pageTemplates.save',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/templates/import',
+      handler: 'pageTemplates.import',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
+      path: '/templates/:id/export',
+      handler: 'pageTemplates.export',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/templates/:id/pages',
+      handler: 'pageTemplates.createPage',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
       path: '/status',
       handler: 'status.find',
       config: { policies: ['admin::isAuthenticatedAdmin'] },

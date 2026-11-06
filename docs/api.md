@@ -228,6 +228,14 @@ is absent, `null` or blank counts as empty. It is refused with `islandAlternativ
 anything is written or measured. Moving back to `draft` and the scheduler's
 `scheduled → published` are not checked.
 
+A transition that publishes or schedules (`draft → scheduled`, `in_review → published`,
+`scheduled → published`, `published → published`) a page created from a template
+([Page templates](#page-templates)) first checks that none of the sample texts it copied is left
+in its draft: a text of a field that still equals one of them. It is refused with
+`sampleTextPresent`, before anything is written or measured. The scheduler's
+`scheduled → published` runs the check again: a page whose draft holds a sample text stays
+scheduled, and the scheduler logs it. Moving to review and moving back to `draft` are not checked.
+
 ### Errors
 
 Every refusal answers `application/problem+json`:
@@ -243,7 +251,11 @@ Every refusal answers `application/problem+json`:
 | 409    | `editorialTransitionRefused`   | A `beforeTransition` handler of a plugin refused it   |
 | 409    | `islandAlternativeMissing`     | An island of the draft lacks its static alternative   |
 | 409    | `pageOverBudget`               | The blocks of the draft weigh more than its budget    |
+| 409    | `sampleTextPresent`            | The page still holds a sample text of its template    |
 | 409    | `previewUnavailable`           | The draft could not be measured; see below            |
+
+`sampleTextPresent` carries `blocks` the same way, each as `{ block, position, fields, zone }`;
+`fields` names the text fields that still hold a sample, such as `title` or `items[2].text`.
 
 `islandAlternativeMissing` carries, besides the usual members, `blocks`: each block that lacks its
 alternative as `{ block, position, fields, zone }`, `position` counted from 0 in the zone and
@@ -352,6 +364,57 @@ The header is not one of the request headers that Strapi's default CORS list all
 calls it from the same origin, so nothing changes there; a host that serves the admin from another
 origin must add `X-Micelio-Expected-Version` to `headers` in the `strapi::cors` middleware, or the
 preflight of every builder save is refused.
+
+## Page templates
+
+Admin API routes, for the Save as template dialog and the New page gallery
+([the guide](guide/templates.md)). A template is stored in `plugin::micelio.page-template`, one
+row per template, owned by a site and available to it (`scope: site`) or to every site
+(`scope: cms`); the type is hidden from the Content Manager, is never exported in a site archive and
+has no content API route. `site=<slug>` names the site in every route but export.
+
+- `GET /micelio/templates/sites?uid=<type>`: `{ "data": [{ slug, name, isDefault }] }`, for the
+  gallery's site select.
+- `GET /micelio/templates?site=<slug>&uid=<type>`: the templates the site may start a page from,
+  its own and the CMS-wide ones, by name, as `{ id, name, description, pageTypes, scope, origin,
+version, kb, site, blocks, thumbnail }`. Both need the permission to create `<type>` in the
+  Content Manager.
+- `POST /micelio/templates/<id>/pages` with `{ uid, site, title?, locale? }`: creates a draft page
+  of `<uid>` that copies the template and answers `201` with `{ uid, documentId, locale }`. It
+  records `templateId`, `templateVersion` and the sample texts, and goes through the same checks
+  as any save of that site (`blockNotAllowed`). It needs the same permission as the two above, and
+  the grant must cover the fields the page writes (the zone, `title`, `slug` and `pageType`): what
+  the Content Manager would strip for the role is refused with `templatesForbidden`, not dropped.
+  It answers `templateNotFound` for a template the site may not use.
+- `POST /micelio/templates/inspect?site=<slug>`: the checks of a template, run and never refused:
+  the body of the next route, without `name` if the dialog has none yet, answers the page's
+  blocks, their weight in kB and each check as `{ id, ok, detail }`.
+- `POST /micelio/templates?site=<slug>` with `{ uid, documentId, locale?, name, description?,
+pageTypes?, scope, blocks? }`, `blocks` being `[{ content: "sample" | "clear", fixed }]` for the
+  blocks of the catalogue the saved draft holds, in order: stores the template at version 1 and
+  answers `201` with it.
+- `GET /micelio/templates/<id>/export`: the JSON document of the template.
+- `POST /micelio/templates/import?site=<slug>[&scope=site|cms]` with that document: stores it as
+  the same template and answers `201`.
+
+Inspecting, saving, exporting and importing need `plugin::micelio.templates.manage`; inspecting
+and saving also need the permission to read the page's type in the Content Manager. A refusal is a
+problem detail with one of these codes:
+
+- `templateInvalid` (400) with `field`: a malformed body or document, an unknown page type or an
+  `origin` other than `site`.
+- `blockOptionInvalid` (400): an option the catalogue does not offer, as for a block setting.
+- `templateOverBudget` (400) with `pageType`, `budgetKb` and `kb`: the structure alone weighs more
+  than the budget of the page type.
+- `templateBlockNotAllowed` (400) with `site`, `block` and `reason`: a block is disabled, or not
+  allowed on the page type, on that site. With `scope: cms` every site is checked and `site` names
+  the first that refuses (by slug).
+- `templateNameTaken` (409): the site has a template of that name, compared without case.
+- `templateNotFound` (404) and `templatesForbidden` (403).
+
+The exported document is `{ format: 1, name, description, pageTypes, scope, origin, version,
+blocks }`; each block is `{ block, component, content, fixed, data }`, `data` holding the
+options, and the text when `content` is `sample`. A change of its shape raises `format`.
 
 ## Block catalogue
 

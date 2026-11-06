@@ -76,6 +76,14 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
     move out of `draft`, and a publish or republish, with `islandAlternativeMissing`; the
     `block-options` document service middleware and the dry run of an import refuse the second
     background Scene.
+  - `page-templates/` is the page templates (#54): `plugin::micelio.page-template` (hidden, `export:
+never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageTemplates` service
+    (save a page as a template, the checks, export and import as JSON, make a page from one), the
+    permission `plugin::micelio.templates.manage` and the check `performTransition` runs: a page
+    made from a template is refused with `sampleTextPresent` while it holds a copied sample text.
+    `withPageSettings` records `templateId`, `templateVersion` and the private `templateSamples`.
+    Details: [docs/architecture/structure.md](docs/architecture/structure.md#page-templates); the
+    guide is `docs/guide/templates.md`.
   - `block-settings/` is what a site manages of the catalogue (#51):
     `plugin::micelio.block-setting` (hidden, `export: never`), the `blockSettings` service,
     `GET /micelio/blocks?site=` (the merged view the palette reads) and the checks at save:
@@ -118,7 +126,8 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
   the **Micelio** menu entry (`pages/MicelioLayout.tsx`: the sub-navigation from `navigation.ts`,
   each item shown to a role with its permission, and the pages of sibling plugins),
   the pages (`StatusPage`, `TransferPage` with `ExportPanel` and `ImportPanel`, `AboutPage`,
-  `PreviewPage`, `BlocksPage` with `BlockDrawer`),
+  `PreviewPage`, `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
+  Save as template dialog),
   the cost meter and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them).
   The builder (`pages/BuilderPage.tsx` at `builder/:uid/:documentId`, #49): its panels in
   `components/builder/`, its hooks (`useBuilderDocument`, `useBuilderCatalogue`,
@@ -131,7 +140,10 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
   It imports the server's types (`server/src/types/`) type-only, and nothing from `@strapi/icons`:
   that package cannot be required in Node. Details:
   [docs/architecture/structure.md](docs/architecture/structure.md#admin).
-- `bin/micelio.js` — the package's `micelio` binary: `micelio doctor` loads the host project and prints the host check; `micelio export` writes a site archive and `micelio import` reads one (`docs/operate/export.md`).
+- `bin/micelio.js` — the package's `micelio` binary: `micelio doctor` loads the host project and
+  prints the host check; `micelio export` writes a site archive and `micelio import` reads one
+  (`docs/operate/export.md`); `micelio template export|import` moves a page template as JSON
+  (`docs/guide/templates.md`).
 - `compose.dev.yml`, `docker/cms/` — the stack for testing by hand (`npm run dev:docker`, `scripts/dev-docker.mjs`, which writes the gitignored `.env.docker`): a clean Strapi 5 project that loads the working tree mounted at `/plugin`, PostgreSQL and the frontend image (`FRONTEND_IMAGE`). Like `test/strapi/app/` it adds nothing of the distribution. Details: [docs/architecture/structure.md](docs/architecture/structure.md#the-dev-stack).
 - `strapi-server.js`, `strapi-admin.js` — the same entries as files, for tools that do not read the `exports` of `package.json`.
 - `test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it, `site-archive.ts` builds the export fixtures); `test/admin/` runs the admin pages in Chromium with axe (`npm run test:admin`); `test/package.test.ts` packs the package; `test/export-format.test.ts` fails when a content type has no row in `docs/export-format.md`. A suite that publishes a measured type needs a frontend that answers the weight route (`strapi/weight-site.ts`). Details: [docs/architecture/structure.md](docs/architecture/structure.md#tests).

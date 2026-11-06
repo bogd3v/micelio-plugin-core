@@ -6,6 +6,8 @@ import { hooksOf } from '../hooks'
 import { findMissingAlternativesIn } from '../islands/check'
 import { ISLAND_ALTERNATIVE_MISSING } from '../constants/blocks'
 import { hasPageSettings } from '../page-settings'
+import { findSampleTextIn } from '../page-templates/check'
+import { SAMPLE_TEXT_PRESENT } from '../constants/page-templates'
 import { recordSlugChange, type SlugChange } from '../page-settings/record'
 import { SITE_ATTRIBUTE } from '../site-scope'
 import type { EntryPayload, TransitionPayload } from '../types/hooks'
@@ -52,6 +54,7 @@ export type TransitionErrorCode =
   | 'editorialPublishAtInvalid'
   | 'editorialTransitionRefused'
   | 'islandAlternativeMissing'
+  | 'sampleTextPresent'
   | 'pageOverBudget'
   | 'previewUnavailable'
 
@@ -106,6 +109,13 @@ interface EditorialEntry {
  * alternative filled in (`alternative` in `contract/blocks.ts`) and refuses with
  * `islandAlternativeMissing`, naming the blocks, their positions and the empty fields. Moving back
  * to `draft` and the scheduler's `scheduled -> published` are not checked.
+ *
+ * Publishing, or scheduling the publish of, a page created from a template (`docs/guide/templates.md`)
+ * first checks that none of the sample texts it copied is left in its draft, and refuses with
+ * `sampleTextPresent`, naming the blocks and fields. The scheduler's own `scheduled -> published`
+ * runs the check again, so a page whose draft regained a sample text stays scheduled. A page that
+ * holds no sample text, or none made from a template, is not checked; review and moving back to
+ * `draft` are not either.
  *
  * Publishing a page type made with `withPageSettings` whose slug differs from the live one writes
  * the redirect from the old address in the same transaction as the publish (`docs/guide/pages.md`):
@@ -195,6 +205,22 @@ export async function performTransition(
       )
     }
   }
+  // A page made from a template publishes once the sample text it copied is replaced.
+  if (request.to === 'published' || request.to === 'scheduled') {
+    const samples = await findSampleTextIn(strapi, {
+      uid,
+      documentId: entry.documentId,
+      locale: entry.locale,
+    })
+    if (samples.length > 0) {
+      throw new TransitionError(
+        409,
+        SAMPLE_TEXT_PRESENT,
+        `The sample text of ${samples.map(describeSample).join(', ')} is not replaced`,
+        { blocks: samples }
+      )
+    }
+  }
   const userId = request.actor.kind === 'user' ? request.actor.id : null
   const editorial = {
     state: transition.to,
@@ -276,6 +302,10 @@ export async function performTransition(
     to: transition.to,
     site: entry.site?.documentId ?? null,
   }
+}
+
+function describeSample(found: { block: string; position: number; fields: string[] }): string {
+  return `the ${found.block} block at position ${found.position + 1} (${found.fields.join(', ')})`
 }
 
 function describeMissing(missing: { block: string; position: number; fields: string[] }): string {

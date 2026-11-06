@@ -1,5 +1,5 @@
 import { Box, Button, Typography } from '@strapi/design-system'
-import { Page, useAuth } from '@strapi/strapi/admin'
+import { Page, useAuth, useNotification } from '@strapi/strapi/admin'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RenderMode } from '../../../contract/preview'
 import { useTheme } from 'styled-components'
@@ -15,6 +15,7 @@ import { alternativeName } from '../components/builder/IslandBadge'
 import { Overlay, type Pointed, type RenderedBlock } from '../components/builder/Overlay'
 import { Palette } from '../components/builder/Palette'
 import { Notice } from '../components/Notice'
+import { SaveTemplateDialog } from '../components/SaveTemplateDialog'
 import { PreviewFrame, type FrameState, type PreviewFrameHandle } from '../components/PreviewFrame'
 import { useBudget } from '../hooks/useBudget'
 import { useBlockLookup } from '../hooks/useBlockLookup'
@@ -26,7 +27,7 @@ import { useBuilderFrame } from '../hooks/useBuilderFrame'
 import { usePageSettings } from '../hooks/usePageSettings'
 import { usePreviewSource } from '../hooks/usePreviewSource'
 import { useMessages } from '../messages'
-import { PREVIEW_PERMISSION } from '../permissions'
+import { PREVIEW_PERMISSION, TEMPLATES_MANAGE_PERMISSION } from '../permissions'
 import { isIncomplete } from '../utils/builder/fields'
 import { withoutHiddenOptions, type BuilderBlock } from '../utils/builder/model'
 import { refusedBlockOf } from '../utils/builder/refusal'
@@ -111,6 +112,8 @@ function Builder() {
   const [isBlocked, setIsBlocked] = useState(false)
   const [search, setSearch] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isTemplateOpen, setIsTemplateOpen] = useState(false)
+  const { toggleNotification } = useNotification()
   const [recent, setRecent] = useState<string[]>(readRecent)
   // The render mode the editor chose for an island, by block key. It is the frame's state, never
   // saved: a reload of the frame forgets it, and the effect below sends it again (ADR-0019).
@@ -148,6 +151,9 @@ function Builder() {
     version: state.version,
   })
   const canOpenSettings = doc?.hasPageSettings === true
+  const canSaveTemplate = permissions.some(
+    ({ action }) => action === TEMPLATES_MANAGE_PERMISSION.action
+  )
   // ⌘, (Ctrl+, elsewhere) opens the page settings, from anywhere on the page.
   useEffect(() => {
     if (!canOpenSettings) return
@@ -168,6 +174,7 @@ function Builder() {
     return entry ? nameOf(entry, language) : block.component
   }
   const pageType = doc?.pageType ?? 'standard'
+  const samples = useMemo(() => new Set(doc?.samples ?? []), [doc?.samples])
 
   // Palette: the blocks the site offers that this page type's zone accepts.
   const rows = useMemo<PaletteRow[]>(
@@ -525,6 +532,7 @@ function Builder() {
                     : undefined
                 }
                 island={islandOf(selectedEntry)}
+                samples={samples}
                 isReadOnly={isReadOnly}
                 onSetFields={setValues}
                 onSetItem={setItem}
@@ -554,7 +562,23 @@ function Builder() {
             data={pageSettings}
             isReadOnly={isReadOnly}
             onSave={state.saveSettings}
+            onSaveAsTemplate={canSaveTemplate ? () => setIsTemplateOpen(true) : undefined}
+            isDirty={state.isDirty || state.status === 'saving'}
             onClose={() => setIsSettingsOpen(false)}
+          />
+        ) : null}
+        {isTemplateOpen && doc?.site ? (
+          <SaveTemplateDialog
+            page={{ uid, documentId, locale: doc.locale, site: doc.site }}
+            entries={catalogue?.entries ?? []}
+            pageTypes={pageSettings.pageTypes}
+            onClose={() => setIsTemplateOpen(false)}
+            onSaved={(name) =>
+              toggleNotification({
+                type: 'success',
+                message: t('template.save.saved', { name }),
+              })
+            }
           />
         ) : null}
         {toast ? (
