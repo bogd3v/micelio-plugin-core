@@ -121,6 +121,9 @@ function pageHtml(
 ${markBlocks(draft.sections ?? [], (section) => sectionHtml(section, isStatic, cms.base))}
 </main>
 <script>
+// The frontend's page loads at the top, as the maintainer saw it after each autosave (#138); a reload
+// that restores the scroll would hide it.
+history.scrollRestoration = 'manual'
 const adminOrigin = ${JSON.stringify(cms.adminOrigin)}
 window.addEventListener('message', (event) => {
   if (event.origin !== adminOrigin || event.source !== window.parent) return

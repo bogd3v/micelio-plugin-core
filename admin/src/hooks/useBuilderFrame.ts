@@ -50,7 +50,8 @@ export interface BuilderFrame {
  * message is mapped through `blocksAt` of that version, never through the page's current list. The
  * frame answers every `micelio:select` with `micelio:selected`; those answers are not clicks and
  * are ignored for a short while after the page asked. The page posts a selection when it changes or
- * the frame reloads, and asks the frame to scroll to it only the first time.
+ * the frame reloads, and asks the frame to scroll to it the first time and when it reloads after a
+ * save, so the block being edited stays in view.
  */
 export function useBuilderFrame(ctx: FrameContext): BuilderFrame {
   const { state, catalogue, byComponent, fieldsFor, frame, frameState, reload } = ctx
@@ -59,6 +60,9 @@ export function useBuilderFrame(ctx: FrameContext): BuilderFrame {
   const [selection, setSelection] = useState<Selection>()
   const [hovered, setHovered] = useState<Pointed>()
   const reveal = useRef(true)
+  // The version the frame showed when the page asked it to load the draft again, until it says
+  // `ready` with another: the selected block is then brought back into view.
+  const reloadingFrom = useRef<{ version: string | undefined } | undefined>(undefined)
   // When the page asked the frame to select: its `micelio:selected` answers are not clicks.
   const asked = useRef<{ at: number; index: number; item: number | null }[]>([])
   // Every block of the zone counts, the ones the catalogue no longer lists included (a site may
@@ -124,14 +128,19 @@ export function useBuilderFrame(ctx: FrameContext): BuilderFrame {
     const address = selectedKey ? addressOf(selectedKey) : undefined
     // A block the frame has not rendered yet (not saved) has no address: nothing to outline there.
     if (selectedKey && !address) return
+    // The frame reloaded after a save: the block being edited may be out of view, so scroll to it.
+    if (reloadingFrom.current && frameState.version !== reloadingFrom.current.version) {
+      reloadingFrom.current = undefined
+      if (selectedKey) reveal.current = true
+    }
     const isSent = frame.current?.post(
       selectMessage(address ?? null, address ? selectedItem : null, reveal.current)
     )
     // The answer to "nothing selected" carries no block, so it is never mistaken for a click.
     if (isSent && address)
       asked.current.push({ at: Date.now(), index: address.index, item: selectedItem })
-    // The frame scrolls to the block once, for the selection that asked for it: a later post (the
-    // frame reloaded) only outlines, so a block the editor scrolled away from stays where it is.
+    // The frame scrolls to the block for the selection that asked for it and after a reload; any
+    // other post only outlines, so a block the editor scrolled away from stays where it is.
     if (isSent) reveal.current = false
     // `addressOf` changes only with the frame's version or the catalogue, never with a render.
   }, [selectedKey, selectedItem, addressOf, frameState.version])
@@ -141,7 +150,9 @@ export function useBuilderFrame(ctx: FrameContext): BuilderFrame {
   useEffect(() => {
     if (state.savedCount === 0 || state.savedCount === handledSaves.current) return
     handledSaves.current = state.savedCount
+    reloadingFrom.current = { version: frameState.version }
     if (!frame.current?.loadDraft()) reload()
+    // `frameState.version` is read only when a save lands.
   }, [state.savedCount, reload])
 
   return { selection, select, report, hovered, addressOf, renderedAt, onFrameMessage }

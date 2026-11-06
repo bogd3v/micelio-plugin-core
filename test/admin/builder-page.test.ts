@@ -434,14 +434,65 @@ describe('the builder page in the admin', () => {
       expect(await frameOf(page).locator('body').evaluate('window.scrollY')).toBe(2000)
     }
     expect(await selectsOf(page)).toHaveLength(1)
-    // A save loads the draft again and the page outlines the block once more, without asking the
-    // frame to scroll (the frame may be a new document, so this counts what it received since).
+    // A save loads the draft again and the page asks the frame to scroll to the block once more
+    // (the frame may be a new document, so this counts what it received since).
     await page.getByLabel('Title').fill('Two, changed')
     await eventually(async () => (await sectionsOf(documentId))[1]?.title).toBe('Two, changed')
     await eventually(
-      async () => (await selectsOf(page)).filter(({ reveal }) => reveal === false).length
-    ).toBe(1)
-    expect((await selectsOf(page)).filter(({ reveal }) => reveal === true).length).toBeLessThan(2)
+      async () => (await selectsOf(page)).filter(({ reveal }) => reveal === true).length
+    ).toBeGreaterThan(0)
+  })
+
+  /** Whether the block `id` of the frame is inside the frame's viewport. */
+  const isInView = (page: Page, id: string) =>
+    frameOf(page)
+      .locator('body')
+      .evaluate(
+        '(() => { const box = document.querySelector(\'[data-myc-block="' +
+          id +
+          '"]\').getBoundingClientRect(); return box.bottom > 0 && box.top < innerHeight })()'
+      )
+
+  /** A page longer than the frame: the first block's text fills several screens. */
+  const longLanding = () =>
+    newLanding([
+      { __component: 'section.rich-text', body: 'Long text. '.repeat(3000) },
+      { __component: 'section.feature-grid', title: 'Two', columns: '3' },
+      { __component: 'section.logo-cloud', title: 'Three' },
+    ])
+
+  it('brings the edited block back into view after the save reloads the frame', async () => {
+    const documentId = await longLanding()
+    const page = await open(builderPath(documentId))
+    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid', 'logo-cloud'])
+    await page
+      .getByRole('region', { name: /Page blocks/ })
+      .locator('[data-block-key]', { hasText: 'Feature grid' })
+      .click()
+    await eventually(() => isInView(page, 'feature-grid')).toBe(true)
+    await page.getByLabel('Title').fill('Two, changed')
+    await eventually(async () => (await sectionsOf(documentId))[1]?.title).toBe('Two, changed')
+    await eventually(() =>
+      frameOf(page).locator('[data-myc-block="feature-grid"]').innerText()
+    ).toContain('Two, changed')
+    await eventually(() => isInView(page, 'feature-grid')).toBe(true)
+  })
+
+  it('does not ask the frame to scroll after a save when nothing is selected', async () => {
+    const documentId = await longLanding()
+    const page = await open(builderPath(documentId))
+    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid', 'logo-cloud'])
+    await page
+      .getByRole('region', { name: /Page blocks/ })
+      .locator('[data-block-key]', { hasText: 'Feature grid' })
+      .click()
+    // Remove the block and select nothing before the autosave: the save has no selection to show.
+    await page.getByRole('button', { name: 'Remove' }).click()
+    await page.getByRole('button', { name: '+ Add a block here' }).dispatchEvent('click')
+    await eventually(async () => (await sectionsOf(documentId)).length).toBe(2)
+    await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud'])
+    await settle(page, 30)
+    expect((await selectsOf(page)).filter(({ reveal }) => reveal === true)).toHaveLength(0)
   })
 
   it('addresses a block by its place in the zone when the site disabled one in the middle', async () => {
