@@ -9,6 +9,7 @@ import { BlockPanel } from '../components/builder/BlockPanel'
 import { BuilderHeader } from '../components/builder/BuilderHeader'
 import { Centre, Columns, Shell, StageBox, Toast } from '../components/builder/layout'
 import { Motion } from '../components/builder/Motion'
+import { PageSettingsDrawer } from '../components/builder/PageSettingsDrawer'
 import { Overlay, type Pointed, type RenderedBlock } from '../components/builder/Overlay'
 import { Palette } from '../components/builder/Palette'
 import { Notice } from '../components/Notice'
@@ -20,6 +21,7 @@ import { useBuilderDocument } from '../hooks/useBuilderDocument'
 import { RECENT_KEY, useBuilderEdits } from '../hooks/useBuilderEdits'
 import { useRefusalNotice } from '../hooks/useRefusalNotice'
 import { useBuilderFrame } from '../hooks/useBuilderFrame'
+import { usePageSettings } from '../hooks/usePageSettings'
 import { usePreviewSource } from '../hooks/usePreviewSource'
 import { useMessages } from '../messages'
 import { PREVIEW_PERMISSION } from '../permissions'
@@ -98,6 +100,7 @@ function Builder() {
   const [frameState, setFrameState] = useState<FrameState>(NO_FRAME)
   const [isBlocked, setIsBlocked] = useState(false)
   const [search, setSearch] = useState('')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [recent, setRecent] = useState<string[]>(readRecent)
   const [now, setNow] = useState(Date.now())
   const frame = useRef<PreviewFrameHandle>(null)
@@ -123,6 +126,27 @@ function Builder() {
     state.version,
     weightUrl
   )
+  const pageSettings = usePageSettings({
+    isOpen: isSettingsOpen,
+    uid,
+    documentId,
+    locale: doc ? doc.locale : locale,
+    site: doc?.site,
+    version: state.version,
+  })
+  const canOpenSettings = doc?.hasPageSettings === true
+  // ⌘, (Ctrl+, elsewhere) opens the page settings, from anywhere on the page.
+  useEffect(() => {
+    if (!canOpenSettings) return
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.code === 'Comma' && (event.metaKey || event.ctrlKey) && !event.altKey) {
+        event.preventDefault()
+        setIsSettingsOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [canOpenSettings])
   const leftKb =
     budget.kind === 'ready' ? budget.measurement.budgetKb - budget.measurement.blocksKb : undefined
 
@@ -296,6 +320,8 @@ function Builder() {
             budget={budget}
             onSave={state.saveNow}
             isReadOnly={isReadOnly}
+            onOpenSettings={canOpenSettings ? () => setIsSettingsOpen(true) : undefined}
+            isSettingsOpen={isSettingsOpen}
           />
           {state.status === 'conflict' ? (
             <Notice
@@ -475,6 +501,16 @@ function Builder() {
             )}
           </Columns>
         </Shell>
+        {isSettingsOpen && doc ? (
+          <PageSettingsDrawer
+            document={doc}
+            host={origin ? new URL(origin).host : ''}
+            data={pageSettings}
+            isReadOnly={isReadOnly}
+            onSave={state.saveSettings}
+            onClose={() => setIsSettingsOpen(false)}
+          />
+        ) : null}
         {toast ? (
           <Toast key={toast.id} role="status">
             <span>{toast.text}</span>

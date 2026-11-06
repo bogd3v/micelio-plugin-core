@@ -1,6 +1,11 @@
 import { useFetchClient } from '@strapi/strapi/admin'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import {
+  visibilityOf,
+  type PageSettingsValues,
+  type Visibility,
+} from '../utils/builder/pageSettings'
 import { remember, undo, type History, EMPTY_HISTORY } from '../utils/builder/history'
 import {
   adoptIds,
@@ -38,6 +43,12 @@ export interface BuilderDocument {
   locale: string | null
   /** The page type (`landing`, `standard`, …) when the type has the attribute, else `undefined`. */
   pageType: string | undefined
+  /** Whether the content type was made with `withPageSettings`: it has a page type and a visibility. */
+  hasPageSettings: boolean
+  /** The page's slug, `''` when it has none. */
+  slug: string
+  /** Where the page shows up; the defaults while the component was never saved. */
+  visibility: Visibility
   /** The slug of the page's site, when the answer names it. */
   site: string | undefined
   /** `draft` while no version is published, `published` or `modified` after. */
@@ -70,7 +81,10 @@ function toDocument(answer: CmAnswer, documentId: string): BuilderDocument {
   return {
     title: text(data.title) ?? text(data.name) ?? text(data.slug) ?? documentId,
     locale: text(data.locale) ?? null,
-    pageType: text(data.pageType),
+    pageType: text(data.pageType) ?? ('pageType' in data ? 'standard' : undefined),
+    hasPageSettings: 'pageType' in data,
+    slug: text(data.slug) ?? '',
+    visibility: visibilityOf(data.visibility),
     site: text(site?.slug),
     state:
       meta?.availableStatus === undefined || meta.availableStatus.length === 0
@@ -78,6 +92,18 @@ function toDocument(answer: CmAnswer, documentId: string): BuilderDocument {
         : published && updatedAt && new Date(updatedAt) > new Date(published)
           ? 'modified'
           : 'published',
+  }
+}
+
+/** The settings the Content Manager's answer to a save carries, over what the page showed. */
+function settingsOf(
+  saved: Record<string, unknown>,
+  now: BuilderDocument
+): Partial<BuilderDocument> {
+  return {
+    slug: text(saved.slug) ?? now.slug,
+    pageType: text(saved.pageType) ?? now.pageType,
+    visibility: 'visibility' in saved ? visibilityOf(saved.visibility) : now.visibility,
   }
 }
 
@@ -113,6 +139,12 @@ export interface BuilderState {
   blocksAt: (version: string) => Pick<BuilderBlock, 'key' | 'component'>[] | undefined
   /** Saves now instead of after the pause. */
   saveNow: () => void
+  /**
+   * Saves the page settings (the drawer's General tab) over the version the page holds, once any
+   * save in flight has finished, and gives the page its new version. `undefined` when it was
+   * saved, else why the server refused it.
+   */
+  saveSettings: (values: Partial<PageSettingsValues>) => Promise<SaveRefusal | undefined>
   /** Another session saved: take its version and drop this session's changes. */
   loadTheirs: () => void
   /** Another session saved: keep this session's changes and overwrite theirs on the next save. */
@@ -352,6 +384,45 @@ export function useBuilderDocument(
     }
   }, [resource.kind, read])
 
+  const saveSettings = useCallback(
+    async (values: Partial<PageSettingsValues>): Promise<SaveRefusal | undefined> => {
+      // One save at a time: the settings go over the version the zone's save leaves.
+      while (isSavingRef.current) await new Promise((resolve) => setTimeout(resolve, 50))
+      isSavingRef.current = true
+      try {
+        const response = await clientRef.current.put<CmAnswer>(path, values, {
+          params,
+          headers: knownRef.current ? { [EXPECTED_VERSION_HEADER]: knownRef.current } : {},
+        })
+        const saved = response.data.data
+        knownRef.current = text(saved.updatedAt)
+        setVersion(knownRef.current)
+        // The zone did not change: the version shows the blocks the page holds now.
+        if (knownRef.current)
+          rendersRef.current.set(instant(knownRef.current), shortOf(heldRef.current))
+        setResource((now) =>
+          now.kind === 'ready'
+            ? { kind: 'ready', document: { ...now.document, ...settingsOf(saved, now.document) } }
+            : now
+        )
+        setSavedAt(Date.now())
+        setSavedCount((count) => count + 1)
+        return undefined
+      } catch (error) {
+        const refused = refusalOf(error)
+        if (refused?.code === VERSION_CONFLICT) setStatus('conflict')
+        return refused ?? { code: 'failed', detail: '' }
+      } finally {
+        isSavingRef.current = false
+        if (wantsAgainRef.current) {
+          wantsAgainRef.current = false
+          void flush()
+        }
+      }
+    },
+    [path, locale, flush]
+  )
+
   // Stable: the frame hook depends on it, and a new function on each render would repost selections.
   const blocksAt = useCallback((at: string) => rendersRef.current.get(instant(at)), [])
 
@@ -397,6 +468,7 @@ export function useBuilderDocument(
       failedRef.current = undefined
       void flush()
     },
+    saveSettings,
     loadTheirs: () => setReloads((count) => count + 1),
     keepMine: () => {
       // Overwriting theirs is the editor's choice: adopt their `updatedAt` and save.

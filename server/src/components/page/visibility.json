@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_micelio_page_visibilities",
+  "info": {
+    "displayName": "Visibility",
+    "icon": "eye",
+    "description": "Where a page shows up: the navigation menu, the sitemap and feeds, and search engines (the page settings of the builder)"
+  },
+  "options": {},
+  "attributes": {
+    "inMenu": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "inSitemap": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "noindex": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    }
+  }
+}

@@ -1,10 +1,12 @@
 import type { Core } from '@strapi/strapi'
 import { EDITORIAL_COMPONENT_CATEGORY } from '../constants/editorial'
+import { PAGE_COMPONENT_CATEGORY } from '../constants/page-settings'
 import { SITE_COMPONENT_CATEGORY } from '../constants/site'
 import editorial from './editorial/editorial.json'
 import accentOverride from './site/accent-override.json'
 import author from './site/author.json'
 import fediverse from './site/fediverse.json'
+import visibility from './page/visibility.json'
 import modules from './site/modules.json'
 import socialLink from './site/social-link.json'
 import theme from './site/theme.json'
@@ -20,6 +22,7 @@ const COMPONENTS: Record<string, Record<string, object>> = {
     theme,
   },
   [EDITORIAL_COMPONENT_CATEGORY]: { editorial },
+  [PAGE_COMPONENT_CATEGORY]: { visibility },
 }
 
 /**

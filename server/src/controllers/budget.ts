@@ -1,6 +1,8 @@
 import type { Core } from '@strapi/strapi'
 import type { Context } from 'koa'
-import { parseWeightReport } from '../budget/rules'
+import { knownPageTypes } from '../block-settings/rules'
+import { budgetKbOf, parseWeightReport } from '../budget/rules'
+import type { PluginConfig } from '../config'
 import { PREVIEW_PERMISSION } from '../constants/preview'
 import { TransitionError } from '../editorial/transitions'
 import { readableDraft, type UserAbility } from '../preview/access'
@@ -15,9 +17,10 @@ const TITLES: Record<number, string> = {
   409: 'Conflict',
 }
 
-/** The handler of the cost meter's route. */
+/** The handlers of the cost meter's route and of the page types the drawer offers. */
 export interface BudgetController {
   measure(ctx: Context): Promise<void>
+  pageTypes(ctx: Context): Promise<void>
 }
 
 /**
@@ -41,6 +44,22 @@ export default ({ strapi }: { strapi: Core.Strapi }): BudgetController => {
   }
 
   return {
+    /**
+     * `GET /micelio/budget/page-types?site=<slug>`: the page types the budgets list for a site,
+     * custom ones included, each with its budget in kB. For any admin user.
+     */
+    async pageTypes(ctx) {
+      const slug = typeof ctx.query.site === 'string' ? ctx.query.site : null
+      const budgets = strapi.config.get<PluginConfig['budgets']>('plugin::micelio.budgets')
+      ctx.set('Cache-Control', 'private, no-store')
+      ctx.body = {
+        data: knownPageTypes(budgets, slug).map((id) => ({
+          id,
+          budgetKb: budgetKbOf(budgets, slug, id),
+        })),
+      }
+    },
+
     async measure(ctx) {
       const ability = ctx.state.userAbility as UserAbility | undefined
       const adminUser = (ctx.state.user as { id?: number } | undefined)?.id

@@ -24,6 +24,7 @@ The address is `/admin/plugins/micelio/builder/<content type>/<documentId>`.
 
 - **Toolbar.**
   The title, whether the page is a draft, and where autosave stands.
+  The gear next to the title opens the [page settings](pages.md), for a page type that has them.
   Phone, Tablet and Desktop set the width of the preview.
   **As static site** shows every island as its static alternative.
   The meter is the weight of the page's blocks against its budget, measured by the frontend.
@@ -113,8 +114,8 @@ replace what the builder saved a moment earlier; the builder then shows the noti
 
 ## What is not here yet
 
-Page type and settings, the SEO tab, templates, the complete keyboard and the shortcuts sheet,
-and sending a page to review each have their own issue.
+The SEO tab and the Template tab of the page settings, the complete keyboard and the shortcuts
+sheet, and sending a page to review each have their own issue.
 Until then, publish from the Content Manager.
 
 ## Motion

@@ -18,7 +18,14 @@ The plugin asks the weight route of the site's `url` (`GET /api/preview/<uid>/<d
 | `standard`  | 120 kB |
 | `long-read` | 160 kB |
 
-A page is `standard` unless it has a string attribute `pageType` that the budgets list. (The page type becomes an attribute of its own with the page settings, bogd3v/micelio-plugin-core#52.) Budgets are set in configuration and nowhere else; there is no setting in the admin. In `config/plugins`:
+A page is `standard` unless its `pageType` is one the budgets list. A page type made with
+`withPageSettings` has that attribute, and the editor sets it in the Page settings drawer of the
+builder ([docs/guide/pages.md](../guide/pages.md)): the drawer offers every page type the budgets
+list, custom ones included, and a page of a type nobody configured keeps the `standard` budget.
+Changing the type of a page over the budget of the new one saves, and the publish is refused with
+`pageOverBudget`. The table is what the core ships; you change a budget or add a page type in
+`pageTypes`. Budgets are set in configuration and nowhere else; there is no setting in the admin.
+In `config/plugins`:
 
 ```js
 module.exports = {
@@ -82,3 +89,5 @@ A refused publish is told to the editor in a notification of the admin, "The pag
 - **Check that the admin's `connect-src` lets the browser reach the site's origin** (set it next to the `frame-src` of the preview if your host sends its own policy, or the site is plain HTTP on a host other than `localhost`): the cost meter and the cost line read the frontend's weight route from the editor's browser. Without it they say the page could not be measured; publishing is not affected. The host check does not look at it yet.
 - The frontend must be at the release that answers the weight route to the editor's own grant (bogd3v/micelio#766).
 - The plugin needs no new variable, route permission or migration. `POST /micelio/budget/measure` is new.
+- `GET /micelio/budget/page-types` is new: it lists a site's page types for the Page settings
+  drawer.

@@ -1,7 +1,10 @@
 import type { Core, UID } from '@strapi/strapi'
 import { EDITORIAL_ATTRIBUTE, type EditorialState } from '../constants/editorial'
+import { SLUG_ATTRIBUTE } from '../constants/page-settings'
 import type { BudgetService } from '../services/budget'
 import { hooksOf } from '../hooks'
+import { hasPageSettings } from '../page-settings'
+import { recordSlugChange, type SlugChange } from '../page-settings/record'
 import { SITE_ATTRIBUTE } from '../site-scope'
 import type { EntryPayload, TransitionPayload } from '../types/hooks'
 import { isEditorial } from '.'
@@ -73,6 +76,7 @@ interface EditorialEntry {
     publishedBy?: { id: number } | null
   } | null
   site?: { documentId: string; editorialPolicy?: unknown } | null
+  slug?: unknown
 }
 
 /**
@@ -94,6 +98,10 @@ interface EditorialEntry {
  * budget of its page type, or `previewUnavailable` when the measurement fails. It never publishes
  * without the measurement. Right before the write it checks that the draft was not saved since, and
  * refuses with `previewUnavailable` when it was.
+ *
+ * Publishing a page type made with `withPageSettings` whose slug differs from the live one writes
+ * the redirect from the old address in the same transaction as the publish (`docs/guide/pages.md`):
+ * either both stand or neither does. A draft's slug changes no URL.
  *
  * It runs the hooks of the transition (`docs/hooks.md`): `beforeTransition` once every check has
  * passed and before anything is written, then `afterTransition` and, when the entry was published
@@ -205,14 +213,22 @@ export async function performTransition(
       locale: entry.locale,
     })
   }
-  await runAsTransition(async () => {
-    // A republish never unpublishes: the live version stays until the one `publish` replaces it.
-    if (transition.from === 'published' && transition.to !== 'published') {
-      await documents.unpublish(target as never)
-    }
-    await documents.update({ ...target, data: { [EDITORIAL_ATTRIBUTE]: editorial } } as never)
-    if (transition.to === 'published') await documents.publish(target as never)
-  })
+  const slugChange =
+    transition.to === 'published' && hasPageSettings(strapi.contentType(uid))
+      ? await slugChangeOf(strapi, uid, entry)
+      : null
+  // One transaction: a redirect that cannot be written leaves the page at its live address.
+  await strapi.db.transaction(() =>
+    runAsTransition(async () => {
+      // A republish never unpublishes: the live version stays until the one `publish` replaces it.
+      if (transition.from === 'published' && transition.to !== 'published') {
+        await documents.unpublish(target as never)
+      }
+      await documents.update({ ...target, data: { [EDITORIAL_ATTRIBUTE]: editorial } } as never)
+      if (transition.to === 'published') await documents.publish(target as never)
+      if (slugChange) await recordSlugChange(strapi, slugChange)
+    })
+  )
 
   await hooks.runAfter('afterTransition', payload)
   const live: EntryPayload = {
@@ -233,6 +249,24 @@ export async function performTransition(
     to: transition.to,
     site: entry.site?.documentId ?? null,
   }
+}
+
+/** The change of address the publish of `entry` makes, or `null` when no version is live or the slug stays. */
+async function slugChangeOf(
+  strapi: Core.Strapi,
+  uid: UID.ContentType,
+  entry: EditorialEntry
+): Promise<SlugChange | null> {
+  const live = (await strapi.documents(uid).findOne({
+    documentId: entry.documentId,
+    locale: entry.locale ?? undefined,
+    status: 'published',
+  } as never)) as { slug?: unknown } | null
+  const to = entry[SLUG_ATTRIBUTE as 'slug']
+  const from = live?.[SLUG_ATTRIBUTE as 'slug']
+  if (!entry.site || typeof from !== 'string' || typeof to !== 'string') return null
+  if (from === '' || to === '' || from === to) return null
+  return { site: entry.site.documentId, locale: entry.locale ?? null, from, to }
 }
 
 function refusalMessage(error: unknown): string {

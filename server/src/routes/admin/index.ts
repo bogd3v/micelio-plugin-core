@@ -75,6 +75,12 @@ export default (): Core.RouterInput => ({
     },
     {
       method: 'GET',
+      path: '/budget/page-types',
+      handler: 'budget.pageTypes',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
       path: '/admin-pages',
       handler: 'extensions.pages',
       config: { policies: ['admin::isAuthenticatedAdmin'] },

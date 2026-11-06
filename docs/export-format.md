@@ -247,6 +247,9 @@ An archive **never** holds, whatever is asked:
   They are configuration of the site on this CMS, set again on the target.
   An import still checks the archive's pages against the target site's settings (`blockNotAllowed`,
   [api.md](api.md#what-a-disabled-block-does)).
+- The redirects of a site (`plugin::micelio.redirect`): the 301 redirects the plugin writes when
+  the published slug of a page changes ([api.md](api.md#redirects)). They belong to the addresses
+  of this CMS's frontend, which an import to another host does not keep.
 
 ## How a type declares its export
 
