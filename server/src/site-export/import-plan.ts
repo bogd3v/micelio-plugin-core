@@ -2,6 +2,7 @@
 // "Integrity" and "Import").
 import type { Core, UID } from '@strapi/strapi'
 import { findBlockOptionViolation } from '../block-options/rules'
+import { findBackgroundSceneExcess } from '../islands/rules'
 import { findBlockNotAllowedIn } from '../block-settings/check'
 import { EDITORIAL_ATTRIBUTE } from '../constants/editorial'
 import { SITE_UID } from '../constants/site'
@@ -211,6 +212,14 @@ function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, wh
   for (const [name, attribute] of Object.entries(type.attributes)) {
     const zone = data[name]
     if ((attribute as { type?: string }).type !== 'dynamiczone' || !Array.isArray(zone)) continue
+    const excess = findBackgroundSceneExcess(zone)
+    if (excess) {
+      throw new ExportError(
+        'exportDocumentInvalid',
+        `${where}.${name}: the page holds ${excess.count} ${excess.block} blocks with variant ` +
+          `background and may hold ${excess.limit}`
+      )
+    }
     const violation = findBlockOptionViolation(zone)
     if (!violation) continue
     const allowed = violation.allowed.length ? `; allowed: ${violation.allowed.join(', ')}` : ''

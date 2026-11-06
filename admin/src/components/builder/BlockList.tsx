@@ -3,7 +3,9 @@ import { useId } from 'react'
 import styled, { useTheme } from 'styled-components'
 
 import { useMessages } from '../../messages'
+import type { IslandInfo } from '../../utils/builder/islands'
 import { GripIcon } from './icons'
+import { IslandBadge } from './IslandBadge'
 
 /** A block of the page as the list shows it. */
 export interface ListedBlock {
@@ -11,6 +13,8 @@ export interface ListedBlock {
   name: string
   /** The required text the block still lacks, as the reason shown beside its name. */
   hasProblem: boolean
+  /** The island the block renders, for its badge. */
+  island?: IslandInfo
 }
 
 const Section = styled.section`
@@ -146,6 +150,7 @@ export function BlockList(props: BlockListProps) {
                   <GripIcon />
                 </span>
                 <span style={{ flexGrow: 1 }}>{block.name}</span>
+                {block.island ? <IslandBadge island={block.island} variant="box" /> : null}
                 {block.hasProblem ? (
                   <span style={{ fontSize: 11, color: colors.danger700, fontWeight: 600 }}>
                     {t('builder.list.problem')}

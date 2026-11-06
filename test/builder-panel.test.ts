@@ -123,7 +123,17 @@ describe('the palette', () => {
 
   it('weighs a block in kB with one decimal, an island’s on-demand script apart', () => {
     expect(costKbOf(entry('a', { cost: { css: 737, js: 1556, island: null } }))).toBe(2.2)
-    expect(costKbOf(entry('b', { cost: { css: 0, js: 0, island: { js: 99999 } } }))).toBe(0)
+    expect(
+      costKbOf(
+        entry('b', {
+          cost: {
+            css: 0,
+            js: 0,
+            island: { js: 99999, kind: '3d', loadKb: 151.3, alternative: ['poster'] },
+          },
+        })
+      )
+    ).toBe(0)
   })
 
   it('refuses a block the page type’s catalogue excludes and flags one over the remaining budget', () => {

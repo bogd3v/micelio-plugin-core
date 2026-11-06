@@ -1,4 +1,6 @@
 import type { Core, Modules, UID } from '@strapi/strapi'
+import { SceneBackgroundLimitError } from '../islands/error'
+import { findBackgroundSceneExcess } from '../islands/rules'
 import { BlockOptionError } from './error'
 import { findBlockOptionViolation } from './rules'
 
@@ -16,7 +18,10 @@ type Params = Record<string, unknown> & { data?: Record<string, unknown> }
  * data does not name are left alone, so a save that does not touch the blocks cannot fail on them.
  * Stored content is not re-checked: only what is being written.
  *
- * @throws {@link BlockOptionError} with the block, the option and the values it allows.
+ * It also refuses a zone with more than one `scene` block of `variant: background`.
+ *
+ * @throws {@link BlockOptionError} with the block, the option and the values it allows, or
+ * `SceneBackgroundLimitError`.
  */
 export function blockOptionsDocuments(
   strapi: Core.Strapi
@@ -31,6 +36,8 @@ export function blockOptionsDocuments(
         if (attribute.type !== 'dynamiczone' || !Array.isArray(zone)) continue
         const violation = findBlockOptionViolation(zone)
         if (violation) throw new BlockOptionError(violation)
+        const excess = findBackgroundSceneExcess(zone)
+        if (excess) throw new SceneBackgroundLimitError(excess)
       }
     }
     return next()

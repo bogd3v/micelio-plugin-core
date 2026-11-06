@@ -170,6 +170,13 @@ with the code `blockNotAllowed`; it writes nothing:
 `blockOptionInvalid`, it is the problem detail where the route has the `site-scope` middleware and
 Strapi's `ValidationError` (the code in `error.details`) where it has not.
 
+A save whose dynamic zone holds more `scene` blocks with `variant: background` than a page may (one)
+answers `400` with the code `sceneBackgroundLimit`, naming the `block`, the `count` it holds and the
+`limit`; it writes nothing. It is checked on `create`, `update` and `clone`, and by the dry run of
+an import. A Scene that sets no `variant` takes its default, `background`, and is counted. Like `blockOptionInvalid`, it is the
+problem detail where the route has the `site-scope` middleware and Strapi's `ValidationError` (the
+code in `error.details`) where it has not.
+
 ## Sites
 
 - `hosts` is a list of host names, stored in lower case: no scheme, port or path. Two sites cannot share a host name.
@@ -211,6 +218,14 @@ Every transition, the scheduler's included, runs the hooks of [docs/hooks.md](ho
 
 A transition that publishes (`in_review → published`, `scheduled → published`, `published → published`) an entry of a measured type first has the site's frontend measure the draft ([docs/operate/budgets.md](operate/budgets.md)). It is refused above its budget (`pageOverBudget`) and whenever it could not be measured (`previewUnavailable`); it is never published without the measurement. A measured type is one that `budgets.contentTypes` lists (by default `api::page.page` and `api::article.article`, the types the frontend previews) and that is site-scoped, editorial and has a dynamic zone; any other type publishes as before, with no measurement. This is in the transition itself, so the admin route, the `transitions` service and the scheduler all hold it, and Strapi's own publish stays refused as before.
 
+A transition out of `draft` (`draft → in_review`, `draft → scheduled`), and a publish or
+republish (`in_review → published`, `published → published`), also needs the static alternative of
+every island block of the draft filled in: the fields its `alternative` lists in
+`contract/blocks.ts` (a Scene's `poster` and `alt`, a Playground's `expectedOutput`). A field that
+is absent, `null` or blank counts as empty. It is refused with `islandAlternativeMissing` before
+anything is written or measured. Moving back to `draft` and the scheduler's
+`scheduled → published` are not checked.
+
 ### Errors
 
 Every refusal answers `application/problem+json`:
@@ -224,8 +239,13 @@ Every refusal answers `application/problem+json`:
 | 404    | `editorialEntryNotFound`       | No such entry in that locale                          |
 | 409    | `editorialTransitionInvalid`   | The state machine has no such transition              |
 | 409    | `editorialTransitionRefused`   | A `beforeTransition` handler of a plugin refused it   |
+| 409    | `islandAlternativeMissing`     | An island of the draft lacks its static alternative   |
 | 409    | `pageOverBudget`               | The blocks of the draft weigh more than its budget    |
 | 409    | `previewUnavailable`           | The draft could not be measured; see below            |
+
+`islandAlternativeMissing` carries, besides the usual members, `blocks`: each block that lacks its
+alternative as `{ block, position, fields, zone }`, `position` counted from 0 in the zone and
+`fields` the empty ones.
 
 `pageOverBudget` carries, besides the usual members, `pageType`, `budgetKb`, `blocksKb` (the sum of the blocks' shares, what the budget is measured against), `frameworkKb` and `totalKb` (the page's whole weight, which is `frameworkKb + blocksKb`) and `overByKb` (kB as the frontend sends them, one decimal) and `blocks`: every block of the page as `{ position, id, kb }`, heaviest first, so the editor sees where the weight is:
 

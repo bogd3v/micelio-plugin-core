@@ -6,6 +6,8 @@ import { useMessages } from '../../messages'
 import { setGhost } from '../../utils/builder/ghost'
 import { highlight, type PaletteGroup, type PaletteRow } from '../../utils/builder/palette'
 import { BlockGlyph } from './icons'
+import { IslandBadge } from './IslandBadge'
+import { islandOf, weightText } from '../../utils/builder/islands'
 
 const Aside = styled.aside`
   flex: 0 1 264px;
@@ -80,7 +82,6 @@ const RowButton = styled.button<{ $state: PaletteRow['state'] }>`
 
 const iconBox = (c: DefaultTheme['colors']) => ({
   ok: `background:${c.neutral100};border:1px solid ${c.neutral200};`,
-  island: `background:${c.secondary100};border:1px solid ${c.secondary200};color:${c.secondary600};`,
   overBudget: `background:${c.danger100};border:1px solid ${c.danger200};color:${c.danger700};`,
   notAllowed: `background:${c.neutral100};border:1px dashed ${c.neutral200};color:${c.neutral400};`,
 })
@@ -236,7 +237,7 @@ export function Palette(props: PaletteProps) {
             <List>
               {group.rows.map((row) => {
                 const rowId = `${id}-${group.id}-${row.entry.id}`
-                const kind = row.state === 'ok' ? (row.isIsland ? 'island' : 'ok') : row.state
+                const kind = row.state === 'ok' ? 'ok' : row.state
                 const costColor =
                   row.state === 'overBudget'
                     ? colors.danger700
@@ -244,6 +245,15 @@ export function Palette(props: PaletteProps) {
                       ? colors.secondary600
                       : colors.neutral600
                 const isDisabled = row.state === 'notAllowed'
+                const island = islandOf(row.entry)
+                // An island shows what it loads once used; the page's own weight is the budget's.
+                const costText = (item: PaletteRow) => {
+                  if (!island) return t('builder.palette.cost', { kb: item.costKb })
+                  const weight = weightText(island.loadKb)
+                  return t('builder.palette.costIsland', {
+                    weight: t(`builder.island.${weight.unit}`, { value: weight.value }),
+                  })
+                }
                 return (
                   <Item
                     key={row.entry.id}
@@ -252,20 +262,13 @@ export function Palette(props: PaletteProps) {
                     onDragStart={(event) => {
                       event.dataTransfer.setData('application/x-micelio-block', row.entry.id)
                       event.dataTransfer.effectAllowed = 'copy'
-                      setGhost(
-                        event.dataTransfer,
-                        row.name,
-                        row.isIsland
-                          ? t('builder.palette.costIsland', { kb: row.costKb })
-                          : t('builder.palette.cost', { kb: row.costKb }),
-                        {
-                          card: colors.neutral0,
-                          text: colors.neutral800,
-                          muted: colors.neutral600,
-                          accent: colors.primary600,
-                          tint: colors.primary100,
-                        }
-                      )
+                      setGhost(event.dataTransfer, row.name, costText(row), {
+                        card: colors.neutral0,
+                        text: colors.neutral800,
+                        muted: colors.neutral600,
+                        accent: colors.primary600,
+                        tint: colors.primary100,
+                      })
                       props.onDragStart(row)
                     }}
                     onDragEnd={props.onDragEnd}
@@ -280,14 +283,16 @@ export function Palette(props: PaletteProps) {
                         if (!isDisabled && !props.isReadOnly) props.onInsert(row)
                       }}
                     >
-                      <IconBox $kind={kind}>
-                        <BlockGlyph isIsland={row.isIsland} />
-                      </IconBox>
+                      {island ? (
+                        <IslandBadge island={island} variant="box" />
+                      ) : (
+                        <IconBox $kind={kind}>
+                          <BlockGlyph isIsland={false} />
+                        </IconBox>
+                      )}
                       <Name name={row.name} search={search} />
                       <Cost $color={costColor} $weight={row.state === 'overBudget' ? 600 : 400}>
-                        {row.isIsland
-                          ? t('builder.palette.costIsland', { kb: row.costKb })
-                          : t('builder.palette.cost', { kb: row.costKb })}
+                        {costText(row)}
                       </Cost>
                     </RowButton>
                     {row.state === 'notAllowed' ? (

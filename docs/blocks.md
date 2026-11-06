@@ -55,6 +55,30 @@ The merged view is `GET /micelio/blocks?site=` ([`docs/api.md`](api.md#block-cat
 
 Adding an option to a block, or a value to an option, changes the block's fingerprint, so `blockCatalogueChanged` runs with the block in `changed` on the next boot.
 
+## Islands
+
+A block that loads script once it is used declares `cost.island`: its `id` in the heavy island
+registry, its `budget`, the `js` it loads, and three more things the editor sees and the engine
+checks (the badge of [the builder](guide/builder.md)):
+
+- **`kind`**: `3d`, `runtime`, `media`, `diagram` or `data`, one icon each. Today `scene` is
+  `3d` and `playground` is `runtime`; the other kinds are in the vocabulary and no block declares
+  them yet.
+- **`loadKb`**: what the island loads once it is used, in kB (its script and the runtime's files; a
+  model the editor picks is content and not counted). Above 1024 kB (`ON_CLICK_ABOVE_KB`) the island
+  loads on a click, below it when it scrolls into view. The frontend applies the rule
+  (bogd3v/micelio#735); the catalogue only declares the weight, and the admin names the trigger.
+- **`alternative`**: the fields of the block's schema its `static` alternative is made of. A page
+  with one of them empty is refused at send to review, publish and republish with
+  `islandAlternativeMissing` ([`docs/api.md`](api.md#errors)): the visitor of a static build and a
+  feed gets that alternative.
+
+A page holds one `scene` with `variant: background`: a second one is refused
+at save with `sceneBackgroundLimit` ([`docs/api.md`](api.md#errors)).
+
+Pages saved before this release may hold what these rules refuse; they are not changed, and the
+first move out of `draft` of one that lacks an alternative is refused until the editor fills it.
+
 ## How a schema maps to Strapi
 
 Each block's JSON Schema describes its content as the content API answers it, its options included (it is an option, and ADR-0018 keeps it stored inside the component until a migration moves it). An optional field may be absent or `null`; a field Strapi requires is in `required`. What JSON Schema cannot say about the Strapi attribute is in the `x-strapi` keyword of the field:
@@ -134,27 +158,27 @@ The measurement of 2026-10-23, in gzip bytes:
 
 ## Blocks
 
-| id               | Component                | `variant` (default first)         | Other options              | CSS (B gzip) | JS (B gzip) | Island       |
-| ---------------- | ------------------------ | --------------------------------- | -------------------------- | ------------ | ----------- | ------------ |
-| `hero`           | `section.hero`           | `centered`, `split`, `full-bleed` | `layout`, `tone`, `height` | 737          | 1556        | No           |
-| `feature-grid`   | `section.feature-grid`   | `grid`, `list`, `bento`           | `columns`, `density`       | 643          | 1350        | No           |
-| `media-showcase` | `section.media-showcase` | `left`, `right`, `stacked`        | `ratio`                    | 214          | 1423        | No           |
-| `stats`          | `section.stats`          | `row`, `cards`                    | `columns`, `align`, `tone` | 527          | 540         | No           |
-| `logo-cloud`     | `section.logo-cloud`     | `row`, `marquee`                  | `columns`, `density`       | 497          | 1446        | No           |
-| `testimonials`   | `section.testimonials`   | `single`, `grid`                  | `layout`, `density`        | 599          | 1482        | No           |
-| `pricing`        | `section.pricing`        | `cards`, `table`                  | `columns`                  | 805          | 1186        | No           |
-| `faq`            | `section.faq`            | `list`, `two-columns`             | `density`                  | 527          | 525         | No           |
-| `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`  | 483          | 803         | No           |
-| `post-list`      | `section.post-list`      | `cards`, `list`                   | `density`                  | 376          | 768         | No           |
-| `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`            | 763          | 1822        | No           |
-| `rich-text`      | `section.rich-text`      |                                   | `width`                    | 1940         | 226         | No           |
-| `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`         | 425          | 1251        | No           |
-| `scene`          | `section.scene`          | `background`, `inline`            | `height`                   | 601          | 1303        | `scene`      |
-| `prose`          | `shared.rich-text`       |                                   |                            | 1895         | 610         | No           |
-| `quote`          | `shared.quote`           |                                   | `width`, `align`           | 293          | 259         | No           |
-| `media`          | `shared.media`           |                                   | `width`, `ratio`           | 543          | 1400        | No           |
-| `slider`         | `shared.slider`          |                                   | `ratio`                    | 1545         | 2615        | No           |
-| `playground`     | `shared.playground`      |                                   | `height`                   | 633          | 1758        | `playground` |
+| id               | Component                | `variant` (default first)         | Other options              | CSS (B gzip) | JS (B gzip) | Island                 |
+| ---------------- | ------------------------ | --------------------------------- | -------------------------- | ------------ | ----------- | ---------------------- |
+| `hero`           | `section.hero`           | `centered`, `split`, `full-bleed` | `layout`, `tone`, `height` | 737          | 1556        | No                     |
+| `feature-grid`   | `section.feature-grid`   | `grid`, `list`, `bento`           | `columns`, `density`       | 643          | 1350        | No                     |
+| `media-showcase` | `section.media-showcase` | `left`, `right`, `stacked`        | `ratio`                    | 214          | 1423        | No                     |
+| `stats`          | `section.stats`          | `row`, `cards`                    | `columns`, `align`, `tone` | 527          | 540         | No                     |
+| `logo-cloud`     | `section.logo-cloud`     | `row`, `marquee`                  | `columns`, `density`       | 497          | 1446        | No                     |
+| `testimonials`   | `section.testimonials`   | `single`, `grid`                  | `layout`, `density`        | 599          | 1482        | No                     |
+| `pricing`        | `section.pricing`        | `cards`, `table`                  | `columns`                  | 805          | 1186        | No                     |
+| `faq`            | `section.faq`            | `list`, `two-columns`             | `density`                  | 527          | 525         | No                     |
+| `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`  | 483          | 803         | No                     |
+| `post-list`      | `section.post-list`      | `cards`, `list`                   | `density`                  | 376          | 768         | No                     |
+| `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`            | 763          | 1822        | No                     |
+| `rich-text`      | `section.rich-text`      |                                   | `width`                    | 1940         | 226         | No                     |
+| `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`         | 425          | 1251        | No                     |
+| `scene`          | `section.scene`          | `background`, `inline`            | `height`                   | 601          | 1303        | `scene` (3d)           |
+| `prose`          | `shared.rich-text`       |                                   |                            | 1895         | 610         | No                     |
+| `quote`          | `shared.quote`           |                                   | `width`, `align`           | 293          | 259         | No                     |
+| `media`          | `shared.media`           |                                   | `width`, `ratio`           | 543          | 1400        | No                     |
+| `slider`         | `shared.slider`          |                                   | `ratio`                    | 1545         | 2615        | No                     |
+| `playground`     | `shared.playground`      |                                   | `height`                   | 633          | 1758        | `playground` (runtime) |
 
 ### `hero`
 
@@ -366,6 +390,8 @@ The measurement of 2026-10-23, in gzip bytes:
   - `variant`: `background`, `inline`; default `background`
   - `height`: `s`, `m`, `l`, `full`; default `m`
 - **Cost:** 601 B of CSS and 1303 B of JS, gzip; the `scene` island (budget `scene`) loads 154900 B of JS, gzip, once used
+- **Island:** `3d`; loads 151.3 kB once used, when it scrolls into view
+- **Static alternative needs:** `poster`, `alt`, filled in before the page is sent to review
 - **Static:** The required poster, with the alt text of the scene.
 
 | Field    | Type           | Required | Details |
@@ -435,6 +461,8 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Options:**
   - `height`: `s`, `m`, `l`, `full`; default `m`
 - **Cost:** 633 B of CSS and 1758 B of JS, gzip; the `playground` island (budget `playground`) loads 67645 B of JS, gzip, once used
+- **Island:** `runtime`; loads 406.7 kB once used, when it scrolls into view
+- **Static alternative needs:** `expectedOutput`, filled in before the page is sent to review
 - **Static:** The highlighted code and its expected output.
 
 | Field            | Type        | Required | Details                       |

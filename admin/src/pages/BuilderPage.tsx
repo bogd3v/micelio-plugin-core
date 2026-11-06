@@ -1,6 +1,7 @@
 import { Box, Button, Typography } from '@strapi/design-system'
 import { Page, useAuth } from '@strapi/strapi/admin'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { RenderMode } from '../../../contract/preview'
 import { useTheme } from 'styled-components'
 import { useParams, useSearchParams } from 'react-router-dom'
 
@@ -9,6 +10,7 @@ import { BlockPanel } from '../components/builder/BlockPanel'
 import { BuilderHeader } from '../components/builder/BuilderHeader'
 import { Centre, Columns, Shell, StageBox, Toast } from '../components/builder/layout'
 import { Motion } from '../components/builder/Motion'
+import { alternativeName } from '../components/builder/IslandBadge'
 import { Overlay, type Pointed, type RenderedBlock } from '../components/builder/Overlay'
 import { Palette } from '../components/builder/Palette'
 import { Notice } from '../components/Notice'
@@ -34,6 +36,8 @@ import {
   stateOf,
   type PaletteRow,
 } from '../utils/builder/palette'
+import { islandOf } from '../utils/builder/islands'
+import { renderModeMessage } from '../utils/builder/messages'
 import { weightRoute } from '../utils/costMeter'
 import { DEVICES, type DeviceId, type PreviewMode } from '../utils/previewPane'
 import { useIntl } from 'react-intl'
@@ -99,6 +103,9 @@ function Builder() {
   const [isBlocked, setIsBlocked] = useState(false)
   const [search, setSearch] = useState('')
   const [recent, setRecent] = useState<string[]>(readRecent)
+  // The render mode the editor chose for an island, by block key. It is the frame's state, never
+  // saved: a reload of the frame forgets it, and the effect below sends it again (ADR-0019).
+  const [modes, setModes] = useState<Record<string, RenderMode>>({})
   const [now, setNow] = useState(Date.now())
   const frame = useRef<PreviewFrameHandle>(null)
   const searchInput = useRef<HTMLInputElement>(null)
@@ -166,15 +173,35 @@ function Builder() {
       const block = blocks.find(({ key }) => key === shown.key)
       if (!block) return [{ index, name: shown.component }]
       const isMissing = isIncomplete(fieldsFor(block), itemFieldsFor(block), block.fields)
+      const island = islandOf(entryOf(block))
       return [
         {
           index,
           name: nameFor(block),
           problem: isMissing ? t('builder.overlay.needsText') : undefined,
+          island,
+          isStatic: modes[block.key] === 'static',
+          alternative: island ? alternativeName(t, island.alternative[0]) : undefined,
         },
       ]
     }
   )
+
+  // Tell the frame the mode of each island the editor toggled, again after it reloads (a new version).
+  useEffect(() => {
+    for (const [key, mode] of Object.entries(modes)) {
+      const address = addressOf(key)
+      if (address) frame.current?.post(renderModeMessage(address, mode))
+    }
+  }, [modes, addressOf, frameState.version])
+  const toggleStatic = (index: number) => {
+    const shown = renderedAt(report?.version ?? frameState.version ?? '')[index]
+    if (!shown) return
+    setModes((current) => ({
+      ...current,
+      [shown.key]: current[shown.key] === 'static' ? 'dynamic' : 'static',
+    }))
+  }
 
   useRefusalNotice(state)
   const refusedBlock = refusedBlockOf(blocks, state.refusal?.block, entryOf)
@@ -361,6 +388,7 @@ function Builder() {
                   key: block.key,
                   name: nameFor(block),
                   hasProblem: isIncomplete(fieldsFor(block), itemFieldsFor(block), block.fields),
+                  island: islandOf(entryOf(block)),
                 }))}
                 selectedKey={selectedKey}
                 onSelect={(key) => select({ key, item: undefined })}
@@ -429,6 +457,7 @@ function Builder() {
                       onMove={move}
                       onDuplicate={copy}
                       canDuplicate={selectedEntry !== undefined}
+                      onToggleStatic={toggleStatic}
                       onAddAtEnd={() => {
                         select(undefined)
                         searchInput.current?.focus()
@@ -453,6 +482,7 @@ function Builder() {
                     ? { kb: costKbOf(selectedEntry), isIsland: selectedEntry.cost.island !== null }
                     : undefined
                 }
+                island={islandOf(selectedEntry)}
                 isReadOnly={isReadOnly}
                 onSetFields={setValues}
                 onSetItem={setItem}

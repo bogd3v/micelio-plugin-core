@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Typography } from '@strapi/design-system'
-import styled from 'styled-components'
+import styled, { useTheme } from 'styled-components'
 
 import type { BudgetResource } from '../hooks/useBudget'
 import { useMessages } from '../messages'
@@ -217,6 +217,7 @@ function Measured(props: {
 
 /** The meter of the builder's toolbar: the same measurement and thresholds as the card, in one line. */
 function CompactMeter({ resource }: { resource: BudgetResource }) {
+  const { colors } = useTheme()
   const { t } = useMessages()
   if (resource.kind !== 'ready') {
     return (
@@ -232,6 +233,8 @@ function CompactMeter({ resource }: { resource: BudgetResource }) {
   const level = meterLevel(blocksKb, budgetKb)
   const used = formatKb(blocksKb)
   const budget = formatKb(budgetKb)
+  // Islands load their script only once used: it is not in the weight, and the line says how many.
+  const onDemand = onDemandBlocks(resource.measurement.blocks).length
   return (
     <div style={{ width: 160 }} data-testid="toolbar-meter">
       <div
@@ -256,6 +259,14 @@ function CompactMeter({ resource }: { resource: BudgetResource }) {
           <CompactFill $level={level} $percent={meterPercent(blocksKb, budgetKb)} />
         </CompactTrack>
       </div>
+      {onDemand > 0 ? (
+        <div
+          data-testid="toolbar-on-demand"
+          style={{ fontSize: 11, marginTop: 2, color: colors.secondary600 }}
+        >
+          {t('builder.meter.onDemand', { count: onDemand })}
+        </div>
+      ) : null}
     </div>
   )
 }

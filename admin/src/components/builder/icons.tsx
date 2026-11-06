@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import type { IslandKind } from '../../../../contract/islands'
+
 /** A 16 px line icon, drawn in the current colour and hidden from assistive technology. */
 function Icon({ children, size = 16 }: { children: ReactNode; size?: number }) {
   return (
@@ -83,5 +85,36 @@ export const GripIcon = () => (
 export const BlockGlyph = ({ isIsland }: { isIsland: boolean }) => (
   <Icon>
     {isIsland ? <path d="M3 12 8 3l5 9z" /> : <rect x="3" y="3" width="10" height="10" rx="2" />}
+  </Icon>
+)
+
+/** The icon of a kind of island (the Island badge artboard): one line drawing each. */
+export const KindIcon = ({ kind, size = 16 }: { kind: IslandKind; size?: number }) => (
+  <Icon size={size}>
+    {kind === '3d' ? (
+      <path d="M8 1.8 13.5 5v6L8 14.2 2.5 11V5zM2.5 5 8 8.2 13.5 5M8 8.2v6" />
+    ) : kind === 'runtime' ? (
+      <path d="m5.5 4.5-3.5 3.5 3.5 3.5M10.5 4.5 14 8l-3.5 3.5" />
+    ) : kind === 'media' ? (
+      <>
+        <rect x="2" y="3" width="12" height="10" rx="1.5" />
+        <circle cx="5.8" cy="6.5" r="1" />
+        <path d="m2.5 12 3.5-3 2.5 2 2-1.5 3 2.5" />
+      </>
+    ) : kind === 'diagram' ? (
+      <>
+        <rect x="2" y="2.5" width="4.5" height="3.5" rx="1" />
+        <rect x="9.5" y="10" width="4.5" height="3.5" rx="1" />
+        <path d="M4.2 6v3.8h5.3M7.5 9.8" />
+      </>
+    ) : (
+      <path d="M3 13V8M6.5 13V4M10 13V9.5M13.5 13V6" />
+    )}
+  </Icon>
+)
+export const ViewIcon = () => (
+  <Icon size={12}>
+    <path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" />
+    <circle cx="8" cy="8" r="2" />
   </Icon>
 )

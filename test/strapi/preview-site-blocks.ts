@@ -1,6 +1,6 @@
 // The part of the stub site that plays phase 2 of the preview protocol (ADR-0019, amendment of
 // 2026-11-02, bogd3v/micelio#732): it marks the blocks of the zone, reports their boxes and answers
-// `select`, `hover`, `insertGap` and `patch`. The frontend's own code (`previewBridge.ts` in
+// `select`, `hover`, `insertGap`, `patch` and `renderMode`. The frontend's own code (`previewBridge.ts` in
 // `micelio`) is the real thing; this plays it so the suites run without that image.
 
 /** The catalogue id of a component: its name without the namespace. */
@@ -83,6 +83,11 @@ addEventListener('message', (event) => {
       }
     }
     report()
+  } else if (m.type === 'micelio:renderMode') {
+    if (p.address.version !== version) return
+    const el = find(p.address)
+    // The frontend shows the island or its static alternative (bogd3v/micelio#735); the stub only marks it.
+    if (el) el.setAttribute('data-myc-mode', p.mode)
   }
 })
 document.addEventListener('click', (event) => {

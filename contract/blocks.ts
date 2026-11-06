@@ -3,6 +3,7 @@
 // it, and `npm run lint:blocks` fails when either drifts. Changing an entry follows ADR-0018,
 // section 2.
 import { z } from 'zod'
+import type { IslandKind } from './islands'
 import { OPTIONS, OPTION_NAMES, valuesFor, type OptionName } from './options'
 import {
   boolean,
@@ -25,14 +26,29 @@ export interface BlockOption {
   default: string
 }
 
+export { ISLAND_KINDS, ON_CLICK_ABOVE_KB, type IslandKind } from './islands'
+
 /** The heavy island a block renders (`app/islands/lib/constants.ts` in `micelio`). */
-interface BlockIsland {
+export interface BlockIsland {
   /** Its `id` in the heavy island registry. */
   id: string
   /** Its key in `scripts/perf/budgets.json` of `micelio`. */
   budget: string
   /** Gzip bytes of the JS the island loads once it is used, as its budget measures it. */
   js: number
+  /** What kind of island it is: the badge the editor sees. */
+  kind: IslandKind
+  /**
+   * What the island loads once it is used, in kB, as its budget measures it: its script and the
+   * runtime's files. Content the editor picks, such as a 3D model, is not counted. Above
+   * `ON_CLICK_ABOVE_KB` (`contract/islands.ts`) it loads on a click, otherwise when it scrolls into view.
+   */
+  loadKb: number
+  /**
+   * The fields of the block's `schema` its static alternative is made of: each must be filled before
+   * a page is sent to review (`islandAlternativeMissing`). The block's `static` says what they become.
+   */
+  alternative: readonly [string, ...string[]]
 }
 
 /**
@@ -358,7 +374,18 @@ export const BLOCKS: readonly Block[] = [
       variant: variant('background', 'inline'),
       ...presentation('scene', 'section', 'height'),
     },
-    cost: { css: 601, js: 1303, island: { id: 'scene', budget: 'scene', js: 154900 } },
+    cost: {
+      css: 601,
+      js: 1303,
+      island: {
+        id: 'scene',
+        budget: 'scene',
+        js: 154900,
+        kind: '3d',
+        loadKb: 151.3,
+        alternative: ['poster', 'alt'],
+      },
+    },
     static: 'The required poster, with the alt text of the scene.',
   },
   {
@@ -418,7 +445,18 @@ export const BLOCKS: readonly Block[] = [
       caption: text(),
     }),
     options: { ...presentation('playground', 'article', 'height') },
-    cost: { css: 633, js: 1758, island: { id: 'playground', budget: 'playground', js: 67645 } },
+    cost: {
+      css: 633,
+      js: 1758,
+      island: {
+        id: 'playground',
+        budget: 'playground',
+        js: 67645,
+        kind: 'runtime',
+        loadKb: 406.7,
+        alternative: ['expectedOutput'],
+      },
+    },
     static: 'The highlighted code and its expected output.',
   },
 ]

@@ -2,6 +2,8 @@ import type { Core, UID } from '@strapi/strapi'
 import { EDITORIAL_ATTRIBUTE, type EditorialState } from '../constants/editorial'
 import type { BudgetService } from '../services/budget'
 import { hooksOf } from '../hooks'
+import { findMissingAlternativesIn } from '../islands/check'
+import { ISLAND_ALTERNATIVE_MISSING } from '../constants/blocks'
 import { SITE_ATTRIBUTE } from '../site-scope'
 import type { EntryPayload, TransitionPayload } from '../types/hooks'
 import { isEditorial } from '.'
@@ -46,6 +48,7 @@ export type TransitionErrorCode =
   | 'editorialTransitionForbidden'
   | 'editorialPublishAtInvalid'
   | 'editorialTransitionRefused'
+  | 'islandAlternativeMissing'
   | 'pageOverBudget'
   | 'previewUnavailable'
 
@@ -94,6 +97,11 @@ interface EditorialEntry {
  * budget of its page type, or `previewUnavailable` when the measurement fails. It never publishes
  * without the measurement. Right before the write it checks that the draft was not saved since, and
  * refuses with `previewUnavailable` when it was.
+ *
+ * Moving an entry out of `draft` first checks that every island block of its draft has its static
+ * alternative filled in (`alternative` in `contract/blocks.ts`) and refuses with
+ * `islandAlternativeMissing`, naming the blocks, their positions and the empty fields. Moving back
+ * to `draft` and the scheduler's `scheduled -> published` are not checked.
  *
  * It runs the hooks of the transition (`docs/hooks.md`): `beforeTransition` once every check has
  * passed and before anything is written, then `afterTransition` and, when the entry was published
@@ -159,6 +167,25 @@ export async function performTransition(
     publishAt = new Date(at).toISOString()
   } else if (transition.to === 'draft') {
     publishAt = null
+  }
+  // A page goes to review, is scheduled or is published with the static alternative of each island
+  // filled in: it is what a visitor gets before the island loads and what a static build and a feed
+  // carry. Moving back to draft is not checked, and the scheduler's own move was checked when the
+  // page was scheduled.
+  if (request.to !== 'draft' && transition.from !== 'scheduled') {
+    const missing = await findMissingAlternativesIn(strapi, {
+      uid,
+      documentId: entry.documentId,
+      locale: entry.locale,
+    })
+    if (missing.length > 0) {
+      throw new TransitionError(
+        409,
+        ISLAND_ALTERNATIVE_MISSING,
+        `The static alternative of ${missing.map(describeMissing).join(', ')} is not filled in`,
+        { blocks: missing }
+      )
+    }
   }
   const userId = request.actor.kind === 'user' ? request.actor.id : null
   const editorial = {
@@ -233,6 +260,10 @@ export async function performTransition(
     to: transition.to,
     site: entry.site?.documentId ?? null,
   }
+}
+
+function describeMissing(missing: { block: string; position: number; fields: string[] }): string {
+  return `the ${missing.block} block at position ${missing.position + 1} (${missing.fields.join(', ')})`
 }
 
 function refusalMessage(error: unknown): string {

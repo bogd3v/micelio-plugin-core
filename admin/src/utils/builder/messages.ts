@@ -2,12 +2,20 @@ import {
   PREVIEW_PROTOCOL_VERSION,
   type BlockAddress,
   type PreviewMessage,
+  type RenderMode,
 } from '../../../../contract/preview'
 
 /** The `type` and `payload` of a message the builder sends to the frame. */
 export type OutgoingMessage = Extract<
   PreviewMessage,
-  { type: 'micelio:select' | 'micelio:hover' | 'micelio:insertGap' | 'micelio:patch' }
+  {
+    type:
+      | 'micelio:select'
+      | 'micelio:hover'
+      | 'micelio:insertGap'
+      | 'micelio:patch'
+      | 'micelio:renderMode'
+  }
 >
 
 /** The envelope of a message to the frame. */
@@ -41,6 +49,16 @@ export const patchMessage = (
   items: { index: number; content: Record<string, string | null> }[]
 ): Extract<OutgoingMessage, { type: 'micelio:patch' }> =>
   envelope('micelio:patch', { address, content, items })
+
+/**
+ * Show a block as its static alternative or as the page renders it. The mode is the frame's state,
+ * never saved (ADR-0019, amendment of 2026-11-04): it is sent again after the next `ready`.
+ */
+export const renderModeMessage = (
+  address: BlockAddress,
+  mode: RenderMode
+): Extract<OutgoingMessage, { type: 'micelio:renderMode' }> =>
+  envelope('micelio:renderMode', { address, mode })
 
 /** The height of the gap that opens while a block is dragged over a place, in pixels. */
 export const GAP_OPEN_HEIGHT = 120

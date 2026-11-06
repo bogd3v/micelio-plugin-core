@@ -1,3 +1,5 @@
+import type { IslandKind } from '../../../../contract/islands'
+
 /** A block of the site's catalogue as `GET /micelio/blocks?site=` answers it, reduced to what the builder reads. */
 export interface CatalogueEntry {
   /** The block's catalogue id, such as `feature-grid`. */
@@ -11,7 +13,19 @@ export interface CatalogueEntry {
   label: Partial<Record<string, string>>
   /** The page types the block may be inserted in. */
   pageTypes: string[]
-  cost: { css: number; js: number; island: { js: number } | null }
+  cost: {
+    css: number
+    js: number
+    /** The heavy island the block renders; `null` for a block that renders none. */
+    island: {
+      js: number
+      kind: IslandKind
+      /** What it loads once used, in kB: above 1024 it loads on a click, below it in view. */
+      loadKb: number
+      /** The fields of the block its static alternative is made of. */
+      alternative: readonly string[]
+    } | null
+  }
 }
 
 /** Why a row of the palette is not a plain one. */
