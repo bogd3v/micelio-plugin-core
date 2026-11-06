@@ -8,8 +8,10 @@ How the plugin's content API routes behave. Routes keep Strapi's content API for
 | ------ | ------------------------ | --------------------------------------------------- |
 | `GET`  | `/api/micelio/sites`     | The sites, in Strapi's list format (`data`, `meta`) |
 | `GET`  | `/api/micelio/sites/:id` | One site by `documentId`                            |
+| `GET`  | `/api/micelio/redirects` | The site's 301 redirects, with an `ETag`            |
 
 The prefix `/micelio` is set explicitly, so a host's own `/api/sites` does not collide with it. The preview routes ([Preview](#preview)) are content API routes too. The two taxonomy types answer at the paths `micelio-cms` already serves ([Category and tag](#category-and-tag)).
+The redirects of the page settings ([Redirects](#redirects)) are a content API route too.
 
 ## Scoping the routes of a type
 
@@ -267,6 +269,52 @@ The body is `{ "uid", "documentId", "locale", "report" }`: the first three as fo
 | 400    | `budgetTypeInvalid`      | The type is not measured: `budgets.contentTypes` does not list it, or it is not site-scoped, editorial with a dynamic zone |
 | 403    | `previewForbidden`       | The role lacks the preview permission, or may not read the entry                                                           |
 | 404    | `editorialEntryNotFound` | No such entry                                                                                                              |
+
+## Redirects
+
+A page type made with `withPageSettings` ([docs/guide/pages.md](guide/pages.md)) keeps its
+visitor-facing addresses. When a transition publishes a page whose `slug` differs from the live
+one (the `published → published` republish is where it happens), the plugin writes a
+`plugin::micelio.redirect` from `/<old slug>` to `/<new slug>` in the same transaction as the
+publish: both stand or neither does. A draft's slug changes no address, a page that was not live
+has none to keep, and a page that returns to an address it left loses the redirect from it. A
+redirect that led to the old address is pointed at the new one, so a visitor never follows a
+chain.
+
+`GET /api/micelio/redirects?site=<slug>` is a content API route for the site's frontend. It
+needs an API token with `plugin::micelio.redirects.find` and names its site as every content API
+route does ([Which site a request is for](#which-site-a-request-is-for)).
+
+```json
+{ "data": [{ "from": "/open-source-explained", "to": "/open-source", "locale": "en" }] }
+```
+
+The list is sorted by `from`. The answer carries a strong `ETag` and
+`Cache-Control: public, max-age=60`. A request whose `If-None-Match` names the tag, or is `*`,
+gets `304` with no body. An unknown `site` is the problem detail `unknownSite`. `locale` is the
+locale of the page, or `null`; the paths are the slugs without a locale prefix. The frontend
+answers the redirects (bogd3v/micelio#733).
+
+A redirect's `from` and `to` are paths of the site: they start with one `/`, never `//`, and
+hold no scheme, backslash, space or control character. Any write that breaks it (`create`, `update`
+and the Content Manager's duplicate) is refused with `400` and the detail code `redirectInvalid`, and the list
+never serves a row that fails it, so a redirect cannot lead a visitor off the site.
+
+The redirects are listed and removed with the Content Manager's own routes for the type, which
+the role's permissions on `plugin::micelio.redirect` guard; the builder's drawer uses them. The
+type is not in the site archive
+([What is never exported](export-format.md#what-is-never-exported)).
+
+An admin API route lists the page types of a site for the drawer:
+
+| Method | Path                         | Answers                                                |
+| ------ | ---------------------------- | ------------------------------------------------------ |
+| `GET`  | `/micelio/budget/page-types` | `{ "data": [{ "id": "landing", "budgetKb": 60 }, …] }` |
+
+`?site=<slug>` names the site whose own budgets apply. The list is every page type the budgets
+name, custom ones included, with the budget a page of that type is held to
+([docs/operate/budgets.md](operate/budgets.md)). It is `private, no-store` and needs an admin
+user.
 
 ## Saving over a version
 

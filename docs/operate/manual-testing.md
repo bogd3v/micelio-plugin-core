@@ -84,6 +84,94 @@ Without it the page still previews, and the builder shows no outline over it.
 
 The builder does not offer **Send to review** until bogd3v/micelio-plugin-core#57.
 
+## Try the page settings
+
+The builder's **Page settings** drawer sets a page's slug, its type and where it shows up, and
+lists the redirects a changed slug leaves behind ([docs/guide/pages.md](../guide/pages.md)).
+`docker/cms` applies `withPageSettings` to its `page` type. Publishing is a transition with no
+button yet (bogd3v/micelio-plugin-core#57), so the steps publish through the admin route.
+
+1. Bring the stack up and create the first admin with the email `admin@example.com` and the
+   password `Password1234` (a throwaway stack). Log in on the API and find the two seeded pages:
+
+   ```bash
+   ADMIN=$(curl -s -X POST localhost:1337/admin/login -H 'Content-Type: application/json' \
+     -d '{"email":"admin@example.com","password":"Password1234"}' | jq -r .data.token)
+   idof() { curl -s -g -H "Authorization: Bearer $ADMIN" \
+     "localhost:1337/content-manager/collection-types/api::page.page?filters[slug][\$eq]=$1" \
+     | jq -r '.results[0].documentId'; }
+   LANDING=$(idof landing); HEAVY=$(idof heavy)
+   PUBLISH() { curl -s -w '\n%{http_code}\n' -X POST localhost:1337/micelio/transitions \
+     -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+     -d "{\"uid\":\"api::page.page\",\"documentId\":\"$1\",\"locale\":\"en\",\"to\":\"$2\"}"; }
+   PUBLISH "$LANDING" in_review    # 200
+   PUBLISH "$LANDING" published    # 200: the page is live as /landing
+   echo "http://localhost:1337/admin/plugins/micelio/builder/api::page.page/$LANDING"
+   ```
+
+2. Open the address the last command printed. Next to the title there is a gear. Press it, or
+   press `Ctrl+,`: the **Page settings** drawer opens over the builder with the preview still
+   in view, and the cursor is in **Slug**. The slug is `landing`, the text under it says
+   _Published as /landing_, **Page type** has Landing, Standard and Long read with Standard
+   chosen and "Standard: 120 kB" under it, and **Visibility** has the menu and sitemap boxes on.
+   **Esc** shuts it and the gear has the focus again.
+3. In the drawer change **Slug** to `open-source` and press `Tab`. The drawer says _Saved_ and the
+   text under the slug says _Published before as /landing_. A draft's slug changes no address, so
+   there is no redirect yet:
+
+   ```bash
+   curl -s -H "Authorization: Bearer $ADMIN" \
+     localhost:1337/content-manager/collection-types/plugin::micelio.redirect | jq .pagination.total
+   # 0
+   ```
+
+4. Publish again. The redirect is written in the same transaction as the publish:
+
+   ```bash
+   PUBLISH "$LANDING" published    # 200
+   curl -s -H "Authorization: Bearer $ADMIN" \
+     localhost:1337/content-manager/collection-types/plugin::micelio.redirect \
+     | jq -c '.results[] | {from, to, entryLocale}'
+   # {"from":"/landing","to":"/open-source","entryLocale":"en"}
+   ```
+
+5. The frontend's list, with its `ETag`. In Settings → API Tokens create a token of type
+   **Full access**; type it at the prompt (nothing is echoed) and keep it out of any file:
+
+   ```bash
+   read -rs TOKEN && export TOKEN
+   curl -si -H "Authorization: Bearer $TOKEN" 'localhost:1337/api/micelio/redirects?site=default'
+   # 200, an ETag header, Cache-Control: public, max-age=60 and
+   # {"data":[{"from":"/landing","to":"/open-source","locale":"en"}]}
+   ETAG=$(curl -si -H "Authorization: Bearer $TOKEN" \
+     'localhost:1337/api/micelio/redirects?site=default' \
+     | awk -F': ' 'tolower($1)=="etag"{print $2}' | tr -d '\r')
+   curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" \
+     -H "If-None-Match: $ETAG" 'localhost:1337/api/micelio/redirects?site=default'
+   # 304
+   ```
+
+6. Reload the builder and open the drawer: **Redirects to /open-source** lists
+   `/landing → /open-source`. Press **Remove**: the line goes, the drawer says
+   _No redirects yet_, and the list of step 4 has a total of 0 again.
+7. **Page type** and the budget. Open the builder of the heavy page
+   (`http://localhost:1337/admin/plugins/micelio/builder/api::page.page/` and `$HEAVY`, as in
+   step 1's last command) and open its drawer. Press **Landing**: the drawer says _Saved_, the
+   text under the buttons reads "Landing: 60 kB", the page weight meter in the toolbar measures
+   the page again against 60 kB and the palette dims the blocks Landing does not allow. The
+   page saved though it is over budget. Publishing is what is refused:
+
+   ```bash
+   PUBLISH "$HEAVY" in_review      # 200
+   PUBLISH "$HEAVY" published      # 409 pageOverBudget, "pageType":"landing","budgetKb":60
+   ```
+
+8. Tick **Hidden from search engines** and clear **In the navigation menu**, reload the page and
+   open the drawer: both stay as you left them.
+9. Set the language of your profile to Español and reload: the drawer is in Spanish.
+   Set the theme to dark (Profile → Interface mode): the drawer reads in Strapi's dark colours.
+10. A role that may read the page but not edit it opens the drawer with every control disabled.
+
 ## Try the preview of an article
 
 The frontend reads an article draft with a `populate` of its cover, author, category, tags, blocks, references and translations (`ARTICLE_POPULATE` in `micelio`). The seed creates a draft article, "A draft article", with a cover and an author, of the fixture `docker/cms/src/api/article/`, which has the shape of the `article` of `micelio-cms`.

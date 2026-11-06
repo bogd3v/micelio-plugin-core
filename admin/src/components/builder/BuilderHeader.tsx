@@ -7,7 +7,8 @@ import type { BuilderDocument, SaveStatus } from '../../hooks/useBuilderDocument
 import { useMessages } from '../../messages'
 import { DEVICES, type DeviceId, type PreviewMode } from '../../utils/previewPane'
 import { CostMeter } from '../CostMeter'
-import { ChevronLeftIcon, DesktopIcon, PhoneIcon, TabletIcon } from './icons'
+import { Tool } from './controls'
+import { ChevronLeftIcon, DesktopIcon, GearIcon, PhoneIcon, TabletIcon } from './icons'
 
 const Bar = styled.header`
   min-height: 64px;
@@ -86,6 +87,9 @@ interface BuilderHeaderProps {
   budget: BudgetResource
   onSave: () => void
   isReadOnly: boolean
+  /** Opens the page settings; `undefined` for a page type that has none, which shows no gear. */
+  onOpenSettings: (() => void) | undefined
+  isSettingsOpen: boolean
 }
 
 /** The word a screen reader hears when the save status changes. */
@@ -100,7 +104,8 @@ function statusKey(status: SaveStatus, isDirty: boolean): string {
 
 /**
  * The toolbar of the builder (the Builder artboard): back to the entry, the title with its state,
- * where autosave stands, the preview width, "As static site", the page weight and Save.
+ * where autosave stands, the preview width, "As static site", the page weight and Save. The gear
+ * next to the title opens the page settings (the Page settings artboard).
  *
  * @remarks
  * "Send to review" is not here until its flow exists (issue #57).
@@ -127,6 +132,17 @@ export function BuilderHeader(props: BuilderHeaderProps) {
           >
             {t(`builder.state.${state}`)}
           </Badge>
+          {props.onOpenSettings ? (
+            <Tool
+              type="button"
+              aria-label={t('builder.settings.open')}
+              aria-keyshortcuts="Control+Comma Meta+Comma"
+              aria-expanded={props.isSettingsOpen}
+              onClick={props.onOpenSettings}
+            >
+              <GearIcon />
+            </Tool>
+          ) : null}
         </div>
         <div style={{ fontSize: 12, color: colors.neutral600 }}>
           {parts.join(' · ')}

@@ -15,6 +15,7 @@ export { SITE_ATTRIBUTE, SITE_SCOPE_MIDDLEWARE, withSiteScope } from './site-sco
 export { SITE_UID } from './constants/site'
 export { CATEGORY_UID, READ_ACTIONS, TAG_UID } from './constants/taxonomy'
 export { withEditorial } from './editorial'
+export { withPageSettings } from './page-settings'
 export { EDITORIAL_STATES, type EditorialState } from './constants/editorial'
 export { missingLocales } from './extensions'
 export { formatHostCheckReport } from './host-check/report'

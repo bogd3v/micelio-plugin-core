@@ -7,6 +7,7 @@ import { editorialGuard } from './editorial/guard'
 import { siteSectionInstances } from './extensions/site-sections'
 import { hooksOf } from './hooks'
 import { renameLegacyUids } from './migrations/rename-legacy-uids'
+import { redirectDocuments } from './page-settings/documents'
 import { registerPreviewShortcut } from './preview/shortcut'
 import { siteCreatedHook } from './sites/hooks'
 import { siteScopeDocuments } from './site-scope/documents'
@@ -33,6 +34,7 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   strapi.documents.use(siteScopeDocuments(strapi))
   strapi.documents.use(blockOptionsDocuments(strapi))
   strapi.documents.use(blockSettingsDocuments(strapi))
+  strapi.documents.use(redirectDocuments(strapi))
   strapi.documents.use(editorialGuard(strapi))
   // `strapi.plugin('micelio').hooks`: the `hooks` service under the name the API documents.
   Object.defineProperty(strapi.plugin('micelio'), 'hooks', {
