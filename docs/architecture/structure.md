@@ -10,6 +10,23 @@ The long descriptions of the subsystems that `AGENTS.md` summarises. Read the se
 
 `budget/` is the page weight budget (ADR-0019, amendment of 2026-10-25): `rules.ts` (pure: the budget of a page type and site, the excess, the report's schema, which types are measured), `weight-client.ts` (the request to the frontend's weight route with a system grant: no redirect, bounded retries on `429`, fail closed). The `budget` service measures a draft and `performTransition` calls it on every publish of a type that `budgets.contentTypes` lists (by default `api::page.page` and `api::article.article`, the types the frontend previews; the default is applied in code, not in the config's defaults, since Strapi merges arrays index by index) and that is site-scoped, editorial and has a dynamic zone, refusing with `pageOverBudget` or `previewUnavailable`; `POST /micelio/budget/measure` (`controllers/budget.ts`) serves the cost meter with the report the admin read from the frontend with the editor's own grant, and mints no grant. The budgets are `budgets` in the plugin's config. `docs/operate/budgets.md` is the how-to.
 
+## Page settings and redirects
+
+`page-settings/` is what a host's page type gains with `withPageSettings`
+(bogd3v/micelio-plugin-core#52, [the guide](../guide/pages.md)): `index.ts` adds `pageType` and
+the `visibility` component (`components/page/`, category `micelio-page`, registered like the
+editorial one), `redirects.ts` is pure (what a change of address does to the redirects of a
+page: write one, point the older ones at the new address, drop the one from an address the page
+returns to) and `record.ts` writes them through the document service. `performTransition` calls
+`record.ts` inside one `strapi.db.transaction` with the publish, so a redirect that cannot be
+written leaves the page at its live address. `plugin::micelio.redirect`
+(`content-types/redirect/`, visible in the Content Manager, never exported) is keyed by site;
+its `rule` is `slug-change` (`createdBy` is Strapi's own audit relation).
+`controllers/redirects.ts` answers the content API list with its `ETag`.
+`documents.ts` is the document service middleware that refuses a redirect whose `from` or `to`
+is not a path of the site (`isSitePath` in `redirects.ts`: one `/`, no `//`, no backslash, no
+scheme, no control character) on `create`, `update` and `clone`; the list never serves a row that fails it.
+
 ## Block settings
 
 `block-settings/` is what a site manages of the catalogue (#51; `docs/operate/block-catalogue.md`).
@@ -47,7 +64,14 @@ The builder page (issue #49, [the guide](../guide/builder.md)) is `pages/Builder
   `Overlay` (what the admin draws over the frame), `BuilderHeader`, `layout` and `Motion`
   (the tokens of the Motion artboard), and `IslandBadge` (issue #56: the one mark of an island in
   the palette, the block list, the preview and the panel, in the design's `secondary` blue, which
-  nothing else in the builder uses).
+  nothing else in the builder uses),
+  `PageSettingsDrawer` (the General tab of the page
+  settings, [the guide](../guide/pages.md)) and `controls` (the segmented choice and the icon
+  button the panels share). `MediaInputs` is the panel's media fields (#133): it opens
+  the Media Library dialog the upload plugin registers as `components['media-library']` (read with
+  `useStrapiApp`, the admin's public API) and writes an image's alternative text to the file with
+  `PUT /upload/files/:id`; it never uploads. `fieldStyle` holds what the panel's fields share
+  (the label, the text field).
 - `hooks/useBuilderDocument.ts` reads the draft and autosaves it: each save names the version it
   read (`X-Micelio-Expected-Version`, checked by `server/src/document-version/`, see
   [Saving over a version](../api.md#saving-over-a-version)), and a block that lacks a required
@@ -56,7 +80,11 @@ The builder page (issue #49, [the guide](../guide/builder.md)) is `pages/Builder
   `useBuilderFrame.ts` is the conversation with the frame (phase 2 of the protocol),
   `useBuilderEdits.ts` the changes, `useBlockLookup.ts` what the catalogue says of each block
   of the page, and `useRefusalNotice.ts` the notification of a refused save
-  (the way to the block it names is a button in `BuilderPage`).
+  (the way to the block it names is a button in `BuilderPage`). `saveSettings` of
+  `useBuilderDocument` saves the page's slug, type and visibility over the same version, and
+  `usePageSettings.ts` reads what the drawer shows around them: the site's page types
+  (`GET /micelio/budget/page-types`), the live slug and the redirects (the Content Manager's
+  routes for `plugin::micelio.redirect`).
 - `utils/builder/` is pure: the document model, the fields of the panel, the palette, the
   overlay's geometry, the messages, the undo history, the reading of a refusal and `islands.ts`
   (what the badge and the panel say of a block's island, from `contract/islands.ts`).
@@ -78,4 +106,4 @@ composes the zone `sections` only, as the protocol addresses it.
 
 ## Tests
 
-`test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it). `test/package.test.ts` packs the package and loads both entries from the tarball. `test/export-format.test.ts` fails when a content type of its list has no row in `docs/export-format.md`, the site export format (a contract of section 6). The app adds fixture types made with the plugin's helpers, `app/src/api/note/` (`withSiteScope`) and `app/src/api/article/` (`withSiteScope` and `withEditorial`), `app/src/api/essay/` (the same, localised), `app/src/api/landing/` (the same, with the sections of `page`: the type the cost meter's browser suite measures), `app/src/api/showcase/` (the same, with the scene and the `playground` block: the type the islands' suites use), `app/src/api/post/` (draft and publish, with a cover, a component, a dynamic zone and relations, one to its own type: the draft read's populate; `label` has routes for the token that reads it), and three for the export and import suites (`story`, `label`, `guest`, with the components of `app/src/components/`; `strapi/site-archive.ts` builds their site), and a fixture plugin, `app/src/plugins/hook-recorder/`, that records every hook it receives, and another, `app/src/plugins/extension-fixture/` (server and admin), that registers one of each extension point. `test/admin/` runs the admin pages in Chromium (`npm run test:admin`, its own `vitest.admin.config.mts`): its setup builds the test app's admin, the suite boots the harness with `SERVE_ADMIN_PANEL=true`, logs in and runs axe on the page (WCAG 2.2 A and AA), in English and, as an admin user whose language is Spanish, in Spanish (`app/src/admin/app.js` enables `es` in the admin). `test/fixtures/` holds the component JSON of `micelio-cms` the catalogue is tested against, and the script that regenerates it from a tag; the plugin never registers it as a component (only the dev stack's `dev.mjs` writes it into its own host). `test/fixtures/micelio-populate.ts` holds the frontend's `ARTICLE_POPULATE` and `PAGE_POPULATE`, copied verbatim with the commit they come from; `test/preview-frontend-populate.test.ts` runs the draft read's allowlist on them, and the suite `strapi/preview-populate.test.ts` serves their `localizations`. `test/strapi/preview-site.ts` is the stub frontend of the preview suite: the real exchange and draft routes, a page that says `ready` and answers `load-draft`, and a weight route; the app's `src/api/page/` is its fixture. `test/strapi/weight-site.ts` is the stub's weight route (it redeems the system grant with the real CMS and answers a report you shape); `startWeightSite` is the whole stub frontend of `strapi/budget.test.ts` and of the export fixture, which publishes a story and so is measured.
+`test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it). `test/package.test.ts` packs the package and loads both entries from the tarball. `test/export-format.test.ts` fails when a content type of its list has no row in `docs/export-format.md`, the site export format (a contract of section 6). The app adds fixture types made with the plugin's helpers, `app/src/api/note/` (`withSiteScope`) and `app/src/api/article/` (`withSiteScope` and `withEditorial`), `app/src/api/essay/` (the same, localised), `app/src/api/landing/` (the same, with the sections of `page`: the type the cost meter's browser suite measures), `app/src/api/guide/` (the same, made with `withPageSettings` too, localised, never exported: the page settings and redirects suites), `app/src/api/memo/` (editorial with a slug but no page settings: the type that writes no redirect), `app/src/api/showcase/` (the same, with the scene and the `playground` block: the type the islands' suites use), `app/src/api/post/` (draft and publish, with a cover, a component, a dynamic zone and relations, one to its own type: the draft read's populate; `label` has routes for the token that reads it), and three for the export and import suites (`story`, `label`, `guest`, with the components of `app/src/components/`; `strapi/site-archive.ts` builds their site), and a fixture plugin, `app/src/plugins/hook-recorder/`, that records every hook it receives, and another, `app/src/plugins/extension-fixture/` (server and admin), that registers one of each extension point. `test/admin/` runs the admin pages in Chromium (`npm run test:admin`, its own `vitest.admin.config.mts`): its setup builds the test app's admin, the suite boots the harness with `SERVE_ADMIN_PANEL=true`, logs in and runs axe on the page (WCAG 2.2 A and AA), in English and, as an admin user whose language is Spanish, in Spanish (`app/src/admin/app.js` enables `es` in the admin). `test/fixtures/` holds the component JSON of `micelio-cms` the catalogue is tested against, and the script that regenerates it from a tag; the plugin never registers it as a component (only the dev stack's `dev.mjs` writes it into its own host). `test/fixtures/micelio-populate.ts` holds the frontend's `ARTICLE_POPULATE` and `PAGE_POPULATE`, copied verbatim with the commit they come from; `test/preview-frontend-populate.test.ts` runs the draft read's allowlist on them, and the suite `strapi/preview-populate.test.ts` serves their `localizations`. `test/strapi/preview-site.ts` is the stub frontend of the preview suite: the real exchange and draft routes, a page that says `ready` and answers `load-draft`, and a weight route; the app's `src/api/page/` is its fixture. `test/strapi/weight-site.ts` is the stub's weight route (it redeems the system grant with the real CMS and answers a report you shape); `startWeightSite` is the whole stub frontend of `strapi/budget.test.ts` and of the export fixture, which publishes a story and so is measured.

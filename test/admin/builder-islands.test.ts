@@ -206,7 +206,20 @@ describe('the islands in the builder', () => {
   })
 
   it('the island label toggles one block to static', async () => {
-    const page = await open(await newShowcase())
+    // The Scene's `model` is required and not part of its static alternative, so it holds the save.
+    const model = (await strapi.db.query('plugin::upload.file').create({
+      data: {
+        name: 'hyphae.glb',
+        hash: 'hyphae_glb',
+        ext: '.glb',
+        mime: 'model/gltf-binary',
+        size: 1,
+        url: '/uploads/hyphae.glb',
+        provider: 'local',
+      },
+    })) as { id: number }
+    const [text, scene, playground] = SECTIONS as [object, object, object]
+    const page = await open(await newShowcase([text, { ...scene, model: model.id }, playground]))
     const received = () =>
       frameOf(page)
         .locator('body')

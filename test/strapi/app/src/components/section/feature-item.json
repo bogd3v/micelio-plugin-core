@@ -3,11 +3,12 @@
   "info": {
     "displayName": "Feature item",
     "icon": "apps",
-    "description": "An item of the `feature-grid` block, so the builder suite has items to edit one level down"
+    "description": "An item of the `feature-grid` block, so the builder suite has items to edit one level down, with an icon image"
   },
   "options": {},
   "attributes": {
     "title": { "type": "string", "required": true },
-    "text": { "type": "text" }
+    "text": { "type": "text" },
+    "icon": { "type": "media", "multiple": false, "allowedTypes": ["images"] }
   }
 }

@@ -2,7 +2,7 @@ import { Typography } from '@strapi/design-system'
 import { useId } from 'react'
 import styled, { useTheme } from 'styled-components'
 
-import { hasMessage, useMessages } from '../../messages'
+import { useMessages } from '../../messages'
 import {
   itemsOf,
   missingRequired,
@@ -10,7 +10,10 @@ import {
   type TextField,
 } from '../../utils/builder/fields'
 import type { BuilderBlock } from '../../utils/builder/model'
-import { missingAlternative, weightText, type IslandInfo } from '../../utils/builder/islands'
+import { weightText, type IslandInfo } from '../../utils/builder/islands'
+import { Segment, Tool } from './controls'
+import { fieldLabel, Input, labelStyle } from './fieldStyle'
+import { MediaInputs } from './MediaInputs'
 import { ChevronRightIcon, DownIcon, DuplicateIcon, TrashIcon, UpIcon } from './icons'
 import { IslandBadge, alternativeName } from './IslandBadge'
 
@@ -32,33 +35,6 @@ const Head = styled.div`
   gap: 8px;
 `
 
-const Tool = styled.button<{ $isDanger?: boolean }>`
-  all: unset;
-  box-sizing: border-box;
-  flex: none;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid ${({ theme }) => theme.colors.neutral200};
-  border-radius: 4px;
-  cursor: pointer;
-  color: ${({ $isDanger, theme }) => ($isDanger ? theme.colors.danger600 : theme.colors.neutral800)};
-  transition: background var(--m-fast) var(--m-ease-out);
-  &:hover:not(:disabled) {
-    background: ${({ theme }) => theme.colors.neutral100};
-  }
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.primary600};
-    outline-offset: 1px;
-  }
-`
-
 const Body = styled.div`
   padding: 16px 20px;
   display: flex;
@@ -73,49 +49,6 @@ const Heading = styled.h3`
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: ${({ theme }) => theme.colors.neutral600};
-`
-
-const Segment = styled.button<{ $isPressed: boolean }>`
-  all: unset;
-  box-sizing: border-box;
-  height: 36px;
-  flex: 1;
-  min-width: 40px;
-  padding: 0 12px;
-  text-transform: capitalize;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  cursor: pointer;
-  border: 1px solid
-    ${({ $isPressed, theme }) => ($isPressed ? theme.colors.primary600 : theme.colors.neutral200)};
-  background: ${({ $isPressed, theme }) => ($isPressed ? theme.colors.primary100 : theme.colors.neutral0)};
-  color: ${({ $isPressed, theme }) => ($isPressed ? theme.colors.primary600 : theme.colors.neutral800)};
-  font-weight: ${({ $isPressed }) => ($isPressed ? 600 : 400)};
-  transition:
-    background var(--m-fast) var(--m-ease-out),
-    color var(--m-fast) var(--m-ease-out);
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.primary600};
-    outline-offset: 1px;
-  }
-`
-
-const Input = styled.input`
-  height: 40px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0 12px;
-  font: inherit;
-  font-size: 14px;
-  color: ${({ theme }) => theme.colors.neutral800};
-  background: ${({ theme }) => theme.colors.neutral0};
-  border: 1px solid ${({ theme }) => theme.colors.neutral200};
-  border-radius: 4px;
-  &[aria-invalid='true'] {
-    border-color: ${({ theme }) => theme.colors.danger600};
-  }
 `
 
 const Textarea = styled.textarea`
@@ -177,19 +110,6 @@ const AddItem = styled.button`
   }
 `
 
-const labelStyle = (color: string) => ({ fontSize: 12, fontWeight: 600, color }) as const
-
-/** The label of a field: the plugin's translation for the common names, else the name made readable. */
-function fieldLabel(name: string, t: (id: string) => string): string {
-  const id = `builder.field.${name}`
-  if (hasMessage(id)) return t(id)
-  const words = name
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replaceAll('_', ' ')
-    .toLowerCase()
-  return words.charAt(0).toUpperCase() + words.slice(1)
-}
-
 /** What the island costs the visitor, and when (the Heavy island artboard): in the design's blue. */
 function IslandCost(props: { island: IslandInfo; name: string }) {
   const { colors } = useTheme()
@@ -216,55 +136,6 @@ function IslandCost(props: { island: IslandInfo; name: string }) {
         alternative: alternativeName(t, island.alternative[0]),
       })}
     </section>
-  )
-}
-
-/**
- * The fields of the island's static alternative that are not text, each with what the block holds:
- * a file is picked in the Content Manager's form, as the rest of the media are. The text ones are
- * in the form above, marked required.
- */
-function StaticAlternative(props: {
-  island: IslandInfo
-  fields: BlockFields
-  values: Record<string, unknown>
-}) {
-  const { colors } = useTheme()
-  const { t } = useMessages()
-  const files = props.island.alternative.filter(
-    (name) => !props.fields.text.some((field) => field.name === name)
-  )
-  const missing = missingAlternative(props.island, props.values)
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {files.map((name) => {
-        const file = props.values[name]
-        const isSet = !missing.includes(name)
-        const label =
-          typeof file === 'object' && file !== null && 'name' in file ? String(file.name) : ''
-        return (
-          <div
-            key={name}
-            data-testid={`alternative-${name}`}
-            style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
-          >
-            <span style={labelStyle(colors.neutral800)}>
-              {fieldLabel(name, t)}
-              <span aria-hidden="true"> *</span>
-            </span>
-            <span style={{ fontSize: 13 }}>
-              {isSet ? label || t('builder.island.fileSet') : t('builder.island.fileMissing')}
-            </span>
-            <span
-              style={{ fontSize: 12, color: isSet ? colors.neutral600 : colors.danger700 }}
-              data-testid={isSet ? undefined : 'alternative-missing'}
-            >
-              {t(isSet ? 'builder.island.alternativeNote' : 'builder.island.alternativeRequired')}
-            </span>
-          </div>
-        )
-      })}
-    </div>
   )
 }
 
@@ -323,8 +194,13 @@ interface BlockPanelProps {
   /** The island the block renders: its badge, what it costs the visitor and its static alternative. */
   island?: IslandInfo
   isReadOnly: boolean
-  onSetFields: (values: Record<string, unknown>) => void
-  onSetItem: (field: string, index: number, values: Record<string, unknown>) => void
+  onSetFields: (values: Record<string, unknown>, isStep?: boolean) => void
+  onSetItem: (
+    field: string,
+    index: number,
+    values: Record<string, unknown>,
+    isStep?: boolean
+  ) => void
   onAddItem: (field: string) => void
   onSelectItem: (item: { field: string; index: number } | undefined) => void
   onMove: (step: -1 | 1) => void
@@ -410,8 +286,8 @@ function TextInputs(props: {
  * vocabulary, its text fields, its items one level down, and what it adds to the page.
  *
  * @remarks
- * It edits what the host's component stores and nothing it cannot show as text or as a choice:
- * media and relations stay in the Content Manager's form. A required field that is empty is
+ * It edits what the host's component stores and nothing it cannot show as text, as a choice or as
+ * files (`MediaInputs`): relations stay in the Content Manager's form. A required field that is empty is
  * marked, and the save still goes through (a draft may be incomplete; review and publish check).
  */
 export function BlockPanel(props: BlockPanelProps) {
@@ -513,14 +389,27 @@ export function BlockPanel(props: BlockPanelProps) {
           </nav>
         ) : null}
         {item && currentFields ? (
-          <TextInputs
-            fields={currentFields.text}
-            values={current ?? {}}
-            idPrefix={`${id}-item`}
-            isReadOnly={props.isReadOnly}
-            missing={missing}
-            onChange={(name, value) => props.onSetItem(item.field, item.index, { [name]: value })}
-          />
+          <>
+            <TextInputs
+              fields={currentFields.text}
+              values={current ?? {}}
+              idPrefix={`${id}-item`}
+              isReadOnly={props.isReadOnly}
+              missing={missing}
+              onChange={(name, value) => props.onSetItem(item.field, item.index, { [name]: value })}
+            />
+            <MediaInputs
+              fields={currentFields.media ?? []}
+              values={current ?? {}}
+              idPrefix={`${id}-item`}
+              isReadOnly={props.isReadOnly}
+              missing={missing}
+              alternative={props.island?.alternative}
+              onChange={(name, value, isStep) =>
+                props.onSetItem(item.field, item.index, { [name]: value }, isStep)
+              }
+            />
+          </>
         ) : (
           <>
             {props.island ? <IslandCost island={props.island} name={props.name} /> : null}
@@ -558,11 +447,8 @@ export function BlockPanel(props: BlockPanelProps) {
                 </Typography>
               </>
             ) : null}
-            {fields.text.length > 0 || fields.items.length > 0 ? (
+            {fields.text.length > 0 || fields.items.length > 0 || fields.media ? (
               <Heading>{t('builder.panel.content')}</Heading>
-            ) : null}
-            {props.island ? (
-              <StaticAlternative island={props.island} fields={fields} values={block.fields} />
             ) : null}
             <TextInputs
               fields={fields.text}
@@ -574,6 +460,15 @@ export function BlockPanel(props: BlockPanelProps) {
               onChange={(name, value) => props.onSetFields({ [name]: value })}
             />
             {props.island?.kind === 'runtime' ? <RunHere /> : null}
+            <MediaInputs
+              fields={fields.media ?? []}
+              values={block.fields}
+              idPrefix={`${id}-field`}
+              isReadOnly={props.isReadOnly}
+              missing={missing}
+              alternative={props.island?.alternative}
+              onChange={(name, value, isStep) => props.onSetFields({ [name]: value }, isStep)}
+            />
             {fields.items.map((group) => {
               const list = itemsOf(block.fields, group.name)
               return (

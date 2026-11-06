@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_section_galleries",
+  "info": {
+    "displayName": "Gallery",
+    "icon": "picture",
+    "description": "The `gallery` block's media as micelio-cms will store it: required images, for the builder's media field"
+  },
+  "options": {},
+  "attributes": {
+    "title": { "type": "string" },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images"],
+      "required": true
+    }
+  }
+}

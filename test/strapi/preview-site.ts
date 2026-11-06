@@ -41,8 +41,9 @@ interface Section {
   alt?: string
   title?: string
   columns?: string
-  items?: { title?: string }[]
+  items?: { title?: string; icon?: { url?: string } | null }[]
   poster?: { url?: string }
+  images?: { url?: string; alternativeText?: string | null }[]
 }
 
 interface Draft {
@@ -74,10 +75,23 @@ function sectionHtml(section: Section, isStatic: boolean, cmsBase: string): stri
     const items = (section.items ?? [])
       .map(
         (item) =>
-          `<li class="myc-section-item"><span data-field="title">${escapeHtml(item.title ?? '')}</span></li>`
+          `<li class="myc-section-item"><span data-field="title">${escapeHtml(item.title ?? '')}</span>${
+            item.icon?.url
+              ? `<img data-icon src="${escapeHtml(cmsBase + item.icon.url)}" alt="" width="24" height="24">`
+              : ''
+          }</li>`
       )
       .join('')
     return `<section data-section="feature-grid" data-columns="${escapeHtml(section.columns ?? '')}"><h2 data-field="title">${escapeHtml(section.title ?? '')}</h2><ul>${items}</ul></section>`
+  }
+  if (section.__component === 'section.gallery') {
+    const images = (section.images ?? [])
+      .map(
+        (image) =>
+          `<img src="${escapeHtml(cmsBase + (image.url ?? ''))}" alt="${escapeHtml(image.alternativeText ?? '')}" width="60" height="40">`
+      )
+      .join('')
+    return `<section data-section="gallery"><h2 data-field="title">${escapeHtml(section.title ?? '')}</h2>${images}</section>`
   }
   if (section.__component === 'section.logo-cloud') {
     return `<section data-section="logo-cloud"><h2 data-field="title">${escapeHtml(section.title ?? '')}</h2></section>`
@@ -211,12 +225,17 @@ export async function startPreviewSite(): Promise<PreviewSite> {
       fetch(`${cmsBase}/api/micelio/preview/draft?${extra}`, {
         headers: { ...auth, 'X-Micelio-Preview-Grant': grant },
       })
-    // The sections of the builder's landing; a type whose zone does not hold them refuses the populate,
-    // and the plain read is the page's.
+    // The sections of the builder's landing, then of the page type (the media fields); a type whose zone
+    // does not hold them refuses the populate, and the plain read is the page's.
+    const grid = 'populate[sections][on][section.feature-grid][populate][items][populate]'
     const withMore = new URLSearchParams(query)
-    withMore.set('populate[sections][on][section.feature-grid][populate]', '*')
+    withMore.set(grid, '*')
     withMore.set('populate[sections][on][section.logo-cloud][populate]', '*')
+    const withMedia = new URLSearchParams(query)
+    withMedia.set(grid, '*')
+    withMedia.set('populate[sections][on][section.gallery][populate]', '*')
     let answer = await read(withMore)
+    if (!answer.ok) answer = await read(withMedia)
     if (!answer.ok) answer = await read(query)
     if (!answer.ok) {
       response.writeHead(404).end('Page not found')

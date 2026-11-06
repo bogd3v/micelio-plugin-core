@@ -49,8 +49,8 @@ export function parseWeightReport(body: unknown): BudgetReport | null {
  * The page type of a draft: its `pageType` when the budgets list it, else `standard`.
  *
  * @remarks
- * The page type becomes an attribute of its own with the page settings (bogd3v/micelio-plugin-core#52).
- * Until then a type that has a string `pageType` uses it, and every other draft is `standard`.
+ * The attribute comes with the page settings (`withPageSettings`, `docs/guide/pages.md`). A type that
+ * has none, or a page whose `pageType` nobody configured, is `standard`.
  */
 export function pageTypeOf(
   draft: { pageType?: unknown },

@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "micelio_redirects",
+  "info": {
+    "singularName": "redirect",
+    "pluralName": "redirects",
+    "displayName": "Redirect",
+    "description": "A permanent redirect (301) of a site from the old address of a page to its current one, written when a published slug changes"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": true
+    },
+    "i18n": {
+      "localized": false
+    },
+    "micelio": {
+      "export": "never"
+    }
+  },
+  "attributes": {
+    "from": {
+      "type": "string",
+      "required": true,
+      "maxLength": 512
+    },
+    "to": {
+      "type": "string",
+      "required": true,
+      "maxLength": 512
+    },
+    "entryLocale": {
+      "type": "string",
+      "maxLength": 32
+    },
+    "rule": {
+      "type": "enumeration",
+      "enum": ["slug-change"],
+      "default": "slug-change",
+      "required": true
+    }
+  }
+}

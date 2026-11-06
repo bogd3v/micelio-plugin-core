@@ -6,6 +6,7 @@ import blocks from './blocks'
 import blockSettings from './block-settings'
 import budget from './budget'
 import preview from './preview'
+import redirects from './redirects'
 import extensions from './extensions'
 import status from './status'
 import transfers from './transfers'
@@ -21,6 +22,7 @@ export default {
   transitions,
   status,
   preview,
+  redirects,
   extensions,
   transfers,
   about,

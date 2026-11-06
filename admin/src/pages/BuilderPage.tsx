@@ -10,6 +10,7 @@ import { BlockPanel } from '../components/builder/BlockPanel'
 import { BuilderHeader } from '../components/builder/BuilderHeader'
 import { Centre, Columns, Shell, StageBox, Toast } from '../components/builder/layout'
 import { Motion } from '../components/builder/Motion'
+import { PageSettingsDrawer } from '../components/builder/PageSettingsDrawer'
 import { alternativeName } from '../components/builder/IslandBadge'
 import { Overlay, type Pointed, type RenderedBlock } from '../components/builder/Overlay'
 import { Palette } from '../components/builder/Palette'
@@ -22,6 +23,7 @@ import { useBuilderDocument } from '../hooks/useBuilderDocument'
 import { RECENT_KEY, useBuilderEdits } from '../hooks/useBuilderEdits'
 import { useRefusalNotice } from '../hooks/useRefusalNotice'
 import { useBuilderFrame } from '../hooks/useBuilderFrame'
+import { usePageSettings } from '../hooks/usePageSettings'
 import { usePreviewSource } from '../hooks/usePreviewSource'
 import { useMessages } from '../messages'
 import { PREVIEW_PERMISSION } from '../permissions'
@@ -87,7 +89,13 @@ function Builder() {
     documentId,
     locale,
     (block) => withoutHiddenOptions(block, catalogue?.entries),
-    (block) => isIncomplete(fieldsFor(block), itemFieldsFor(block), block.fields),
+    (block) =>
+      isIncomplete(
+        fieldsFor(block),
+        itemFieldsFor(block),
+        block.fields,
+        islandOf(entryOf(block))?.alternative
+      ),
     catalogue?.schemas
   )
   const { blocks } = state
@@ -102,6 +110,7 @@ function Builder() {
   const [frameState, setFrameState] = useState<FrameState>(NO_FRAME)
   const [isBlocked, setIsBlocked] = useState(false)
   const [search, setSearch] = useState('')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [recent, setRecent] = useState<string[]>(readRecent)
   // The render mode the editor chose for an island, by block key. It is the frame's state, never
   // saved: a reload of the frame forgets it, and the effect below sends it again (ADR-0019).
@@ -130,6 +139,27 @@ function Builder() {
     state.version,
     weightUrl
   )
+  const pageSettings = usePageSettings({
+    isOpen: isSettingsOpen,
+    uid,
+    documentId,
+    locale: doc ? doc.locale : locale,
+    site: doc?.site,
+    version: state.version,
+  })
+  const canOpenSettings = doc?.hasPageSettings === true
+  // ⌘, (Ctrl+, elsewhere) opens the page settings, from anywhere on the page.
+  useEffect(() => {
+    if (!canOpenSettings) return
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.code === 'Comma' && (event.metaKey || event.ctrlKey) && !event.altKey) {
+        event.preventDefault()
+        setIsSettingsOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [canOpenSettings])
   const leftKb =
     budget.kind === 'ready' ? budget.measurement.budgetKb - budget.measurement.blocksKb : undefined
 
@@ -172,13 +202,18 @@ function Builder() {
     (shown, index) => {
       const block = blocks.find(({ key }) => key === shown.key)
       if (!block) return [{ index, name: shown.component }]
-      const isMissing = isIncomplete(fieldsFor(block), itemFieldsFor(block), block.fields)
       const island = islandOf(entryOf(block))
+      const isMissing = isIncomplete(
+        fieldsFor(block),
+        itemFieldsFor(block),
+        block.fields,
+        island?.alternative
+      )
       return [
         {
           index,
           name: nameFor(block),
-          problem: isMissing ? t('builder.overlay.needsText') : undefined,
+          problem: isMissing ? t('builder.overlay.needsContent') : undefined,
           island,
           isStatic: modes[block.key] === 'static',
           alternative: island ? alternativeName(t, island.alternative[0]) : undefined,
@@ -323,6 +358,8 @@ function Builder() {
             budget={budget}
             onSave={state.saveNow}
             isReadOnly={isReadOnly}
+            onOpenSettings={canOpenSettings ? () => setIsSettingsOpen(true) : undefined}
+            isSettingsOpen={isSettingsOpen}
           />
           {state.status === 'conflict' ? (
             <Notice
@@ -387,7 +424,12 @@ function Builder() {
                 blocks={blocks.map((block) => ({
                   key: block.key,
                   name: nameFor(block),
-                  hasProblem: isIncomplete(fieldsFor(block), itemFieldsFor(block), block.fields),
+                  hasProblem: isIncomplete(
+                    fieldsFor(block),
+                    itemFieldsFor(block),
+                    block.fields,
+                    islandOf(entryOf(block))?.alternative
+                  ),
                   island: islandOf(entryOf(block)),
                 }))}
                 selectedKey={selectedKey}
@@ -505,6 +547,16 @@ function Builder() {
             )}
           </Columns>
         </Shell>
+        {isSettingsOpen && doc ? (
+          <PageSettingsDrawer
+            document={doc}
+            host={origin ? new URL(origin).host : ''}
+            data={pageSettings}
+            isReadOnly={isReadOnly}
+            onSave={state.saveSettings}
+            onClose={() => setIsSettingsOpen(false)}
+          />
+        ) : null}
         {toast ? (
           <Toast key={toast.id} role="status">
             <span>{toast.text}</span>
