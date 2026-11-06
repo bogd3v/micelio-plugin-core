@@ -288,6 +288,103 @@ describe('the General tab of the page settings in the builder', () => {
     })
   })
 
+  /**
+   * Clicks the boxes one frame apart, faster than any save comes back: a box reads its own state
+   * from the last render, so two clicks in one turn would be one.
+   */
+  const clickTogether = (page: Page, labels: string[]) =>
+    page.evaluate(`(async () => {
+      const boxes = Array.from(document.querySelectorAll('[role="dialog"] [role="checkbox"]'))
+      for (const name of ${JSON.stringify(labels)}) {
+        const box = boxes.find((one) => one.parentElement?.textContent?.includes(name))
+        if (!box) throw new Error('no box ' + name)
+        box.click()
+        await new Promise((resolve) => requestAnimationFrame(() => resolve()))
+      }
+    })()`)
+
+  /** Waits for Saved, then reads the draft the CMS holds after a reload of the page. */
+  const storedAfterSaved = async (page: Page, documentId: string) => {
+    await drawer(page).getByText('Saved').waitFor()
+    await page.reload()
+    await openDrawer(page)
+    return (await draftOf(documentId)).visibility
+  }
+
+  it('keeps both changes of two boxes clicked with no wait between them', async () => {
+    const documentId = await newGuide('two-boxes')
+    const page = await open(builderPath(GUIDE_UID, documentId))
+    await openDrawer(page)
+
+    await clickTogether(page, ['Hidden from search engines', 'In the navigation menu'])
+
+    expect(await storedAfterSaved(page, documentId)).toMatchObject({
+      inMenu: false,
+      inSitemap: true,
+      noindex: true,
+    })
+  })
+
+  it('keeps the sitemap and the menu changes clicked with no wait between them', async () => {
+    const documentId = await newGuide('sitemap-menu')
+    const page = await open(builderPath(GUIDE_UID, documentId))
+    await openDrawer(page)
+
+    await clickTogether(page, ['In the sitemap', 'In the navigation menu'])
+
+    expect(await storedAfterSaved(page, documentId)).toMatchObject({
+      inMenu: false,
+      inSitemap: false,
+      noindex: false,
+    })
+  })
+
+  it('keeps three boxes clicked with no wait, and a box clicked twice where it was', async () => {
+    const documentId = await newGuide('three-boxes')
+    const page = await open(builderPath(GUIDE_UID, documentId))
+    await openDrawer(page)
+
+    await clickTogether(page, [
+      'In the navigation menu',
+      'In the sitemap',
+      'Hidden from search engines',
+    ])
+    expect(await storedAfterSaved(page, documentId)).toMatchObject({
+      inMenu: false,
+      inSitemap: false,
+      noindex: true,
+    })
+
+    await clickTogether(page, ['Hidden from search engines', 'In the sitemap', 'In the sitemap'])
+    expect(await storedAfterSaved(page, documentId)).toMatchObject({
+      inMenu: false,
+      inSitemap: false,
+      noindex: false,
+    })
+  })
+
+  it('shows Saving while saves are in flight and Saved once the last one is stored', async () => {
+    const documentId = await newGuide('status-line')
+    const page = await open(builderPath(GUIDE_UID, documentId))
+    await openDrawer(page)
+    let answered = 0
+    page.on('response', (response) => {
+      if (response.request().method() === 'PUT') answered += 1
+    })
+    await page.route('**/content-manager/collection-types/**', async (route) => {
+      if (route.request().method() === 'PUT') await new Promise((r) => setTimeout(r, 600))
+      await route.continue()
+    })
+
+    await clickTogether(page, ['In the navigation menu', 'Hidden from search engines'])
+
+    await drawer(page).getByText('Saving').waitFor()
+    await drawer(page).getByText('Saved').waitFor()
+    // Saved is never shown while the second save is still on its way.
+    expect(answered).toBe(2)
+    expect((await draftOf(documentId)).visibility).toMatchObject({ inMenu: false, noindex: true })
+  })
+
   it('opens with ⌘, from the page, shuts with Esc and gives focus back to the gear', async () => {
     const page = await open(builderPath(GUIDE_UID, await newGuide('keys')))
     await gear(page).waitFor()
