@@ -176,18 +176,53 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
     return () => opener?.focus()
   }, [])
 
-  async function commit(values: Partial<PageSettingsValues>): Promise<void> {
+  // What the boxes show and what the next save sends: the editor's last choice, which is ahead of
+  // the page's `doc.visibility` while saves are in flight.
+  const [visibility, setVisibilityState] = useState(doc.visibility)
+  const visibilityRef = useRef(doc.visibility)
+  const docRef = useRef(doc)
+  docRef.current = doc
+  // The saves of the drawer wait in a line, so they reach the CMS in the order they were made.
+  const lineRef = useRef<Promise<unknown>>(Promise.resolve())
+  const pendingRef = useRef(0)
+  const onSaveRef = useRef(props.onSave)
+  onSaveRef.current = props.onSave
+
+  const showVisibility = (next: Visibility) => {
+    visibilityRef.current = next
+    setVisibilityState(next)
+  }
+
+  // A version taken from another session, or a save that finished with none in flight, is the truth.
+  useEffect(() => {
+    if (pendingRef.current === 0) showVisibility(doc.visibility)
+  }, [doc.visibility])
+
+  function commit(values: Partial<PageSettingsValues>): Promise<void> {
+    pendingRef.current += 1
     setOutcome({ kind: 'saving' })
-    const refused = await props.onSave(values)
-    setOutcome(refused ? { kind: 'failed', detail: refused.detail } : { kind: 'saved' })
+    const turn = lineRef.current.then(() => onSaveRef.current(values))
+    lineRef.current = turn.catch(() => undefined)
+    return turn.then((refused) => {
+      pendingRef.current -= 1
+      // One status for the line: it says Saved only when the last save is stored.
+      if (pendingRef.current > 0) return
+      setOutcome(refused ? { kind: 'failed', detail: refused.detail } : { kind: 'saved' })
+      // The boxes go back to what the CMS holds: a refused choice does not stay ticked.
+      if (refused) showVisibility(docRef.current.visibility)
+    })
   }
 
   const saveSlug = () => {
     if (slug === doc.slug || slug === '' || isSlugBad || props.isReadOnly) return
     void commit({ slug })
   }
-  const setVisibility = (key: keyof Visibility, value: boolean) =>
-    void commit({ visibility: { ...doc.visibility, [key]: value } })
+  const setVisibility = (key: keyof Visibility, value: boolean) => {
+    // Over the last choice, not over the page's copy, which a save in flight has not reached.
+    const next = { ...visibilityRef.current, [key]: value }
+    showVisibility(next)
+    void commit({ visibility: next })
+  }
 
   const live = data.publishedSlug
   const slugHelp = !live
@@ -320,7 +355,7 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
             {t('builder.settings.visibility')}
           </span>
           <Checkbox
-            checked={doc.visibility.inMenu}
+            checked={visibility.inMenu}
             disabled={props.isReadOnly}
             onCheckedChange={(value: boolean | 'indeterminate') =>
               setVisibility('inMenu', value === true)
@@ -329,7 +364,7 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
             {t('builder.settings.visibility.inMenu')}
           </Checkbox>
           <Checkbox
-            checked={doc.visibility.inSitemap}
+            checked={visibility.inSitemap}
             disabled={props.isReadOnly}
             onCheckedChange={(value: boolean | 'indeterminate') =>
               setVisibility('inSitemap', value === true)
@@ -338,7 +373,7 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
             {t('builder.settings.visibility.inSitemap')}
           </Checkbox>
           <Checkbox
-            checked={doc.visibility.noindex}
+            checked={visibility.noindex}
             disabled={props.isReadOnly}
             onCheckedChange={(value: boolean | 'indeterminate') =>
               setVisibility('noindex', value === true)
