@@ -189,11 +189,40 @@ code in `error.details`) where it has not.
 
 An admin API route, for the admin panel and admin users; it is not part of the content API.
 
-| Method | Path                   | Answers                                                   |
-| ------ | ---------------------- | --------------------------------------------------------- |
-| `POST` | `/micelio/transitions` | `{ "data": { uid, documentId, locale, from, to, site } }` |
+| Method | Path                   | Answers                                                |
+| ------ | ---------------------- | ------------------------------------------------------ |
+| `POST` | `/micelio/transitions` | `{ "data": { uid, documentId, locale, from, to, … } }` |
+| `GET`  | `/micelio/review`      | `{ "data": [{ documentId, name, slug, entries }] }`    |
+
+`POST /micelio/transitions` answers `{ uid, documentId, locale, from, to, site, warnings }`.
 
 The body names the entry and where it goes: `{ "uid": "api::article.article", "documentId": "…", "to": "in_review" }`, with an optional `locale` (publishing is per locale, and so is the editorial state: each locale of an entry moves on its own) and, to schedule, `publishAt` as an ISO 8601 date in the future.
+
+Two more members are optional. `note` (at most 1000 characters) is stored as the `note` of the
+`editorial` component: the editor's note for the reviewer, or why a reviewer sends the entry back.
+It stays until the next transition, which stores its own note or clears it. The attribute is
+private: the content API never returns it, and the Content Manager and the In review page show it.
+`dryRun: true` runs
+every check of the transition, the measurement included, and answers what it would do, without
+writing anything or running the hooks: the builder's send to review dialog lists its warnings before
+the editor sends.
+
+`warnings` lists what the transition let through but the editor should know, each in the shape of a
+problem detail with no `status`. Today there is one, `linkToDraft`: a move of a user's entry to any
+state but `draft` looks for links of its draft (the `url` of a part whose component ends in `.link`,
+such as `section.link`, when it is a path like `/pricing`) to a page of the same site and locale, of
+a type made with `withPageSettings`, at `/<slug>`, that has no published version. Its `blocks` names
+each one as `{ block, position, field, path, zone, page: { uid, documentId, title } }`, `position`
+from 0. A link to a published page, to another address or to a page that does not exist is not
+reported.
+
+`GET /micelio/review` lists the entries awaiting review (`in_review`), by site, the sites by name
+and the oldest entry first: `{ uid, kind, documentId, locale, title, updatedAt, note }`. It needs
+the admin permission `plugin::micelio.review.read` (`403` `reviewForbidden` otherwise) and lists
+only the entries the user may read in the Content Manager, with the conditions of that permission:
+an Author with the review permission sees its own entries, a role limited to some locales those
+locales. It decides nothing: the In review page
+(`docs/guide/review.md`) approves and sends back through `POST /micelio/transitions`.
 
 Entries of a type made with `withEditorial` move through these transitions (ADR-0017, section 5), and no other route publishes or unpublishes them, the Content Manager included:
 
@@ -217,6 +246,11 @@ A site replaces the default for a transition with its `editorialPolicy`, a map f
 The scheduler, a cron job of the plugin, performs `scheduled → published` for every entry whose `publishAt` has passed: every minute by default (`scheduledPublishRule`, README; `false` turns it off), with an empty `publishedBy`. An entry it cannot publish is logged and stays scheduled for the next run. Leaving `in_review` records the user in `reviewedBy`; publishing records them in `publishedBy`.
 
 Every transition, the scheduler's included, runs the hooks of [docs/hooks.md](hooks.md): other plugins react to it there, and a `beforeTransition` handler may refuse it.
+
+An edit of a `scheduled` entry moves it back to `draft` and clears its `publishAt`, through the
+Content Manager, the content API and the document service alike: what was scheduled is not what
+would publish, so it is scheduled again. The edit is not a transition: it needs no role of the
+site's policy and fires no hook. Until 0.3 a scheduled entry stayed scheduled through an edit.
 
 A transition that publishes (`in_review → published`, `scheduled → published`, `published → published`) an entry of a measured type first has the site's frontend measure the draft ([docs/operate/budgets.md](operate/budgets.md)). It is refused above its budget (`pageOverBudget`) and whenever it could not be measured (`previewUnavailable`); it is never published without the measurement. A measured type is one that `budgets.contentTypes` lists (by default `api::page.page` and `api::article.article`, the types the frontend previews) and that is site-scoped, editorial and has a dynamic zone; any other type publishes as before, with no measurement. This is in the transition itself, so the admin route, the `transitions` service and the scheduler all hold it, and Strapi's own publish stays refused as before.
 
@@ -253,6 +287,8 @@ Every refusal answers `application/problem+json`:
 | 409    | `pageOverBudget`               | The blocks of the draft weigh more than its budget    |
 | 409    | `sampleTextPresent`            | The page still holds a sample text of its template    |
 | 409    | `previewUnavailable`           | The draft could not be measured; see below            |
+
+A `note` over 1000 characters is `editorialRequestInvalid` too.
 
 `sampleTextPresent` carries `blocks` the same way, each as `{ block, position, fields, zone }`;
 `fields` names the text fields that still hold a sample, such as `title` or `items[2].text`.

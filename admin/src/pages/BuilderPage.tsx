@@ -11,6 +11,7 @@ import { BuilderHeader } from '../components/builder/BuilderHeader'
 import { Centre, Columns, Shell, StageBox, Toast } from '../components/builder/layout'
 import { Motion } from '../components/builder/Motion'
 import { PageSettingsDrawer } from '../components/builder/PageSettingsDrawer'
+import { ReviewActions } from '../components/builder/ReviewActions'
 import { alternativeName } from '../components/builder/IslandBadge'
 import { Overlay, type Pointed, type RenderedBlock } from '../components/builder/Overlay'
 import { Palette } from '../components/builder/Palette'
@@ -23,6 +24,7 @@ import { useBuilderCatalogue, type BuilderCatalogue } from '../hooks/useBuilderC
 import { useBuilderDocument } from '../hooks/useBuilderDocument'
 import { RECENT_KEY, useBuilderEdits } from '../hooks/useBuilderEdits'
 import { useRefusalNotice } from '../hooks/useRefusalNotice'
+import { useTransition } from '../hooks/useTransition'
 import { useBuilderFrame } from '../hooks/useBuilderFrame'
 import { usePageSettings } from '../hooks/usePageSettings'
 import { usePreviewSource } from '../hooks/usePreviewSource'
@@ -113,6 +115,7 @@ function Builder() {
   const [search, setSearch] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isTemplateOpen, setIsTemplateOpen] = useState(false)
+  const [scheduleRequest, setScheduleRequest] = useState(0)
   const { toggleNotification } = useNotification()
   const [recent, setRecent] = useState<string[]>(readRecent)
   // The render mode the editor chose for an island, by block key. It is the frame's state, never
@@ -247,6 +250,27 @@ function Builder() {
 
   useRefusalNotice(state)
   const refusedBlock = refusedBlockOf(blocks, state.refusal?.block, entryOf)
+  const page = useMemo(
+    () => (doc ? { uid, documentId, locale: doc.locale } : undefined),
+    [uid, documentId, doc?.locale]
+  )
+  const transition = useTransition(page)
+
+  // A link "Go to the block" of a refusal opens the builder with `?block=<id>&position=<n>`: that
+  // block is selected once the page and the catalogue are read, the one at the place first.
+  const wanted = searchParams.get('block')
+  const wantedAt = Number(searchParams.get('position'))
+  const isWantedDone = useRef(false)
+  useEffect(() => {
+    if (!wanted || isWantedDone.current || !catalogue || blocks.length === 0) return
+    isWantedDone.current = true
+    const atPlace = blocks[wantedAt]
+    const found =
+      atPlace && entryOf(atPlace)?.id === wanted
+        ? atPlace
+        : blocks.find((block) => entryOf(block)?.id === wanted)
+    if (found) select({ key: found.key, item: undefined })
+  }, [wanted, wantedAt, catalogue, blocks, entryOf, select])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 5000)
@@ -367,7 +391,36 @@ function Builder() {
             isReadOnly={isReadOnly}
             onOpenSettings={canOpenSettings ? () => setIsSettingsOpen(true) : undefined}
             isSettingsOpen={isSettingsOpen}
-          />
+          >
+            {doc?.editorial ? (
+              <ReviewActions
+                state={doc.editorial.state}
+                isBusy={state.isDirty || state.status === 'saving' || state.status === 'conflict'}
+                isIncomplete={state.status === 'incomplete'}
+                site={doc.siteName ?? doc.site ?? ''}
+                budget={budget}
+                pageType={pageType}
+                perform={transition.perform}
+                notify={transition.notify}
+                onMoved={() => void state.adopt()}
+                scheduleRequest={scheduleRequest}
+              />
+            ) : null}
+          </BuilderHeader>
+          {state.scheduleResets > 0 && doc?.editorial?.state === 'draft' ? (
+            <Notice role="status" title={t('review.reset.title')} text={t('review.reset.body')}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setScheduleRequest((count) => count + 1)}
+              >
+                {t('review.reset.again')}
+              </Button>
+            </Notice>
+          ) : null}
+          {doc?.editorial?.state === 'draft' && doc.editorial.note && state.scheduleResets === 0 ? (
+            <Notice role="status" title={t('review.sentBack.title')} text={doc.editorial.note} />
+          ) : null}
           {state.status === 'conflict' ? (
             <Notice
               role="alert"

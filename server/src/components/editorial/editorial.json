@@ -25,6 +25,12 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "admin::user"
+    },
+    "note": {
+      "type": "text",
+      "maxLength": 1000,
+      "private": true,
+      "pluginOptions": { "micelio": { "export": "always" } }
     }
   }
 }

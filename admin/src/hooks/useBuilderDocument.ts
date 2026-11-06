@@ -25,6 +25,7 @@ import {
   type SaveRefusal,
 } from '../utils/builder/refusal'
 import { statusOf } from '../utils/fetchError'
+import type { EditorialState } from '../utils/review'
 import { SAVE_POLL_MS } from '../utils/previewPane'
 
 /** The content type of a site; the Content Manager reads the page's site from it. */
@@ -51,10 +52,40 @@ export interface BuilderDocument {
   visibility: Visibility
   /** The slug of the page's site, when the answer names it. */
   site: string | undefined
+  /** The name of the page's site, for the texts an editor reads; its slug when it has no name. */
+  siteName: string | undefined
   /** The sample texts the page copied from its template and has not replaced yet; empty for a page that has none. */
   samples: string[]
   /** `draft` while no version is published, `published` or `modified` after. */
   state: 'draft' | 'published' | 'modified'
+  /** Where the page is in the editorial workflow; `undefined` for a type made without `withEditorial`. */
+  editorial: EditorialFacts | undefined
+}
+
+/** The editorial component of the draft, as the builder shows it (issue #57). */
+export interface EditorialFacts {
+  state: EditorialState
+  /** When a scheduled page publishes, as an ISO 8601 date. */
+  publishAt: string | null
+  /** The note of the last transition: for the reviewer, or why the page was sent back. */
+  note: string | null
+}
+
+const EDITORIAL_STATES = new Set(['draft', 'in_review', 'scheduled', 'published'])
+
+/** The editorial component of an answer of the Content Manager, when the type has one. */
+function editorialOf(data: Record<string, unknown>): EditorialFacts | undefined {
+  const component = data.editorial as Record<string, unknown> | null | undefined
+  if (!('editorial' in data)) return undefined
+  const state = component?.state
+  return {
+    state:
+      typeof state === 'string' && EDITORIAL_STATES.has(state)
+        ? (state as EditorialState)
+        : 'draft',
+    publishAt: text(component?.publishAt) ?? null,
+    note: text(component?.note) ?? null,
+  }
 }
 
 /** Where autosave stands; `incomplete` while a block lacks a required field, which holds the save. */
@@ -76,7 +107,7 @@ const text = (value: unknown): string | undefined =>
 
 function toDocument(answer: CmAnswer, documentId: string): BuilderDocument {
   const { data, meta } = answer
-  const site = data.site as { slug?: unknown } | null | undefined
+  const site = data.site as { slug?: unknown; name?: unknown } | null | undefined
   const other = meta?.availableStatus?.[0]
   const published = typeof other?.updatedAt === 'string' ? other.updatedAt : undefined
   const updatedAt = text(data.updatedAt)
@@ -88,6 +119,7 @@ function toDocument(answer: CmAnswer, documentId: string): BuilderDocument {
     slug: text(data.slug) ?? '',
     visibility: visibilityOf(data.visibility),
     site: text(site?.slug),
+    siteName: text(site?.name) ?? text(site?.slug),
     samples: Array.isArray(data.templateSamples)
       ? data.templateSamples.filter((sample): sample is string => typeof sample === 'string')
       : [],
@@ -97,6 +129,7 @@ function toDocument(answer: CmAnswer, documentId: string): BuilderDocument {
         : published && updatedAt && new Date(updatedAt) > new Date(published)
           ? 'modified'
           : 'published',
+    editorial: editorialOf(data),
   }
 }
 
@@ -109,6 +142,7 @@ function settingsOf(
     slug: text(saved.slug) ?? now.slug,
     pageType: text(saved.pageType) ?? now.pageType,
     visibility: 'visibility' in saved ? visibilityOf(saved.visibility) : now.visibility,
+    editorial: editorialOf(saved) ?? now.editorial,
   }
 }
 
@@ -154,6 +188,13 @@ export interface BuilderState {
   loadTheirs: () => void
   /** Another session saved: keep this session's changes and overwrite theirs on the next save. */
   keepMine: () => void
+  /**
+   * Reads the draft again after a transition, which writes it: the page takes its version and its
+   * state, and keeps its blocks, which the transition did not change.
+   */
+  adopt: () => Promise<void>
+  /** How many saves moved a scheduled page back to draft (an edit cancels its schedule). */
+  scheduleResets: number
 }
 
 /**
@@ -197,6 +238,9 @@ export function useBuilderDocument(
   const [version, setVersion] = useState<string>()
   const [refusal, setRefusal] = useState<SaveRefusal>()
   const [reloads, setReloads] = useState(0)
+  const [scheduleResets, setScheduleResets] = useState(0)
+  const resourceRef = useRef(resource)
+  resourceRef.current = resource
   const blocksRef = useRef(blocks)
   blocksRef.current = blocks
   const knownRef = useRef<string>()
@@ -226,22 +270,24 @@ export function useBuilderDocument(
     return answer.data
   }, [path, locale])
 
-  const readSite = useCallback(async (): Promise<string | undefined> => {
+  const readSite = useCallback(async (): Promise<
+    { slug: string | undefined; name: string | undefined } | undefined
+  > => {
     const api = clientRef.current
     const related = await api.get<{
-      results?: { documentId?: unknown; slug?: unknown; locale?: unknown }[]
+      results?: { documentId?: unknown; slug?: unknown; name?: unknown; locale?: unknown }[]
     }>(`/content-manager/relations/${uid}/${documentId}/site`, { params })
     const found = related.data.results?.[0]
     // The relations route answers with the site's own fields, which a role may read through the page.
-    if (text(found?.slug)) return text(found?.slug)
+    if (text(found?.slug)) return { slug: text(found?.slug), name: text(found?.name) }
     const siteId = text(found?.documentId)
     if (!siteId) return undefined
     const siteLocale = text(found?.locale)
-    const site = await api.get<{ data?: { slug?: unknown } }>(
+    const site = await api.get<{ data?: { slug?: unknown; name?: unknown } }>(
       `/content-manager/collection-types/${SITE_UID}/${siteId}`,
       { params: siteLocale ? { locale: siteLocale } : {} }
     )
-    return text(site.data.data?.slug)
+    return { slug: text(site.data.data?.slug), name: text(site.data.data?.name) }
   }, [uid, documentId, locale])
 
   // The first read, and again when the editor takes the other session's version.
@@ -267,7 +313,9 @@ export function useBuilderDocument(
         // The Content Manager's answer carries no relations: the site comes from its relations route.
         if (!document.site) {
           try {
-            document.site = await readSite()
+            const site = await readSite()
+            document.site = site?.slug
+            document.siteName = site?.name ?? site?.slug
           } catch {
             // A role that may not read sites: the page says it cannot find the catalogue for lack of one.
           }
@@ -315,6 +363,21 @@ export function useBuilderDocument(
       heldRef.current = adopted
       baselineRef.current = JSON.stringify(writeBlocks(adopted))
       setBlocks((now) => adoptIds(snapshot, saved[ZONE], now))
+      // The server moves a scheduled page back to draft on an edit: the page shows the state it saved.
+      const editorial = editorialOf(saved)
+      if (editorial) {
+        const before = resourceRef.current
+        if (
+          before.kind === 'ready' &&
+          before.document.editorial?.state === 'scheduled' &&
+          editorial.state === 'draft'
+        ) {
+          setScheduleResets((count) => count + 1)
+        }
+        setResource((now) =>
+          now.kind === 'ready' ? { kind: 'ready', document: { ...now.document, editorial } } : now
+        )
+      }
       failedRef.current = undefined
       setRefusal(undefined)
       setSavedAt(Date.now())
@@ -475,6 +538,33 @@ export function useBuilderDocument(
     },
     saveSettings,
     loadTheirs: () => setReloads((count) => count + 1),
+    adopt: async () => {
+      while (isSavingRef.current) await new Promise((resolve) => setTimeout(resolve, 50))
+      try {
+        const answer = await read()
+        knownRef.current = text(answer.data.updatedAt)
+        setVersion(knownRef.current)
+        if (knownRef.current) {
+          rendersRef.current.set(instant(knownRef.current), shortOf(heldRef.current))
+        }
+        const fresh = toDocument(answer, documentId)
+        setResource((now) =>
+          now.kind === 'ready'
+            ? {
+                kind: 'ready',
+                document: {
+                  ...fresh,
+                  site: fresh.site ?? now.document.site,
+                  siteName: fresh.siteName ?? now.document.siteName,
+                },
+              }
+            : now
+        )
+      } catch {
+        // The next poll reads the draft again and says so if another session wrote it.
+      }
+    },
+    scheduleResets,
     keepMine: () => {
       // Overwriting theirs is the editor's choice: adopt their `updatedAt` and save.
       void (async () => {

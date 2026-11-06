@@ -73,7 +73,32 @@ the sample texts of `BuilderDocument.samples`.
 
 ## Admin
 
-`admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`), the **Micelio** menu entry (no permission of its own; `pages/MicelioLayout.tsx`: the sub-navigation, with the core's items from `navigation.ts`, each shown to a role with its permission, and the pages of sibling plugins from `GET /micelio/admin-pages` and the components they provide through `pageRegistry.ts`), the status page (`pages/StatusPage.tsx`), Export and import (`pages/TransferPage.tsx` with `components/ExportPanel.tsx` and `ImportPanel.tsx`, `utils/transfer.ts`) and About (`pages/AboutPage.tsx`, which shows what `GET /micelio/about` gathers), the preview page (ADR-0019; `pages/PreviewPage.tsx` at `preview/:uid/:documentId`, which no menu item opens: the **Preview** button of the Content Manager's edit view does, `components/PreviewHeaderAction.tsx`, registered in `bootstrap` and shown by `utils/previewAction.ts` for a site-scoped type with a dynamic zone; with `components/PreviewFrame.tsx`, which also tells the page when a loaded frame stayed silent (`READY_WAIT_SECONDS`) for the notice and **Open in a new tab**, `hooks/useEntry.ts`, `hooks/usePreviewSource.ts` (the token request, for the frame and for the new tab) and the pure helpers of `utils/previewPane.ts`; `docs/operate/preview.md`), whose entry column carries the cost meter (`components/CostMeter.tsx`, `hooks/useBudget.ts`, which reads the weight route of the site once the frame holds the grant, the pure thresholds of `utils/costMeter.ts`), the cost line in the edit view's side panel (`components/CostPanelAction.tsx`, registered in `bootstrap` with `addEditViewSidePanel`, and `CostPanel.tsx`, which measures on demand, `docs/operate/budgets.md`), and the notification of a refused publish (`utils/refusal.ts` reads the problem detail, `hooks/useRefusalNotification.ts` shows it; nothing calls it until bogd3v/micelio-plugin-core#57 adds the control), and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them). It imports the server's types (`server/src/types/`) type-only, and nothing from `@strapi/icons`: that package cannot be required in Node (`components/MicelioIcon.tsx`, the mark of the menu entry).
+`admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`), the **Micelio** menu
+entry (no permission of its own; `pages/MicelioLayout.tsx`: the sub-navigation, with the core's
+items from `navigation.ts`, each shown to a role with its permission, and the pages of sibling
+plugins from `GET /micelio/admin-pages` and the components they provide through `pageRegistry.ts`),
+the status page (`pages/StatusPage.tsx`), Export and import (`pages/TransferPage.tsx` with
+`components/ExportPanel.tsx` and `ImportPanel.tsx`, `utils/transfer.ts`) and About
+(`pages/AboutPage.tsx`, which shows what `GET /micelio/about` gathers), the preview page (ADR-0019;
+`pages/PreviewPage.tsx` at `preview/:uid/:documentId`, which no menu item opens: the **Preview**
+button of the Content Manager's edit view does, `components/PreviewHeaderAction.tsx`, registered in
+`bootstrap` and shown by `utils/previewAction.ts` for a site-scoped type with a dynamic zone; with
+`components/PreviewFrame.tsx`, which also tells the page when a loaded frame stayed silent
+(`READY_WAIT_SECONDS`) for the notice and **Open in a new tab**, `hooks/useEntry.ts`,
+`hooks/usePreviewSource.ts` (the token request, for the frame and for the new tab) and the pure
+helpers of `utils/previewPane.ts`; `docs/operate/preview.md`), whose entry column carries the cost
+meter (`components/CostMeter.tsx`, `hooks/useBudget.ts`, which reads the weight route of the site
+once the frame holds the grant, the pure thresholds of `utils/costMeter.ts`), the cost line in the
+edit view's side panel (`components/CostPanelAction.tsx`, registered in `bootstrap` with
+`addEditViewSidePanel`, and `CostPanel.tsx`, which measures on demand, `docs/operate/budgets.md`),
+and the review flow (#57: `components/builder/ReviewActions.tsx`, the builder's editorial buttons
+and their dialogs; `pages/ReviewPage.tsx`, the In review page; `hooks/useTransition.ts`, which asks
+`POST /micelio/transitions` and shows a refusal or a warning as a notification with a link to the
+block; the pure helpers of `utils/review.ts`, which read a budget refusal with `utils/refusal.ts`;
+`docs/guide/review.md`), and its translations (`translations/en.json`, `es.json`; `messages.ts`
+reads them). It imports the server's types (`server/src/types/`) type-only, and nothing from
+`@strapi/icons`: that package cannot be required in Node (`components/MicelioIcon.tsx`, the mark of
+the menu entry).
 
 ### Builder
 
@@ -127,3 +152,6 @@ composes the zone `sections` only, as the protocol addresses it.
 ## Tests
 
 `test/` — the tests. `test/strapi/` boots a clean Strapi 5 on SQLite with only this plugin installed (`app/` is that Strapi; `harness.ts` starts and stops it). `test/package.test.ts` packs the package and loads both entries from the tarball. `test/export-format.test.ts` fails when a content type of its list has no row in `docs/export-format.md`, the site export format (a contract of section 6). The app adds fixture types made with the plugin's helpers, `app/src/api/note/` (`withSiteScope`) and `app/src/api/article/` (`withSiteScope` and `withEditorial`), `app/src/api/essay/` (the same, localised), `app/src/api/landing/` (the same, with the sections of `page`: the type the cost meter's browser suite measures), `app/src/api/guide/` (the same, made with `withPageSettings` too, localised, never exported: the page settings and redirects suites), `app/src/api/memo/` (editorial with a slug but no page settings: the type that writes no redirect), `app/src/api/showcase/` (the same, with the scene and the `playground` block: the type the islands' suites use), `app/src/api/post/` (draft and publish, with a cover, a component, a dynamic zone and relations, one to its own type: the draft read's populate; `label` has routes for the token that reads it), and three for the export and import suites (`story`, `label`, `guest`, with the components of `app/src/components/`; `strapi/site-archive.ts` builds their site), and a fixture plugin, `app/src/plugins/hook-recorder/`, that records every hook it receives, and another, `app/src/plugins/extension-fixture/` (server and admin), that registers one of each extension point. `test/admin/` runs the admin pages in Chromium (`npm run test:admin`, its own `vitest.admin.config.mts`): its setup builds the test app's admin, the suite boots the harness with `SERVE_ADMIN_PANEL=true`, logs in and runs axe on the page (WCAG 2.2 A and AA), in English and, as an admin user whose language is Spanish, in Spanish (`app/src/admin/app.js` enables `es` in the admin). `test/fixtures/` holds the component JSON of `micelio-cms` the catalogue is tested against, and the script that regenerates it from a tag; the plugin never registers it as a component (only the dev stack's `dev.mjs` writes it into its own host). `test/fixtures/micelio-populate.ts` holds the frontend's `ARTICLE_POPULATE` and `PAGE_POPULATE`, copied verbatim with the commit they come from; `test/preview-frontend-populate.test.ts` runs the draft read's allowlist on them, and the suite `strapi/preview-populate.test.ts` serves their `localizations`. `test/strapi/preview-site.ts` is the stub frontend of the preview suite: the real exchange and draft routes, a page that says `ready` and answers `load-draft`, and a weight route; the app's `src/api/page/` is its fixture. `test/strapi/weight-site.ts` is the stub's weight route (it redeems the system grant with the real CMS and answers a report you shape); `startWeightSite` is the whole stub frontend of `strapi/budget.test.ts` and of the export fixture, which publishes a story and so is measured.
+
+The review suites (#57) add `app/src/api/brochure/` (editorial, with page settings, never exported,
+whose sections hold `section.cta` and its `section.link`: the `linkToDraft` warning).

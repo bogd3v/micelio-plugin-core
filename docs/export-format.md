@@ -240,7 +240,10 @@ relations to other documents.
 
 A type made with `withEditorial` writes its `editorial` component (`micelio-editorial.editorial`, ADR-0017 section 5) in every version, like any component:
 
-- `state` and `publishAt` are written as they are. `reviewedBy` and `publishedBy` relate to admin users, who are not exported, and are written as `null`.
+- `state`, `publishAt` and `note` (the note of the last transition) are written as they are;
+  `note` is private for the content API and declares `export: always`, so it still travels.
+  `reviewedBy` and `publishedBy` relate to admin users, who are not exported, and are written as
+  `null`.
 - The state and the versions agree: an entry in `published` has a published version, and an entry in any other state has none. An archive that breaks this refuses the import (`exportEditorialInconsistent`).
 - The import writes the versions as they are, published ones included, as the plugin itself and not as a transition: it does not run the transition policy and it does not fire `afterTransition` or `afterPublish`. It is a restore, not an editorial act. Strapi's own document events (`entry.create`, `entry.publish`) still fire, so a plugin that reacts to them instead of to the core's hooks sees the import; `siteCreated` fires when the import creates the site.
 - A `scheduled` entry whose `publishAt` has passed is published by the scheduler at its next run on the target.

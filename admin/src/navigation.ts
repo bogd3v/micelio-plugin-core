@@ -1,5 +1,10 @@
 import type { AdminPageGroup } from '../../server/src/types/extensions'
-import { BLOCKS_READ_PERMISSION, STATUS_READ_PERMISSION, TRANSFER_PERMISSION } from './permissions'
+import {
+  BLOCKS_READ_PERMISSION,
+  REVIEW_READ_PERMISSION,
+  STATUS_READ_PERMISSION,
+  TRANSFER_PERMISSION,
+} from './permissions'
 
 /** A group of the sub-navigation: those sibling plugins register into, and the core's own About. */
 export type NavGroup = AdminPageGroup | 'about'
@@ -26,6 +31,7 @@ export const NAV_GROUPS: NavGroup[] = ['overview', 'content', 'site', 'about']
  */
 export const CORE_NAV_ITEMS: CoreNavItem[] = [
   { id: 'status', group: 'overview', to: '', permission: STATUS_READ_PERMISSION },
+  { id: 'review', group: 'content', to: 'review', permission: REVIEW_READ_PERMISSION },
   { id: 'blocks', group: 'content', to: 'blocks', permission: BLOCKS_READ_PERMISSION },
   { id: 'transfer', group: 'site', to: '_export-import', permission: TRANSFER_PERMISSION },
   { id: 'about', group: 'about', to: 'about' },

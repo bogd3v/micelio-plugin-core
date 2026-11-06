@@ -1,6 +1,11 @@
 import type { Core } from '@strapi/strapi'
 import type { Context } from 'koa'
-import { EDITORIAL_STATES, type EditorialState } from '../constants/editorial'
+import {
+  EDITORIAL_NOTE_MAX_LENGTH,
+  EDITORIAL_STATES,
+  REVIEW_READ_PERMISSION,
+  type EditorialState,
+} from '../constants/editorial'
 import { TransitionError, type TransitionRequest } from '../editorial/transitions'
 import { sendProblem } from '../utils/problem'
 
@@ -10,7 +15,7 @@ interface AdminUser {
 }
 
 interface PermissionChecker {
-  cannot: Record<'update' | 'publish', (entity: object) => boolean>
+  cannot: Record<'read' | 'update' | 'publish', (entity: object) => boolean>
 }
 
 const TITLES: Record<number, string> = {
@@ -20,8 +25,49 @@ const TITLES: Record<number, string> = {
   409: 'Conflict',
 }
 
-/** `POST /micelio/transitions`, for an admin user: see `docs/api.md`. */
-export default ({ strapi }: { strapi: Core.Strapi }): { perform(ctx: Context): Promise<void> } => ({
+interface Ability {
+  can(action: string, subject?: string): boolean
+}
+
+/** `POST /micelio/transitions` and `GET /micelio/review`, for an admin user: see `docs/api.md`. */
+export default ({
+  strapi,
+}: {
+  strapi: Core.Strapi
+}): { perform(ctx: Context): Promise<void>; inReview(ctx: Context): Promise<void> } => ({
+  async inReview(ctx) {
+    const ability = ctx.state.userAbility as Ability
+    if (!ability.can(REVIEW_READ_PERMISSION)) {
+      sendProblem(ctx, {
+        type: 'about:blank',
+        title: TITLES[403],
+        status: 403,
+        detail: `Reading the In review page needs the permission ${REVIEW_READ_PERMISSION}.`,
+        code: 'reviewForbidden',
+      })
+      return
+    }
+    const checkers = new Map<string, PermissionChecker>()
+    const checkerOf = (uid: string): PermissionChecker => {
+      const checker =
+        checkers.get(uid) ??
+        (strapi
+          .plugin('content-manager')
+          .service('permission-checker')
+          .create({ userAbility: ability, model: uid }) as PermissionChecker)
+      checkers.set(uid, checker)
+      return checker
+    }
+    // The type first, then each entry: the conditions of the permission (an author's own entries,
+    // some locales) decide which entries of a type the caller sees.
+    const mayRead = (uid: string, entry?: object): boolean =>
+      entry === undefined
+        ? ability.can('plugin::content-manager.explorer.read', uid)
+        : !checkerOf(uid).cannot.read(entry)
+    const data = await strapi.plugin('micelio').service('transitions').inReview(mayRead)
+    ctx.body = { data }
+  },
+
   async perform(ctx) {
     const body = readBody(ctx.request.body)
     if (!body) {
@@ -29,7 +75,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): { perform(ctx: Context): P
         type: 'about:blank',
         title: TITLES[400],
         status: 400,
-        detail: 'The body needs uid, documentId and to; locale and publishAt are optional',
+        detail: `The body needs uid, documentId and to; locale, publishAt, a note of at most ${EDITORIAL_NOTE_MAX_LENGTH} characters and dryRun are optional`,
         code: 'editorialRequestInvalid',
       })
       return
@@ -68,10 +114,12 @@ type TransitionBody = Omit<TransitionRequest, 'actor' | 'isPermitted'>
 
 function readBody(body: unknown): TransitionBody | undefined {
   if (typeof body !== 'object' || body === null) return undefined
-  const { uid, documentId, to, locale, publishAt } = body as Record<string, unknown>
+  const { uid, documentId, to, locale, publishAt, note, dryRun } = body as Record<string, unknown>
   if (typeof uid !== 'string' || typeof documentId !== 'string') return undefined
   if (!EDITORIAL_STATES.includes(to as EditorialState)) return undefined
   if (locale !== undefined && typeof locale !== 'string') return undefined
   if (publishAt !== undefined && typeof publishAt !== 'string') return undefined
-  return { uid, documentId, to: to as EditorialState, locale, publishAt }
+  if (note !== undefined && typeof note !== 'string') return undefined
+  if (dryRun !== undefined && typeof dryRun !== 'boolean') return undefined
+  return { uid, documentId, to: to as EditorialState, locale, publishAt, note, dryRun }
 }

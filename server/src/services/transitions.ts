@@ -1,5 +1,7 @@
 import type { Core } from '@strapi/strapi'
+import { listInReview } from '../editorial/review'
 import { publishDueEntries } from '../editorial/scheduler'
+import type { InReviewSite } from '../types/editorial'
 import {
   performTransition,
   type TransitionRequest,
@@ -18,6 +20,8 @@ export interface TransitionsService {
   perform(request: TransitionRequest): Promise<TransitionResult>
   /** Publishes the scheduled entries that are due, as the scheduler does; see `publishDueEntries`. */
   publishDue(now?: Date): Promise<number>
+  /** The entries awaiting review, by site, that `mayRead` lets through; see `listInReview`. */
+  inReview(mayRead: (uid: string, entry?: object) => boolean): Promise<InReviewSite[]>
 }
 
 export default ({ strapi }: { strapi: Core.Strapi }): TransitionsService => ({
@@ -26,5 +30,8 @@ export default ({ strapi }: { strapi: Core.Strapi }): TransitionsService => ({
   },
   publishDue(now) {
     return publishDueEntries(strapi, now)
+  },
+  inReview(mayRead) {
+    return listInReview(strapi, mayRead)
   },
 })

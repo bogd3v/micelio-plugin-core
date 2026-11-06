@@ -71,6 +71,7 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Fixture page' }).waitFor()
     await expect(nav.getByRole('link').allTextContents()).resolves.toEqual([
       'Status',
+      'In review',
       'Block catalogue',
       'Export and import',
       'Fixture page',
@@ -132,6 +133,7 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Status' }).waitFor()
     await nav.getByRole('link', { name: 'Status' }).focus()
     for (const [name, path] of [
+      ['In review', /\/plugins\/micelio\/review$/],
       ['Block catalogue', /\/plugins\/micelio\/blocks$/],
       ['Export and import', /\/plugins\/micelio\/_export-import$/],
       ['Fixture page', /\/plugins\/micelio\/fixture$/],

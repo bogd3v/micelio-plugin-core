@@ -15,6 +15,7 @@ import AboutPage from './AboutPage'
 import BlocksPage from './BlocksPage'
 import BuilderPage from './BuilderPage'
 import PreviewPage from './PreviewPage'
+import ReviewPage from './ReviewPage'
 import StatusPage from './StatusPage'
 import TemplatesGalleryPage from './TemplatesGalleryPage'
 import TransferPage from './TransferPage'
@@ -83,6 +84,7 @@ export default function MicelioLayout() {
     >
       <Routes>
         <Route index element={canReadStatus ? <StatusPage /> : <Navigate to="about" replace />} />
+        <Route path="review" element={<ReviewPage />} />
         <Route path="blocks" element={<BlocksPage />} />
         <Route path="_export-import" element={<TransferPage />} />
         <Route path="about" element={<AboutPage />} />
