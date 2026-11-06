@@ -2,7 +2,7 @@ import { Typography } from '@strapi/design-system'
 import { useId } from 'react'
 import styled, { useTheme } from 'styled-components'
 
-import { hasMessage, useMessages } from '../../messages'
+import { useMessages } from '../../messages'
 import {
   itemsOf,
   missingRequired,
@@ -10,7 +10,9 @@ import {
   type TextField,
 } from '../../utils/builder/fields'
 import type { BuilderBlock } from '../../utils/builder/model'
-import { Input, Segment, Tool } from './controls'
+import { Segment, Tool } from './controls'
+import { fieldLabel, Input, labelStyle } from './fieldStyle'
+import { MediaInputs } from './MediaInputs'
 import { ChevronRightIcon, DownIcon, DuplicateIcon, TrashIcon, UpIcon } from './icons'
 
 const Aside = styled.aside`
@@ -106,19 +108,6 @@ const AddItem = styled.button`
   }
 `
 
-const labelStyle = (color: string) => ({ fontSize: 12, fontWeight: 600, color }) as const
-
-/** The label of a field: the plugin's translation for the common names, else the name made readable. */
-function fieldLabel(name: string, t: (id: string) => string): string {
-  const id = `builder.field.${name}`
-  if (hasMessage(id)) return t(id)
-  const words = name
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replaceAll('_', ' ')
-    .toLowerCase()
-  return words.charAt(0).toUpperCase() + words.slice(1)
-}
-
 interface BlockPanelProps {
   block: BuilderBlock
   name: string
@@ -133,8 +122,13 @@ interface BlockPanelProps {
   /** What the block adds to the page; `undefined` for a block the site's catalogue no longer lists. */
   cost: { kb: number; isIsland: boolean } | undefined
   isReadOnly: boolean
-  onSetFields: (values: Record<string, unknown>) => void
-  onSetItem: (field: string, index: number, values: Record<string, unknown>) => void
+  onSetFields: (values: Record<string, unknown>, isStep?: boolean) => void
+  onSetItem: (
+    field: string,
+    index: number,
+    values: Record<string, unknown>,
+    isStep?: boolean
+  ) => void
   onAddItem: (field: string) => void
   onSelectItem: (item: { field: string; index: number } | undefined) => void
   onMove: (step: -1 | 1) => void
@@ -202,8 +196,8 @@ function TextInputs(props: {
  * vocabulary, its text fields, its items one level down, and what it adds to the page.
  *
  * @remarks
- * It edits what the host's component stores and nothing it cannot show as text or as a choice:
- * media and relations stay in the Content Manager's form. A required field that is empty is
+ * It edits what the host's component stores and nothing it cannot show as text, as a choice or as
+ * files (`MediaInputs`): relations stay in the Content Manager's form. A required field that is empty is
  * marked, and the save still goes through (a draft may be incomplete; review and publish check).
  */
 export function BlockPanel(props: BlockPanelProps) {
@@ -300,14 +294,26 @@ export function BlockPanel(props: BlockPanelProps) {
           </nav>
         ) : null}
         {item && currentFields ? (
-          <TextInputs
-            fields={currentFields.text}
-            values={current ?? {}}
-            idPrefix={`${id}-item`}
-            isReadOnly={props.isReadOnly}
-            missing={missing}
-            onChange={(name, value) => props.onSetItem(item.field, item.index, { [name]: value })}
-          />
+          <>
+            <TextInputs
+              fields={currentFields.text}
+              values={current ?? {}}
+              idPrefix={`${id}-item`}
+              isReadOnly={props.isReadOnly}
+              missing={missing}
+              onChange={(name, value) => props.onSetItem(item.field, item.index, { [name]: value })}
+            />
+            <MediaInputs
+              fields={currentFields.media ?? []}
+              values={current ?? {}}
+              idPrefix={`${id}-item`}
+              isReadOnly={props.isReadOnly}
+              missing={missing}
+              onChange={(name, value, isStep) =>
+                props.onSetItem(item.field, item.index, { [name]: value }, isStep)
+              }
+            />
+          </>
         ) : (
           <>
             {fields.options.length > 0 ? (
@@ -344,7 +350,7 @@ export function BlockPanel(props: BlockPanelProps) {
                 </Typography>
               </>
             ) : null}
-            {fields.text.length > 0 || fields.items.length > 0 ? (
+            {fields.text.length > 0 || fields.items.length > 0 || fields.media ? (
               <Heading>{t('builder.panel.content')}</Heading>
             ) : null}
             <TextInputs
@@ -354,6 +360,14 @@ export function BlockPanel(props: BlockPanelProps) {
               isReadOnly={props.isReadOnly}
               missing={missing}
               onChange={(name, value) => props.onSetFields({ [name]: value })}
+            />
+            <MediaInputs
+              fields={fields.media ?? []}
+              values={block.fields}
+              idPrefix={`${id}-field`}
+              isReadOnly={props.isReadOnly}
+              missing={missing}
+              onChange={(name, value, isStep) => props.onSetFields({ [name]: value }, isStep)}
             />
             {fields.items.map((group) => {
               const list = itemsOf(block.fields, group.name)

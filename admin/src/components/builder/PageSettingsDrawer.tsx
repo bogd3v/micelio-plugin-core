@@ -13,7 +13,8 @@ import {
   type Visibility,
 } from '../../utils/builder/pageSettings'
 import type { SaveRefusal } from '../../utils/builder/refusal'
-import { Input, Segment, Tool } from './controls'
+import { Segment, Tool } from './controls'
+import { Input } from './fieldStyle'
 import { CloseIcon } from './icons'
 
 const Panel = styled.aside`

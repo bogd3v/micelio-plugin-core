@@ -55,20 +55,3 @@ export const Segment = styled.button<{ $isPressed: boolean }>`
     outline-offset: 1px;
   }
 `
-
-/** A single-line text field in the builder's panels. */
-export const Input = styled.input`
-  height: 40px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0 12px;
-  font: inherit;
-  font-size: 14px;
-  color: ${({ theme }) => theme.colors.neutral800};
-  background: ${({ theme }) => theme.colors.neutral0};
-  border: 1px solid ${({ theme }) => theme.colors.neutral200};
-  border-radius: 4px;
-  &[aria-invalid='true'] {
-    border-color: ${({ theme }) => theme.colors.danger600};
-  }
-`

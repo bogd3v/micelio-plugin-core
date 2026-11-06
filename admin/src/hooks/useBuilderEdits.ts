@@ -82,8 +82,9 @@ export interface BuilderEdits {
   move: (step: -1 | 1) => void
   copy: () => void
   remove: () => void
-  setValues: (values: Record<string, unknown>) => void
-  setItem: (field: string, index: number, values: Record<string, unknown>) => void
+  /** `isStep` false for a change that is not a step of the page (a file's alternative text). */
+  setValues: (values: Record<string, unknown>, isStep?: boolean) => void
+  setItem: (field: string, index: number, values: Record<string, unknown>, isStep?: boolean) => void
   addItem: (field: string) => void
   goBack: () => void
 }
@@ -192,7 +193,7 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
     select(neighbour ? { key: neighbour.key, item: undefined } : undefined)
     say(t('builder.toast.removed'))
   }
-  const setValues = (values: Record<string, unknown>) => {
+  const setValues = (values: Record<string, unknown>, isStep = true) => {
     if (!selectedBlock) return
     const [field, value] = Object.entries(values)[0] ?? []
     const isText =
@@ -205,12 +206,19 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
       Date.now() - last.at < 1500
     lastText.current =
       isText && field ? { key: selectedBlock.key, field, at: Date.now() } : undefined
-    edit(setFields(blocks, selectedBlock.key, values), !isSame)
+    edit(setFields(blocks, selectedBlock.key, values), isStep && !isSame)
+    // What is not text is a file (an option is a string too, and the panel offers nothing else).
+    if (isStep && typeof value !== 'string') say(t('builder.toast.files'))
     const address = isText ? addressOf(selectedBlock.key) : undefined
     if (address && field)
       frame.current?.post(patchMessage(address, { [field]: value as string }, []))
   }
-  const setItem = (field: string, index: number, values: Record<string, unknown>) => {
+  const setItem = (
+    field: string,
+    index: number,
+    values: Record<string, unknown>,
+    isStep = true
+  ) => {
     if (!selectedBlock) return
     const list = itemsOf(selectedBlock.fields, field).map((item, at) =>
       at === index ? { ...item, ...values } : item
@@ -228,7 +236,8 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
       typeof value === 'string'
         ? { key: selectedBlock.key, field: spot, at: Date.now() }
         : undefined
-    edit(setFields(blocks, selectedBlock.key, { [field]: list }), !isSame)
+    edit(setFields(blocks, selectedBlock.key, { [field]: list }), isStep && !isSame)
+    if (isStep && typeof value !== 'string') say(t('builder.toast.files'))
     const address = addressOf(selectedBlock.key)
     const content = Object.fromEntries(
       Object.entries(values).filter(
