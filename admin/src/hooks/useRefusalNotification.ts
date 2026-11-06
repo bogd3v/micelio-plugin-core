@@ -1,5 +1,6 @@
 import { useNotification } from '@strapi/strapi/admin'
 import { useCallback } from 'react'
+import { useIntl } from 'react-intl'
 import { useHref } from 'react-router-dom'
 
 import { useMessages } from '../messages'
@@ -17,16 +18,17 @@ import { refusalNotification, type RefusedEntry } from '../utils/refusal'
 export function useRefusalNotification(): (problem: unknown, entry: RefusedEntry) => boolean {
   const { toggleNotification } = useNotification()
   const { t } = useMessages()
+  const { locale } = useIntl()
   // The admin is served under a path of its own (`/admin`): the link needs it, `to` does not.
   const root = useHref('/').replace(/\/+$/, '')
 
   return useCallback(
     (problem, entry) => {
-      const notification = refusalNotification(problem, entry, root, t)
+      const notification = refusalNotification(problem, entry, root, locale, t)
       if (!notification) return false
       toggleNotification(notification)
       return true
     },
-    [toggleNotification, t, root]
+    [toggleNotification, t, root, locale]
   )
 }

@@ -30,17 +30,25 @@ const OVER = {
 
 describe('the notification of a refused publish', () => {
   it('says how far over the budget a page is and names its heaviest blocks', () => {
-    expect(refusalNotice(OVER, ENTRY)).toEqual({
+    expect(refusalNotice(OVER, ENTRY, 'en')).toEqual({
       message: {
         id: 'refusal.pageOverBudget',
         values: {
-          weight: '170',
-          budget: '120',
-          over: '50',
-          blocks: 'gallery (80 kB), hero (50.5 kB), quote (30 kB)',
+          weight: '170.0',
+          budget: '120.0',
+          over: '50.0',
+          blocks: 'gallery (80.0 kB), hero (50.5 kB), quote (30.0 kB)',
         },
       },
       previewPath: PREVIEW,
+    })
+  })
+
+  it('writes the weights with the decimal mark of the editor’s locale', () => {
+    expect(refusalNotice(OVER, ENTRY, 'es')?.message.values).toMatchObject({
+      weight: '170,0',
+      over: '50,0',
+      blocks: 'gallery (80,0 kB), hero (50,5 kB), quote (30,0 kB)',
     })
   })
 
@@ -50,20 +58,22 @@ describe('the notification of a refused publish', () => {
       code: 'previewUnavailable',
       detail: 'The site has no url, so there is no frontend to measure the page on',
     }
-    expect(refusalNotice(problem, ENTRY)).toEqual({
+    expect(refusalNotice(problem, ENTRY, 'en')).toEqual({
       message: { id: 'refusal.previewUnavailable', values: { cause: problem.detail } },
       previewPath: PREVIEW,
     })
   })
 
   it('links the preview of a type that is not localised without a locale', () => {
-    const notice = refusalNotice(OVER, { ...ENTRY, locale: null })
+    const notice = refusalNotice(OVER, { ...ENTRY, locale: null }, 'en')
     expect(notice?.previewPath).toBe('/plugins/micelio/preview/api%3A%3Apage.page/doc1')
   })
 
   it('reads a list of blocks it cannot read as no blocks, and a missing detail as no cause', () => {
-    expect(refusalNotice({ ...OVER, blocks: 'many' }, ENTRY)?.message.values.blocks).toBe('')
-    expect(refusalNotice({ code: 'previewUnavailable' }, ENTRY)?.message.values.cause).toBe('')
+    expect(refusalNotice({ ...OVER, blocks: 'many' }, ENTRY, 'en')?.message.values.blocks).toBe('')
+    expect(refusalNotice({ code: 'previewUnavailable' }, ENTRY, 'en')?.message.values.cause).toBe(
+      ''
+    )
   })
 
   it.each([
@@ -73,7 +83,7 @@ describe('the notification of a refused publish', () => {
     ['nothing', null],
     ['a number', 409],
   ])('leaves %s to the control that made the request', (_name, problem) => {
-    expect(refusalNotice(problem, ENTRY)).toBeUndefined()
+    expect(refusalNotice(problem, ENTRY, 'en')).toBeUndefined()
   })
 
   it('has its texts in English and Spanish, and fills every value they take', () => {
@@ -103,7 +113,7 @@ describe('refusalNotification', () => {
     `${id}${values ? JSON.stringify(values) : ''}`
 
   it('is a danger notification whose link goes under the root of the admin', () => {
-    const notification = refusalNotification(OVER, ENTRY, '/admin', t)
+    const notification = refusalNotification(OVER, ENTRY, '/admin', 'en', t)
     expect(notification).toMatchObject({
       type: 'danger',
       title: 'refusal.title',
@@ -111,21 +121,21 @@ describe('refusalNotification', () => {
       timeout: 15_000,
     })
     expect(notification?.message).toContain('refusal.pageOverBudget')
-    expect(notification?.message).toContain('gallery (80 kB), hero (50.5 kB), quote (30 kB)')
+    expect(notification?.message).toContain('gallery (80.0 kB), hero (50.5 kB), quote (30.0 kB)')
   })
 
   it('links without a prefix when the admin is served at the top', () => {
-    expect(refusalNotification(OVER, ENTRY, '', t)?.link.url).toBe(PREVIEW)
+    expect(refusalNotification(OVER, ENTRY, '', 'en', t)?.link.url).toBe(PREVIEW)
   })
 
   it('says the cause of an unavailable measurement', () => {
     const problem = { code: 'previewUnavailable', detail: 'The site has no url' }
-    expect(refusalNotification(problem, ENTRY, '/admin', t)?.message).toBe(
+    expect(refusalNotification(problem, ENTRY, '/admin', 'en', t)?.message).toBe(
       'refusal.previewUnavailable{"cause":"The site has no url"}'
     )
   })
 
   it('is undefined for a refusal that is not a budget one', () => {
-    expect(refusalNotification({ code: 'forbidden' }, ENTRY, '/admin', t)).toBeUndefined()
+    expect(refusalNotification({ code: 'forbidden' }, ENTRY, '/admin', 'en', t)).toBeUndefined()
   })
 })

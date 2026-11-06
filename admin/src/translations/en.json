@@ -426,6 +426,7 @@
   "builder.palette.costIsland": "island · {weight}",
   "builder.palette.notAllowed": "Not allowed on {type} pages: the page type's catalogue excludes it.",
   "builder.palette.overBudget": "{left} kB left on this page. You can add it, but publishing will be refused until the page fits.",
+  "builder.palette.pageOver": "This page is {left} kB over its budget. You can add it, but publishing will be refused until the page fits.",
   "builder.palette.help.before": "Drag a block into the page, or select a block and press",
   "builder.palette.help.key": "Enter",
   "builder.palette.help.after": "to insert it after the selection.",

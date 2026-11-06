@@ -1,10 +1,16 @@
 import { Typography } from '@strapi/design-system'
 import { useId, type RefObject } from 'react'
+import { useIntl } from 'react-intl'
 import styled, { useTheme, type DefaultTheme } from 'styled-components'
 
 import { useMessages } from '../../messages'
 import { setGhost } from '../../utils/builder/ghost'
-import { highlight, type PaletteGroup, type PaletteRow } from '../../utils/builder/palette'
+import {
+  budgetNote,
+  highlight,
+  type PaletteGroup,
+  type PaletteRow,
+} from '../../utils/builder/palette'
 import { BlockGlyph } from './icons'
 import { IslandBadge } from './IslandBadge'
 import { islandOf, weightText } from '../../utils/builder/islands'
@@ -174,9 +180,11 @@ function Name({ name, search }: { name: string; search: string }) {
 export function Palette(props: PaletteProps) {
   const { colors } = useTheme()
   const { t } = useMessages()
+  const { locale } = useIntl()
   const id = useId()
   const { groups, search, onSearch, matched, total } = props
   const isSearching = search.trim() !== ''
+  const note = budgetNote(props.leftKb ?? 0, locale)
   return (
     <Aside aria-label={t('builder.palette.label')}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -301,9 +309,7 @@ export function Palette(props: PaletteProps) {
                       </Note>
                     ) : null}
                     {row.state === 'overBudget' ? (
-                      <Note id={`${rowId}-note`}>
-                        {t('builder.palette.overBudget', { left: props.leftKb ?? 0 })}
-                      </Note>
+                      <Note id={`${rowId}-note`}>{t(note.id, note.values)}</Note>
                     ) : null}
                   </Item>
                 )

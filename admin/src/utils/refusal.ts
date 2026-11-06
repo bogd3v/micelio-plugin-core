@@ -36,14 +36,19 @@ function toBlocks(value: unknown): Pick<BudgetBlock, 'id' | 'kb'>[] {
 /**
  * The notification for a publish that `POST /micelio/transitions` refused, from the problem detail
  * it answered (`docs/api.md`): the blocks that weigh the most and by how much the page is over its
- * budget for `pageOverBudget`, the cause for `previewUnavailable`.
+ * budget for `pageOverBudget`, the cause for `previewUnavailable`. The weights are written in the
+ * editor's `locale`.
  *
  * @remarks
  * The problem detail is `unknown` until narrowed here. A refusal that is neither answers
  * `undefined`: the control that made the request has its own text for it. The branch is on `code`,
  * never on the text; the `detail` of `previewUnavailable` is a fixed sentence of the plugin.
  */
-export function refusalNotice(problem: unknown, entry: RefusedEntry): RefusalNotice | undefined {
+export function refusalNotice(
+  problem: unknown,
+  entry: RefusedEntry,
+  locale: string
+): RefusalNotice | undefined {
   if (!isRecord(problem)) return undefined
   const previewPath = previewPagePath(entry.uid, entry.documentId, entry.locale)
   if (problem.code === 'previewUnavailable') {
@@ -58,15 +63,15 @@ export function refusalNotice(problem: unknown, entry: RefusedEntry): RefusalNot
   ) {
     const blocks = toBlocks(problem.blocks)
       .slice(0, NAMED_BLOCKS)
-      .map(({ id, kb }) => `${id} (${formatKb(kb)} kB)`)
+      .map(({ id, kb }) => `${id} (${formatKb(kb, locale)} kB)`)
       .join(', ')
     return {
       message: {
         id: 'refusal.pageOverBudget',
         values: {
-          weight: formatKb(problem.blocksKb),
-          budget: formatKb(problem.budgetKb),
-          over: formatKb(problem.overByKb),
+          weight: formatKb(problem.blocksKb, locale),
+          budget: formatKb(problem.budgetKb, locale),
+          over: formatKb(problem.overByKb, locale),
           blocks,
         },
       },
@@ -93,15 +98,17 @@ const NOTIFICATION_MS = 15_000
  * admin's `root` path (`/admin`, or `''` when it is served at the top), or `undefined` when the
  * refusal is not a budget one.
  *
+ * @param locale - The editor's locale, for the decimal mark of the weights.
  * @param t - The translator of the plugin's strings (`useMessages`).
  */
 export function refusalNotification(
   problem: unknown,
   entry: RefusedEntry,
   root: string,
+  locale: string,
   t: (id: string, values?: Record<string, string | number>) => string
 ): RefusalNotification | undefined {
-  const notice = refusalNotice(problem, entry)
+  const notice = refusalNotice(problem, entry, locale)
   if (!notice) return undefined
   return {
     type: 'danger',

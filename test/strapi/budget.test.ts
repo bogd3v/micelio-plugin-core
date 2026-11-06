@@ -399,14 +399,14 @@ describe('the budget of a page at publish', () => {
     it('answers a problem detail the admin’s notification reads, over its budget and unmeasurable', async () => {
       const entry = { uid: STORY, documentId: await storyOf(2), locale: 'en' }
       frontend.blockKb = 70
-      const over = refusalNotice(await problemOf(await publish(entry.documentId)), entry)
+      const over = refusalNotice(await problemOf(await publish(entry.documentId)), entry, 'en')
       expect(over?.message).toEqual({
         id: 'refusal.pageOverBudget',
         values: {
-          weight: '140',
-          budget: '120',
-          over: '20',
-          blocks: 'quote (70 kB), quote (70 kB)',
+          weight: '140.0',
+          budget: '120.0',
+          over: '20.0',
+          blocks: 'quote (70.0 kB), quote (70.0 kB)',
         },
       })
       expect(over?.previewPath).toContain(
@@ -414,7 +414,11 @@ describe('the budget of a page at publish', () => {
       )
       frontend.blockKb = 5
       frontend.queue = [{ status: 500 }]
-      const unavailable = refusalNotice(await problemOf(await publish(entry.documentId)), entry)
+      const unavailable = refusalNotice(
+        await problemOf(await publish(entry.documentId)),
+        entry,
+        'en'
+      )
       expect(unavailable?.message.id).toBe('refusal.previewUnavailable')
       expect(unavailable?.message.values.cause).toMatch(/^The frontend could not measure the page/)
     })

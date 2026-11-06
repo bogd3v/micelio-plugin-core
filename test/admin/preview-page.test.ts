@@ -920,7 +920,7 @@ describe('the preview page in the admin', () => {
     it('shows the weight against the budget when the page opens', async () => {
       weigh(5, 90)
       const page = await openLanding()
-      await expect(page.getByTestId('cost-line').textContent()).resolves.toBe('10 kB of 120 kB')
+      await expect(page.getByTestId('cost-line').textContent()).resolves.toBe('10.0 kB of 120.0 kB')
       await expect(meterOf(page).getAttribute('data-level')).resolves.toBe('ok')
       await expect(page.getByTestId('cost-standing').textContent()).resolves.toBe(
         en['cost.level.ok']
@@ -931,15 +931,15 @@ describe('the preview page in the admin', () => {
       // [kB of each of the two blocks, the weight, the level]: the colour changes at 90 % (108 kB) and
       // past 100 % (120 kB), and a page exactly on its budget publishes.
       [53.95, '107.9', 'ok'],
-      [54, '108', 'near'],
-      [60, '120', 'near'],
+      [54, '108.0', 'near'],
+      [60, '120.0', 'near'],
       [60.05, '120.1', 'over'],
     ] as const)('with blocks of %d kB the blocks weigh %s kB: %s', async (each, total, level) => {
       weigh(each)
       const page = await openLanding()
       await eventually(() => meterOf(page).getAttribute('data-level')).toBe(level)
       await expect(page.getByTestId('cost-line').textContent()).resolves.toBe(
-        `${total} kB of ${BUDGET} kB`
+        `${total} kB of ${BUDGET}.0 kB`
       )
       await expect(violationsOf(page)).resolves.toEqual([])
     })
@@ -961,7 +961,7 @@ describe('the preview page in the admin', () => {
           const current = await meterOf(page).getAttribute('data-level')
           const total = await page.getByTestId('cost-line').textContent()
           return `${current}:${total}`
-        }).toBe(`${level}:${(each * 2).toFixed(1).replace(/\.0$/, '')} kB of ${BUDGET} kB`)
+        }).toBe(`${level}:${(each * 2).toFixed(1)} kB of ${BUDGET}.0 kB`)
         seen.push(level)
       }
       expect(seen).toEqual(['ok', 'near', 'near', 'over', 'ok'])
@@ -979,13 +979,13 @@ describe('the preview page in the admin', () => {
       weigh(5, 90)
       site.weight.onDemandKb = { scene: 600 }
       const page = await openLanding()
-      await expect(page.getByTestId('cost-line').textContent()).resolves.toBe('10 kB of 120 kB')
+      await expect(page.getByTestId('cost-line').textContent()).resolves.toBe('10.0 kB of 120.0 kB')
       await expect(meterOf(page).getAttribute('data-level')).resolves.toBe('ok')
       await expect(page.getByTestId('cost-framework').textContent()).resolves.toBe(
-        text(en, 'cost.framework', { kb: '90' })
+        text(en, 'cost.framework', { kb: '90.0' })
       )
       await expect(page.getByTestId('cost-on-demand').textContent()).resolves.toBe(
-        text(en, 'cost.onDemand', { kb: '600' })
+        text(en, 'cost.onDemand', { kb: '600.0' })
       )
     })
 
@@ -997,8 +997,8 @@ describe('the preview page in the admin', () => {
       await details.locator('summary').click()
       const rows = details.locator('tbody tr')
       await expect(rows.count()).resolves.toBe(2)
-      await expect(rows.nth(0).innerText()).resolves.toMatch(/1\s+rich-text\s+5\s+–/)
-      await expect(rows.nth(1).innerText()).resolves.toMatch(/2\s+scene\s+5\s+600/)
+      await expect(rows.nth(0).innerText()).resolves.toMatch(/1\s+rich-text\s+5\.0\s+–/)
+      await expect(rows.nth(1).innerText()).resolves.toMatch(/2\s+scene\s+5\.0\s+600\.0/)
       await expect(violationsOf(page)).resolves.toEqual([])
     })
 
@@ -1013,7 +1013,9 @@ describe('the preview page in the admin', () => {
         documentId: landingId,
       })
       try {
-        await eventually(() => page.getByTestId('cost-line').textContent()).toBe('12 kB of 120 kB')
+        await eventually(() => page.getByTestId('cost-line').textContent()).toBe(
+          '12.0 kB of 120.0 kB'
+        )
         expect(site.weight.requests.length).toBeGreaterThan(before)
       } finally {
         await saveDraft('Priced landing', 'en', { uid: LANDING_UID, documentId: landingId })
@@ -1078,7 +1080,9 @@ describe('the preview page in the admin', () => {
       await eventually(() => alert.count()).toBe(1)
       await expect(violationsOf(page)).resolves.toEqual([])
       await measureAgain(page)
-      await eventually(() => page.getByTestId('cost-line').textContent()).toBe('10 kB of 120 kB')
+      await eventually(() => page.getByTestId('cost-line').textContent()).toBe(
+        '10.0 kB of 120.0 kB'
+      )
     })
 
     it('asks the weight route with the editor’s own grant, in the dynamic mode and the locale of the entry', async () => {
@@ -1171,7 +1175,7 @@ describe('the preview page in the admin', () => {
     it('shows what the saved draft weighs against its budget and when it was measured, after Measure', async () => {
       weigh(5)
       const page = await measured()
-      await expect(lineOf(page).textContent()).resolves.toBe('10 kB of 120 kB')
+      await expect(lineOf(page).textContent()).resolves.toBe('10.0 kB of 120.0 kB')
       await expect(lineOf(page).getAttribute('data-level')).resolves.toBe('ok')
       // The time carries the seconds, so a second measurement reads as new.
       await expect(page.getByTestId('cost-measured-at').textContent()).resolves.toMatch(
@@ -1206,13 +1210,13 @@ describe('the preview page in the admin', () => {
     it('turns at 90 % of the budget and past 100 %', async () => {
       for (const [each, level, total] of [
         [53.95, 'ok', '107.9'],
-        [54, 'near', '108'],
+        [54, 'near', '108.0'],
         [60.05, 'over', '120.1'],
       ] as const) {
         weigh(each, 10)
         const page = await measured()
         await expect(lineOf(page).getAttribute('data-level')).resolves.toBe(level)
-        await expect(lineOf(page).textContent()).resolves.toBe(`${total} kB of ${BUDGET} kB`)
+        await expect(lineOf(page).textContent()).resolves.toBe(`${total} kB of ${BUDGET}.0 kB`)
       }
     })
 
@@ -1228,7 +1232,7 @@ describe('the preview page in the admin', () => {
         const stale = page.getByTestId('cost-measured-at')
         await eventually(() => stale.textContent()).toContain(en['cost.panel.stale'])
         // The save did not render the draft on the site by itself.
-        await expect(lineOf(page).textContent()).resolves.toBe('10 kB of 120 kB')
+        await expect(lineOf(page).textContent()).resolves.toBe('10.0 kB of 120.0 kB')
         expect(site.weight.requests).toEqual([])
         // The line shows the server's time of the measurement to the second: the server's clock
         // (this process's `Date`, still running) moves on, so the second measurement is told apart
@@ -1236,7 +1240,7 @@ describe('the preview page in the admin', () => {
         vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
         vi.advanceTimersByTime(2000)
         await page.getByRole('button', { name: en['cost.measureAgain'] }).click()
-        await eventually(() => lineOf(page).textContent()).toBe('12 kB of 120 kB')
+        await eventually(() => lineOf(page).textContent()).toBe('12.0 kB of 120.0 kB')
         const second = await stale.textContent()
         expect(second).not.toBe(first)
         expect(second).toContain(en['cost.panel.saved'])
@@ -1308,7 +1312,7 @@ describe('the preview page in the admin', () => {
       await measureButton(spanish, es).click()
       await lineOf(spanish).waitFor()
       await expect(lineOf(spanish).textContent()).resolves.toBe(
-        text(es, 'cost.line', { total: '120.1', budget: '120' })
+        text(es, 'cost.line', { total: '120,1', budget: '120,0' })
       )
       const stamp = (await spanish.getByTestId('cost-measured-at').textContent()) ?? ''
       expect(stamp).toContain(text(es, 'cost.panel.saved'))
@@ -1353,10 +1357,10 @@ describe('the preview page in the admin', () => {
           path: `${base}/admin/plugins/micelio/preview/${LANDING_UID}/${landingId}`,
         })
         await expect(spanish.getByTestId('cost-line').textContent()).resolves.toBe(
-          text(es, 'cost.line', { total: '120.1', budget: '120' })
+          text(es, 'cost.line', { total: '120,1', budget: '120,0' })
         )
         await expect(spanish.getByTestId('cost-standing').textContent()).resolves.toBe(
-          text(es, 'cost.level.over', { over: '0.1' })
+          text(es, 'cost.level.over', { over: '0,1' })
         )
         const shown = (await spanish.getByRole('main').textContent()) ?? ''
         for (const id of ['cost.title', 'cost.details', 'cost.measureAgain']) {

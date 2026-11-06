@@ -1,5 +1,7 @@
 import type { IslandKind } from '../../../../contract/islands'
 
+import { formatKb } from '../costMeter'
+
 /** A block of the site's catalogue as `GET /micelio/blocks?site=` answers it, reduced to what the builder reads. */
 export interface CatalogueEntry {
   /** The block's catalogue id, such as `feature-grid`. */
@@ -46,6 +48,24 @@ export interface PaletteGroup {
   /** `recent`, `results`, `section`, `article` or `overBudget`. */
   id: 'recent' | 'results' | 'section' | 'article' | 'overBudget'
   rows: PaletteRow[]
+}
+
+/**
+ * What the note of an over-budget row says about the page: the room left, or how far over it is.
+ *
+ * @param leftKb - The budget minus the blocks' weight, in kB; negative when the page is over.
+ * @param locale - The editor's locale, for the decimal mark.
+ * @returns A message id of `translations/en.json` and its values, with the weight in one decimal.
+ */
+export function budgetNote(
+  leftKb: number,
+  locale: string
+): { id: 'builder.palette.overBudget' | 'builder.palette.pageOver'; values: { left: string } } {
+  return {
+    // Decided on the tenths that are printed, so "0.0 kB over" never reads.
+    id: Math.round(leftKb * 10) < 0 ? 'builder.palette.pageOver' : 'builder.palette.overBudget',
+    values: { left: formatKb(Math.abs(leftKb), locale) },
+  }
 }
 
 /** The weight a block adds to a page, in kB with one decimal (gzip bytes of CSS and JS; an island's on-demand script is apart). */

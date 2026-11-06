@@ -299,7 +299,7 @@ describe('the Block catalogue page in the admin', () => {
     site.weight.blockKb = { scene: 3, 'rich-text': 1 }
     await drawer.getByRole('button', { name: 'Measure again' }).click()
     await that(drawer.getByTestId('block-cost')).toHaveText(
-      'Declared 1.9 kB · measured now 3 kB on Priced landing (1.1 kB over)'
+      'Declared 1.9 kB · measured now 3.0 kB on Priced landing (1.1 kB over)'
     )
   })
 
