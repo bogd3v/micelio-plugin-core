@@ -155,8 +155,8 @@ async function upload(strapi, name, mimetype, bytes) {
         data: { fileInfo: { name, alternativeText: name } },
         files: { filepath, originalFilename: name, mimetype, size: bytes.length },
       })
-    // The frontend prefixes a relative media URL with the address it reaches the CMS at (`cms:1337`),
-    // which a browser on the host cannot resolve: an absolute URL on the published port is kept as is.
+    // The frontend prefixes a relative media URL with NUXT_PUBLIC_STRAPI_URL (`http://localhost:1337`
+    // in compose.dev.yml); the seeded files keep an absolute URL on the published port all the same.
     const origin = process.env.CMS_PUBLIC_URL
     if (origin && file.url.startsWith('/')) {
       await strapi.db
