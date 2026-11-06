@@ -60,7 +60,7 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
   - `page-settings/` is what a host's page type gains with `withPageSettings` (#52): `pageType` and
     the `visibility` component, and the redirects `performTransition` writes in the transaction
     of a publish that changes the live slug (`redirects.ts` pure, `record.ts` the writes).
-    `plugin::micelio.redirect` is keyed by site and never exported;
+    `plugin::micelio.redirect` is keyed by site and travels in the site archive (`redirects.json`);
     `GET /api/micelio/redirects?site=` serves it with an `ETag` (`controllers/redirects.ts`,
     permission `plugin::micelio.redirects.find`), and `GET /micelio/budget/page-types` lists the
     page types for the drawer. Details:

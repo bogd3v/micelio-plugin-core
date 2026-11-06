@@ -410,6 +410,50 @@ The plugin's **Export and import** and **About Micelio** pages, in the admin at 
 7. Open **Micelio → About Micelio**: versions, the connected frontend with _OK_, the diagnostics block and **Copy diagnostics**. Paste the clipboard anywhere: it holds versions and counts, no email, token or content.
 8. The update check: `docker compose -f compose.dev.yml logs cms` shows no line for it; to see what leaves the CMS, run the stack with `MICELIO_UPDATE_CHECK=false npm run dev:docker` and press **Run checks again**: the _Update available_ row says the check is off, and `docker compose -f compose.dev.yml exec cms sh -c 'ss -tn | grep -c :443'` stays at `0` (the only other connection is to the frontend, on port 8080). With the default, the row says whether the release feed answered.
 
+## Try the redirects in an archive
+
+The redirects of a site travel in its archive (`redirects.json`,
+[export format](../export-format.md#redirects)). This starts from the stack as it is, whatever
+the sections above left in it.
+
+1. In **Content Manager → Site**, create a third site: name `Third`, slug `third`, `modules` all
+   off, no hosts.
+2. In **Content Manager → Redirect**, create three entries (they have no draft, so **Save** is
+   enough): `from` `/old-a`, `to` `/new-a`, `entryLocale` `en`, `site` Example Site; `from`
+   `/old-b`, `to` `/new-b`, `entryLocale` `en`, `site` Example Site; and `from` `/old-a`, `to`
+   `/mine`, `entryLocale` `en`, `site` Third.
+3. Open **Micelio → Export and import**. With **Example Site (default)** chosen, press **Prepare
+   the export** and **Download** the file, as in the section above.
+4. Choose the site **Third**, choose the file under **Import into Third**, choose **Keep both**
+   and press **Import n items**.
+5. Read the redirects of **Third** from the content API. In Settings → API Tokens create a token
+   of type **Full access**; type it at the prompt (nothing is echoed) and keep it out of any file:
+
+   ```bash
+   read -rs TOKEN && export TOKEN
+   curl -s -H "Authorization: Bearer $TOKEN" 'localhost:1337/api/micelio/redirects?site=third' \
+     | jq -c '.data[] | {from, to, locale}'
+   # {"from":"/old-a","to":"/mine","locale":"en"}
+   # {"from":"/old-b","to":"/new-b","locale":"en"}
+   ```
+
+   `/old-b` came with the archive. `/old-a` kept the target `/mine` that **Third** had: a
+   redirect whose address the site already redirects is not overwritten.
+
+6. Example Site keeps its own two:
+
+   ```bash
+   curl -s -H "Authorization: Bearer $TOKEN" 'localhost:1337/api/micelio/redirects?site=default' \
+     | jq -c '.data[] | {from, to, locale}'
+   # {"from":"/old-a","to":"/new-a","locale":"en"}
+   # {"from":"/old-b","to":"/new-b","locale":"en"}
+   ```
+
+   (The list may hold more if you ran [the page settings](#try-the-page-settings) before.) A
+   redirect that leaves the site is skipped and reported by the import; the suite
+   `test/strapi/site-redirects.test.ts` covers it, because the page does not write an archive
+   with one.
+
 ## Try the preview with curl
 
 To see what the routes do, one by one, play the frontend with `curl`. The seed gives you a custom API token for it, `PREVIEW_API_TOKEN` in `.env.docker`; load it without printing the file. A `.env.docker` written before the preview existed lacks it: run `npm run dev:docker -- down`, delete `.env.docker` and start again.

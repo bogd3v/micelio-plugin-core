@@ -1,4 +1,4 @@
-// Writes one site as an archive of format 1.0 (`docs/export-format.md`).
+// Writes one site as an archive of format 1.2 (`docs/export-format.md`).
 import { createHash } from 'node:crypto'
 import { Readable, type Writable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
@@ -13,6 +13,7 @@ import {
   MANIFEST_PATH,
   MEDIA_FOLDER,
   MEDIA_INDEX_PATH,
+  REDIRECTS_PATH,
 } from './constants'
 import { ExportError } from './errors'
 import { digestFile, openFile, type LocatedFile } from './media'
@@ -25,6 +26,7 @@ import {
   type ExportedType,
   type Row,
 } from './model'
+import { redirectsOf } from './redirects'
 import { selectSections, writeSections } from './sections'
 import { populateOf, type Attributes, type SerialiseContext, type StoredFile } from './serialise'
 import { tarChunks, type TarFile } from './tar'
@@ -35,6 +37,7 @@ import type {
   Manifest,
   MediaEntry,
   MediaRef,
+  RedirectsFile,
 } from './types'
 
 /** What to export. */
@@ -165,8 +168,14 @@ export async function exportSite(
     documentId: site.documentId,
     slug: site.slug,
   })
+  // The redirects belong to the site's pages: they travel with its content.
+  const redirects: RedirectsFile = {
+    site: { documentId: site.documentId, slug: site.slug },
+    redirects: scope.content ? await redirectsOf(strapi, site.documentId) : [],
+  }
   const files: TarFile[] = [
     ...contents.map((content) => jsonFile(`${CONTENT_FOLDER}/${content.type}.json`, content)),
+    jsonFile(REDIRECTS_PATH, redirects),
     ...written.files,
   ]
   const indexFile = jsonFile(MEDIA_INDEX_PATH, { media: index })
@@ -208,6 +217,7 @@ export async function exportSite(
       count: index.length,
       bytes: index.reduce((sum, entry) => sum + entry.bytes, 0),
     },
+    redirects: { file: REDIRECTS_PATH, count: redirects.redirects.length },
     files: Object.fromEntries(Object.entries(digests).sort(([a], [b]) => compare(a, b))),
   }
 
