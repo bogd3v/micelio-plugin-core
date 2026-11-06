@@ -98,7 +98,10 @@ services:
     ports:
       - '127.0.0.1:3000:8080'
     environment:
-      NUXT_PUBLIC_STRAPI_URL: http://cms:1337
+      # The address of the CMS that a browser opens: the frontend completes a relative media url (an upload's
+      # `/uploads/...`) with it. media-forward, below, shares this container's network and forwards that
+      # port to the cms service, so the frontend's own calls reach the CMS on it too.
+      NUXT_PUBLIC_STRAPI_URL: http://localhost:1337
       NUXT_STRAPI_API_TOKEN: ${FRONTEND_API_TOKEN:-}
       NUXT_PUBLIC_SITE_URL: http://localhost:3000
       # The origin of the admin page that frames a draft: without it the preview is off (docs/operate/preview.md).
