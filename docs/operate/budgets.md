@@ -80,9 +80,15 @@ The edit view of a page of a measured type has a side panel, **Weight of the blo
 
 The edit view holds no grant, so pressing **Measure** gets the editor's own as the preview page does: it asks the plugin for a preview token and loads the site with it in a frame that is never shown, reads the weight route with the cookie that frame set, and drops the frame. **Each press renders the draft once on the frontend** and costs one token request (the token route's limit of 20 a minute for each admin user applies); opening the edit view costs neither, and nothing refreshes the grant there. It needs what the meter needs (the site's `url`, `frame-src` and `connect-src`, the frontend's CORS answer) and shares its limit: where the browser sends no cookie to a frame of another site (Safari, [preview.md](preview.md)), the panel says the page could not be measured from the edit view and links to the preview, whose **Open in a new tab** works there. A previewed type that `budgets.contentTypes` does not list says it has no budget when **Measure** is pressed.
 
-## When a publish is refused, in the Content Manager
+## When a publish is refused
 
-A refused publish is told to the editor in a notification of the admin, "The page was not published", with a link to the preview page: for `pageOverBudget` the weight of the blocks, the budget, how far over it is and the three heaviest blocks; for `previewUnavailable` the cause the plugin gives (the site has no `url`, the frontend could not measure the page, or the draft was saved meanwhile). The text comes from the problem detail of `POST /micelio/transitions` ([api.md](../api.md)), and the admin never estimates. The notification is built, but **nothing in the admin calls the transitions route yet**: the control that does is bogd3v/micelio-plugin-core#57, which hands the answer to `useRefusalNotification` (`admin/src/hooks/`). Until then the refusal reaches the editor only as the answer of the API.
+A refused publish in the builder or on the In review page is told to the editor in a notification of
+the admin ([Review, schedule and publish](../guide/review.md)): for `pageOverBudget` the weight of
+the blocks, the budget, how far over it is and the three heaviest blocks, with **Go to the block**
+for the heaviest; for `previewUnavailable` the cause the plugin gives (the site has no `url`, the
+frontend could not measure the page, or the draft was saved meanwhile), with a link to the preview
+page. The text comes from the problem detail of `POST /micelio/transitions` ([api.md](../api.md)),
+read by `refusalNotice` (`admin/src/utils/refusal.ts`), and the admin never estimates.
 
 ## Upgrade notes
 

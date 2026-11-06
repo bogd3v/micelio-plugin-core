@@ -15,6 +15,12 @@ export default (): Core.RouterInput => ({
     },
     {
       method: 'GET',
+      path: '/review',
+      handler: 'transitions.inReview',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
       path: '/blocks',
       handler: 'blocks.find',
       config: { policies: ['admin::isAuthenticatedAdmin'] },

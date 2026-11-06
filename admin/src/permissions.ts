@@ -24,3 +24,6 @@ export const TEMPLATES_MANAGE_PERMISSION = {
   action: 'plugin::micelio.templates.manage',
   subject: null,
 }
+
+/** Opens the In review page; the server's `REVIEW_READ_PERMISSION`, registered in its `bootstrap`. */
+export const REVIEW_READ_PERMISSION = { action: 'plugin::micelio.review.read', subject: null }

@@ -1,5 +1,10 @@
 import type { Core, UID } from '@strapi/strapi'
-import { EDITORIAL_ATTRIBUTE, type EditorialState } from '../constants/editorial'
+import {
+  EDITORIAL_ATTRIBUTE,
+  EDITORIAL_NOTE_MAX_LENGTH,
+  LINK_TO_DRAFT,
+  type EditorialState,
+} from '../constants/editorial'
 import { SLUG_ATTRIBUTE } from '../constants/page-settings'
 import type { BudgetService } from '../services/budget'
 import { hooksOf } from '../hooks'
@@ -13,6 +18,7 @@ import { SITE_ATTRIBUTE } from '../site-scope'
 import type { EntryPayload, TransitionPayload } from '../types/hooks'
 import { isEditorial } from '.'
 import { runAsTransition } from './context'
+import { findLinksToDraftsIn, type LinkToDraft } from './links'
 import { type Actor, isTransition, mayPerform, parseEditorialPolicy } from './machine'
 
 /** What a transition is asked to do. */
@@ -25,6 +31,16 @@ export interface TransitionRequest {
   to: EditorialState
   /** When to publish, in the future. Required to move to `scheduled`, ignored otherwise. */
   publishAt?: string | Date
+  /**
+   * A note for the next person, stored as the component's `note` until the next transition: what
+   * changed for the reviewer, or why a reviewer sends the page back. Omitted or blank: none.
+   */
+  note?: string
+  /**
+   * Run every check and answer what the transition would do, without writing anything or running
+   * the hooks: the send to review dialog of the builder shows its warnings before the editor sends.
+   */
+  dryRun?: boolean
   actor: Actor
   /**
    * Whether the actor's Strapi permissions let them do this to the entry, besides the site's
@@ -43,10 +59,26 @@ export interface TransitionResult {
   to: EditorialState
   /** The `documentId` of the entry's site. */
   site: string | null
+  /** What the transition let through but the editor should know; empty when nothing. */
+  warnings: TransitionWarning[]
+}
+
+/**
+ * A warning of a transition, in the shape of a problem detail (section 4 of the standard) with no
+ * HTTP status: the transition is not refused.
+ */
+export interface TransitionWarning {
+  type: 'about:blank'
+  title: string
+  code: typeof LINK_TO_DRAFT
+  detail: string
+  /** `linkToDraft`: each link, its block and the page it points to. */
+  blocks: LinkToDraft[]
 }
 
 /** Why a transition was refused, as the `code` of its problem detail. */
 export type TransitionErrorCode =
+  | 'editorialRequestInvalid'
   | 'editorialTypeInvalid'
   | 'editorialEntryNotFound'
   | 'editorialTransitionInvalid'
@@ -121,6 +153,12 @@ interface EditorialEntry {
  * the redirect from the old address in the same transaction as the publish (`docs/guide/pages.md`):
  * either both stand or neither does. A draft's slug changes no URL.
  *
+ * Moving a user's entry out of `draft` or to `published` (any move but back to `draft`) also looks
+ * for links of its draft to pages of the same site that have no published version and answers them
+ * as the warning `linkToDraft`, naming each block; it is not refused. The note of the request is
+ * stored as the component's `note`, replacing the previous one; a move without one clears it.
+ * `dryRun` stops after the checks and the measurement, before the hooks and any write.
+ *
  * It runs the hooks of the transition (`docs/hooks.md`): `beforeTransition` once every check has
  * passed and before anything is written, then `afterTransition` and, when the entry was published
  * (a republish included) or unpublished, `afterPublish` or `afterUnpublish`. Every caller, the scheduler included, fires
@@ -133,6 +171,14 @@ export async function performTransition(
   request: TransitionRequest
 ): Promise<TransitionResult> {
   const uid = request.uid as UID.ContentType
+  const note = request.note?.trim() || null
+  if (note !== null && note.length > EDITORIAL_NOTE_MAX_LENGTH) {
+    throw new TransitionError(
+      400,
+      'editorialRequestInvalid',
+      `The note is longer than ${EDITORIAL_NOTE_MAX_LENGTH} characters`
+    )
+  }
   if (!isEditorial(strapi.contentType(uid))) {
     throw new TransitionError(
       400,
@@ -221,6 +267,16 @@ export async function performTransition(
       )
     }
   }
+  const warnings: TransitionWarning[] = []
+  if (request.to !== 'draft' && request.actor.kind === 'user') {
+    const links = await findLinksToDraftsIn(strapi, {
+      uid,
+      documentId: entry.documentId,
+      locale: entry.locale,
+      site: entry.site?.documentId ?? null,
+    })
+    if (links.length > 0) warnings.push(linkWarning(links))
+  }
   const userId = request.actor.kind === 'user' ? request.actor.id : null
   const editorial = {
     state: transition.to,
@@ -229,6 +285,7 @@ export async function performTransition(
       transition.from === 'in_review' ? userId : (entry.editorial?.reviewedBy?.id ?? null),
     publishedBy:
       transition.to === 'published' ? userId : (entry.editorial?.publishedBy?.id ?? null),
+    note,
   }
   const target = { documentId: entry.documentId, locale: entry.locale ?? undefined }
   const payload: TransitionPayload = {
@@ -252,6 +309,16 @@ export async function performTransition(
           locale: entry.locale,
         })
       : null
+  const result: TransitionResult = {
+    uid: request.uid,
+    documentId: entry.documentId,
+    locale: entry.locale ?? null,
+    from: transition.from,
+    to: transition.to,
+    site: entry.site?.documentId ?? null,
+    warnings,
+  }
+  if (request.dryRun) return result
   const hooks = hooksOf(strapi)
   try {
     await hooks.runBefore('beforeTransition', payload)
@@ -294,13 +361,17 @@ export async function performTransition(
   if (transition.to === 'published') await hooks.runAfter('afterPublish', live)
   else if (transition.from === 'published') await hooks.runAfter('afterUnpublish', live)
 
+  return result
+}
+
+function linkWarning(links: LinkToDraft[]): TransitionWarning {
+  const pages = [...new Set(links.map((link) => link.page.title))].join(', ')
   return {
-    uid: request.uid,
-    documentId: entry.documentId,
-    locale: entry.locale ?? null,
-    from: transition.from,
-    to: transition.to,
-    site: entry.site?.documentId ?? null,
+    type: 'about:blank',
+    title: 'Link to a draft page',
+    code: LINK_TO_DRAFT,
+    detail: `${links.length} ${links.length === 1 ? 'link points' : 'links point'} to a page that is not published (${pages}); it answers 404 until that page is published`,
+    blocks: links,
   }
 }
 

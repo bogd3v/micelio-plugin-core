@@ -135,8 +135,8 @@ replace what the builder saved a moment earlier; the builder then shows the noti
 ## What is not here yet
 
 The SEO tab and the Template tab of the page settings, the complete keyboard and the shortcuts
-sheet, and sending a page to review each have their own issue.
-Until then, publish from the Content Manager.
+sheet each have their own issue. Sending a page to review, scheduling and publishing it are in
+[Review, schedule and publish](review.md).
 
 ## Motion
 

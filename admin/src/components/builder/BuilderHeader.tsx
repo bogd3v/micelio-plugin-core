@@ -1,4 +1,5 @@
 import { Badge, Button, Typography } from '@strapi/design-system'
+import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import styled, { useTheme } from 'styled-components'
 
@@ -90,6 +91,27 @@ interface BuilderHeaderProps {
   /** Opens the page settings; `undefined` for a page type that has none, which shows no gear. */
   onOpenSettings: (() => void) | undefined
   isSettingsOpen: boolean
+  /** The editorial buttons (`ReviewActions`), after Save; none for a type without the workflow. */
+  children?: ReactNode
+}
+
+/** The colours of the state badge: the design's, through the Design System's tokens. */
+const BADGE: Record<string, { backgroundColor: string; textColor: string }> = {
+  draft: { backgroundColor: 'neutral150', textColor: 'neutral800' },
+  in_review: { backgroundColor: 'warning100', textColor: 'warning700' },
+  scheduled: { backgroundColor: 'primary100', textColor: 'primary600' },
+  published: { backgroundColor: 'success100', textColor: 'success700' },
+  modified: { backgroundColor: 'warning100', textColor: 'neutral800' },
+}
+
+/**
+ * The key of the badge's text: the editorial state when the type has the workflow (a published page
+ * with changes since reads "Modified"), else Strapi's status.
+ */
+function badgeOf(doc: BuilderDocument | undefined): string {
+  const editorial = doc?.editorial?.state
+  if (!editorial) return doc?.state ?? 'draft'
+  return editorial === 'published' && doc?.state === 'modified' ? 'modified' : editorial
 }
 
 /** The word a screen reader hears when the save status changes. */
@@ -105,16 +127,14 @@ function statusKey(status: SaveStatus, isDirty: boolean): string {
 /**
  * The toolbar of the builder (the Builder artboard): back to the entry, the title with its state,
  * where autosave stands, the preview width, "As static site", the page weight and Save. The gear
- * next to the title opens the page settings (the Page settings artboard).
- *
- * @remarks
- * "Send to review" is not here until its flow exists (issue #57).
+ * next to the title opens the page settings (the Page settings artboard). The editorial buttons
+ * follow Save (the Review flow artboard, issue #57).
  */
 export function BuilderHeader(props: BuilderHeaderProps) {
   const { colors } = useTheme()
   const { t } = useMessages()
   const { document: doc } = props
-  const state = doc?.state ?? 'draft'
+  const state = badgeOf(doc)
   const parts = [props.kind, doc?.site, doc?.locale].filter((part): part is string => Boolean(part))
   return (
     <Bar>
@@ -126,10 +146,7 @@ export function BuilderHeader(props: BuilderHeaderProps) {
           <Typography tag="h1" variant="delta" fontWeight="bold">
             {props.title}
           </Typography>
-          <Badge
-            backgroundColor={state === 'draft' ? 'neutral150' : 'warning100'}
-            textColor="neutral800"
-          >
+          <Badge {...(BADGE[state] ?? BADGE.draft)} data-testid="editorial-state">
             {t(`builder.state.${state}`)}
           </Badge>
           {props.onOpenSettings ? (
@@ -189,6 +206,7 @@ export function BuilderHeader(props: BuilderHeaderProps) {
       >
         {t('builder.save')}
       </Button>
+      {props.children}
     </Bar>
   )
 }

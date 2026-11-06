@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_section_links",
+  "info": {
+    "displayName": "Link",
+    "icon": "link",
+    "description": "The `section.link` part of the catalogue: a label and an address"
+  },
+  "options": {},
+  "attributes": {
+    "label": { "type": "string", "required": true },
+    "url": { "type": "string", "required": true }
+  }
+}

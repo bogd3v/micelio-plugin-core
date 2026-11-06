@@ -6,6 +6,7 @@ import { syncBlockCatalogue } from './migrations/block-catalogue'
 import { ensureDefaultSite } from './migrations/default-site'
 import { backfillSite } from './migrations/site-backfill'
 import { registerBlocksPermissions } from './block-settings/permissions'
+import { registerReviewPermission } from './editorial/permissions'
 import { registerTemplatesPermission } from './page-templates/permissions'
 import { registerPreviewPermission } from './preview/permissions'
 import { registerPreviewRevocation } from './preview/revocation'
@@ -39,6 +40,7 @@ const bootstrap = async ({ strapi }: { strapi: Core.Strapi }): Promise<void> => 
   await registerTransferPermissions(strapi)
   await registerBlocksPermissions(strapi)
   await registerTemplatesPermission(strapi)
+  await registerReviewPermission(strapi)
   await strapi.plugin('micelio').service('transfers').failInterrupted()
   registerPreviewRevocation(strapi)
   // Last: a boot the host check refuses announces no change.

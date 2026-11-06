@@ -190,12 +190,25 @@ describe('the islands, at save and at send to review', () => {
       body: JSON.stringify({ uid: SHOWCASE, documentId, to: 'scheduled', publishAt }),
     })
     expect(schedule.status).toBe(200)
-    // The poster is taken away after the page was scheduled: the check was made when it was.
-    await strapi.documents(SHOWCASE).update({
+    // The poster is taken away after the page was scheduled: the check was made when it was. An
+    // edit through the document service would move the page back to draft (issue #57), so the row
+    // of the block is written directly, as a change the editorial guard does not see.
+    const draft = (await strapi.documents(SHOWCASE).findOne({
       documentId,
       locale: 'en',
-      data: { sections: [scene()] } as never,
-    })
+      status: 'draft',
+      populate: { sections: { on: { [SCENE]: true } } },
+    } as never)) as unknown as { sections: { id: number }[] }
+    await strapi.db
+      .query(SCENE as never)
+      .update({ where: { id: draft.sections[0]!.id }, data: { poster: null } })
+    const emptied = (await strapi.documents(SHOWCASE).findOne({
+      documentId,
+      locale: 'en',
+      status: 'draft',
+      populate: { sections: { on: { [SCENE]: { populate: ['poster'] } } } },
+    } as never)) as unknown as { sections: { poster: unknown }[] }
+    expect(emptied.sections[0]!.poster).toBeNull()
     await strapi
       .plugin('micelio')
       .service('transitions')

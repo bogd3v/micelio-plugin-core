@@ -12,3 +12,12 @@ export const EDITORIAL_STATES = ['draft', 'in_review', 'scheduled', 'published']
 
 /** One of {@link EDITORIAL_STATES}. */
 export type EditorialState = (typeof EDITORIAL_STATES)[number]
+
+/** The warning of a transition whose draft links to a page of its site that is not published. */
+export const LINK_TO_DRAFT = 'linkToDraft'
+
+/** The longest note a transition carries to the next person, in characters. */
+export const EDITORIAL_NOTE_MAX_LENGTH = 1000
+
+/** The admin permission of the In review page: `GET /micelio/review` (issue #57). */
+export const REVIEW_READ_PERMISSION = 'plugin::micelio.review.read'

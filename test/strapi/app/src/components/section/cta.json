@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_section_ctas",
+  "info": {
+    "displayName": "Call to action",
+    "icon": "cursor",
+    "description": "A stand-in for the `cta` block of the catalogue, with its two links (`section.link`), for the review suites: a link to a page of the site that is not published is the `linkToDraft` warning"
+  },
+  "options": {},
+  "attributes": {
+    "title": { "type": "string", "required": true },
+    "text": { "type": "text" },
+    "primaryLink": { "type": "component", "component": "section.link", "repeatable": false },
+    "secondaryLink": { "type": "component", "component": "section.link", "repeatable": false }
+  }
+}

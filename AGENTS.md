@@ -53,7 +53,15 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
   - `content-types/site/` is `plugin::micelio.site`, one row per site (ADR-0017, section 4). Its components live in `components/site/` and register in `register.ts` under the category `micelio-site`: Strapi loads components only from the host, and `micelio-cms` 0.6 already owns `site.*`.
   - `migrations/` holds the boot steps: idempotent, name-based, run from `bootstrap.ts` (`default-site.ts` creates the default site on an empty instance; `block-catalogue.ts` compares the catalogue with the previous boot's and runs `blockCatalogueChanged`).
   - `site-scope/` is what makes a type site-scoped: `withSiteScope` (the required `site` relation), the `site-scope` route middleware in `middlewares/` (resolves the site of a content API request, answers `unknownSite`), and the document service middleware that filters and guards by site. `sites/rules.ts` keeps `hosts` and the single default site consistent. `docs/api.md` describes the behaviour.
-  - `editorial/` is the editorial workflow (ADR-0017, section 5): `withEditorial` (the component and draft and publish), the state machine and default policy (`machine.ts`), `performTransition` (behind the `transitions` service and `POST /micelio/transitions`), the scheduler (`scheduler.ts`, a cron job on `scheduledPublishRule`), and the guard that refuses every other route to `publishedAt`. Its component lives in `components/editorial/`.
+  - `editorial/` is the editorial workflow (ADR-0017, section 5): `withEditorial` (the component
+    and draft and publish), the state machine and default policy (`machine.ts`),
+    `performTransition` (behind the `transitions` service and `POST /micelio/transitions`), the
+    scheduler (`scheduler.ts`, a cron job on `scheduledPublishRule`), and the guard that refuses
+    every other route to `publishedAt` and moves an edited `scheduled` entry back to `draft`
+    (`guard.ts`). `links.ts` finds the `linkToDraft` warning of a transition, `review.ts` the
+    entries `GET /micelio/review` lists for the In review page (permission
+    `plugin::micelio.review.read`, `permissions.ts`). Its component, with the `note` of the last
+    transition, lives in `components/editorial/`; `docs/guide/review.md` is the guide.
   - `host-check/` is the host check (ADR-0017, section 7): the checks as pure functions of the facts (`checks.ts`), what it reads from the running host (`facts.ts`) and the report (`report.ts`). The `hostCheck` service runs it from `bootstrap`; `docs/operate/host-check.md` lists the checks.
   - `status/` gathers what the status page shows (`read.ts`, behind the `status` service and `GET /micelio/status`; the service also runs the host check again for `POST /micelio/status/host-check`, one run at a time) and registers its admin permission, `plugin::micelio.status.read` (`permissions.ts`). `docs/operate/status-page.md` describes the page.
   - `preview/` is the preview (ADR-0019, section 3): `credentials.ts`, `access.ts`, the draft read and the `preview` service behind the token, exchange and draft routes. A system grant has no admin user and only plugin code mints one (`issueSystemGrant`), no route does. Details: [docs/architecture/structure.md](docs/architecture/structure.md#preview); the flow is `docs/operate/preview.md`.
@@ -127,12 +135,13 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   each item shown to a role with its permission, and the pages of sibling plugins),
   the pages (`StatusPage`, `TransferPage` with `ExportPanel` and `ImportPanel`, `AboutPage`,
   `PreviewPage`, `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
-  Save as template dialog),
+  Save as template dialog, `ReviewPage`, the In review page),
   the cost meter and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them).
   The builder (`pages/BuilderPage.tsx` at `builder/:uid/:documentId`, #49): its panels in
   `components/builder/`, its hooks (`useBuilderDocument`, `useBuilderCatalogue`,
-  `useBuilderFrame`, `useBuilderEdits`, `useBlockLookup`, `usePageSettings`) and pure helpers in
-  `utils/builder/`; the gear next to the title opens `PageSettingsDrawer` (#52,
+  `useBuilderFrame`, `useBuilderEdits`, `useBlockLookup`, `usePageSettings`, `useTransition`) and
+  pure helpers in `utils/builder/`; the editorial buttons and dialogs (`ReviewActions`, #57,
+  `docs/guide/review.md`) follow Save; the gear next to the title opens `PageSettingsDrawer` (#52,
   `docs/guide/pages.md`); it talks to the
   frame with the phase 2 messages of `contract/preview.ts`. Details:
   [docs/architecture/structure.md](docs/architecture/structure.md#builder), guide
