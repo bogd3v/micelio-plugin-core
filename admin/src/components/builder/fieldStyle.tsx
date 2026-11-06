@@ -31,6 +31,10 @@ export const Input = styled.input`
   &[aria-invalid='true'] {
     border-color: ${({ theme }) => theme.colors.danger600};
   }
+  &[data-sample='true'] {
+    color: ${({ theme }) => theme.colors.neutral500};
+    font-style: italic;
+  }
   &:disabled {
     background: ${({ theme }) => theme.colors.neutral100};
     color: ${({ theme }) => theme.colors.neutral600};

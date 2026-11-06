@@ -51,6 +51,8 @@ export interface BuilderDocument {
   visibility: Visibility
   /** The slug of the page's site, when the answer names it. */
   site: string | undefined
+  /** The sample texts the page copied from its template and has not replaced yet; empty for a page that has none. */
+  samples: string[]
   /** `draft` while no version is published, `published` or `modified` after. */
   state: 'draft' | 'published' | 'modified'
 }
@@ -86,6 +88,9 @@ function toDocument(answer: CmAnswer, documentId: string): BuilderDocument {
     slug: text(data.slug) ?? '',
     visibility: visibilityOf(data.visibility),
     site: text(site?.slug),
+    samples: Array.isArray(data.templateSamples)
+      ? data.templateSamples.filter((sample): sample is string => typeof sample === 'string')
+      : [],
     state:
       meta?.availableStatus === undefined || meta.availableStatus.length === 0
         ? 'draft'

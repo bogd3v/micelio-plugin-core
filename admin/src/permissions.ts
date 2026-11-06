@@ -18,3 +18,9 @@ export const BLOCKS_READ_PERMISSION = { action: 'plugin::micelio.blocks.read', s
 
 /** Lets a role change a site's settings of a block; the server's `BLOCKS_MANAGE_PERMISSION`. */
 export const BLOCKS_MANAGE_PERMISSION = { action: 'plugin::micelio.blocks.manage', subject: null }
+
+/** Lets a role save a page as a template, and export and import templates; the server's `TEMPLATES_MANAGE_PERMISSION`. */
+export const TEMPLATES_MANAGE_PERMISSION = {
+  action: 'plugin::micelio.templates.manage',
+  subject: null,
+}

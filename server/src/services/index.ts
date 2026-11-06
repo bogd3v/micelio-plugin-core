@@ -7,6 +7,7 @@ import budget from './budget'
 import extensions from './extensions'
 import hooks from './hooks'
 import hostCheck from './host-check'
+import pageTemplates from './page-templates'
 import preview from './preview'
 import siteExport from './site-export'
 import status from './status'
@@ -26,6 +27,7 @@ export default {
   budget,
   blockSettings,
   siteExport,
+  pageTemplates,
   transfers,
   about,
 }

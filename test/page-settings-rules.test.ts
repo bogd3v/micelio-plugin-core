@@ -6,6 +6,7 @@ import {
   planRedirects,
   type RedirectRow,
 } from '../server/src/page-settings/redirects'
+import { exportPolicyOf } from '../server/src/site-export/names'
 import { withSiteScope, type ContentTypeSchema } from '../server/src/site-scope'
 
 const row = (documentId: string, from: string, to: string): RedirectRow => ({
@@ -64,6 +65,20 @@ describe('withPageSettings', () => {
       pageType: { type: 'string', default: 'standard' },
       visibility: { type: 'component', component: 'micelio-page.visibility', repeatable: false },
     })
+  })
+
+  it('records the template a page was created from, with its sample texts private and in the archive', () => {
+    expect(schema.attributes).toMatchObject({
+      templateId: { type: 'string', maxLength: 64, visible: false },
+      templateVersion: { type: 'integer', min: 1, visible: false },
+      templateSamples: { type: 'json', private: true, visible: false },
+    })
+    // Private for the content API, and written to an archive: the guard moves with the page.
+    const samples = schema.attributes.templateSamples as Parameters<typeof exportPolicyOf>[0]
+    expect(exportPolicyOf(samples)).toBe('always')
+    expect(
+      exportPolicyOf(schema.attributes.templateId as Parameters<typeof exportPolicyOf>[0])
+    ).toBe('always')
   })
 
   it('marks the type, and composes with withSiteScope', () => {

@@ -67,6 +67,8 @@ services:
       - ./server:/plugin/server:z
       - ./admin:/plugin/admin:z
       - ./contract:/plugin/contract:z
+      # The `micelio` binary, for `docker compose exec cms node /plugin/bin/micelio.js …` (docs/operate/manual-testing.md).
+      - ./bin:/plugin/bin:ro,z
       - ./test/fixtures:/plugin/test/fixtures:ro,z
       - ./package.json:/plugin/package.json:ro,z
       - ./strapi-server.js:/plugin/strapi-server.js:ro,z

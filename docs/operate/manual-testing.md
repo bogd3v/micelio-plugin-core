@@ -258,6 +258,137 @@ button yet (bogd3v/micelio-plugin-core#57), so the steps publish through the adm
    Set the theme to dark (Profile → Interface mode): the drawer reads in Strapi's dark colours.
 10. A role that may read the page but not edit it opens the drawer with every control disabled.
 
+## Try page templates
+
+A page is saved as a template from the builder's **Page settings** drawer and a new page is made
+from one in the gallery ([docs/guide/templates.md](../guide/templates.md)). The steps publish
+through the admin route, as the page settings do.
+
+1. Bring the stack up (`npm run dev:docker`, `docker compose -f compose.dev.yml build cms` first
+   if the image predates this branch) and create the first admin with the email
+   `admin@example.com` and the password `Password1234` (a throwaway stack). Then make a page of
+   four blocks, which is what the steps save as a template:
+
+   ```bash
+   ADMIN=$(curl -s -X POST localhost:1337/admin/login -H 'Content-Type: application/json' \
+     -d '{"email":"admin@example.com","password":"Password1234"}' | jq -r .data.token)
+   SITE=$(curl -s -g -H "Authorization: Bearer $ADMIN" \
+     'localhost:1337/content-manager/collection-types/plugin::micelio.site' \
+     | jq -r '.results[0].documentId')
+   PAGEBODY='{"title":"What open source is","slug":"what-open-source-is","pageType":"landing",
+   "site":"'$SITE'","sections":[
+   {"__component":"section.hero","title":"Software you can read","text":"A plain-words guide.",
+   "variant":"split"},
+   {"__component":"section.feature-grid","title":"Why it matters","variant":"grid","columns":"3",
+   "items":[{"title":"Readable","text":"Anyone can read it."},
+   {"title":"Changeable","text":"Anyone can fix it."},
+   {"title":"Shareable","text":"Anyone can pass it on."}]},
+   {"__component":"section.rich-text","body":"Open source means open to everyone.","width":"prose"},
+   {"__component":"section.cta","title":"Try it","text":"Start with one page.",
+   "variant":"banner"}]}'
+   EXPLAINER=$(curl -s -g -X POST \
+     'localhost:1337/content-manager/collection-types/api::page.page?plugins[i18n][locale]=en' \
+     -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' -d "$PAGEBODY" \
+     | jq -r .data.documentId)
+   echo "http://localhost:1337/admin/plugins/micelio/builder/api::page.page/$EXPLAINER"
+   ```
+
+2. Open the address the last command printed, press the gear and then **Save as template…** in
+   the footer of the drawer. The dialog says "From “What open source is” · 4 blocks · 7.6 kB" and
+   lists Hero, Feature grid, Rich text and Cta with their options. Type the name `Explainer
+landing`, leave **For page types** on Landing, choose **Clear** for Rich text and tick
+   **Fixed** for Hero. The checks read: every option is one the catalogue offers; 7.6 kB of 60 kB
+   landing budget (before content); no island; every block is enabled on default; the name is
+   unique. Press **Save template**: a notification says it is saved. The server holds it:
+
+   ```bash
+   curl -s -H "Authorization: Bearer $ADMIN" \
+     'localhost:1337/micelio/templates?site=default&uid=api::page.page' \
+     | jq -c '.data[] | {name, version, scope, kb, blocks: [.blocks[] | {block, content, fixed}]}'
+   # {"name":"Explainer landing","version":1,"scope":"site","kb":7.6,"blocks":[
+   #   {"block":"hero","content":"sample","fixed":true},
+   #   {"block":"feature-grid","content":"sample","fixed":false},
+   #   {"block":"rich-text","content":"clear","fixed":false},
+   #   {"block":"cta","content":"sample","fixed":false}]}
+   ```
+
+3. Open the dialog again and type the same name: the last check turns red, "A template named …
+   exists on default", and **Save template** answers with that text. Nothing is stored.
+4. In Content Manager → Page press **Create new entry**. The header has an icon, **New page from
+   a template…** (the Micelio mark, left of the three dots). Press it and, as Strapi asks
+   whether to leave the form, **Confirm**: **New page** opens with the template's card,
+   Explainer landing, selected, with its blocks, its 7.6 kB and its
+   thumbnail drawn from the structure; and **Empty page**. Type `Open source, explained` in
+   **Title of the new page** and press **Create from Explainer landing**. The builder opens on a
+   draft with the four blocks. Click the Hero: its Title and Text are grey and italic and say
+   "Sample text from the template: replace it before you publish." The Rich text says _Needs
+   content_: it was cleared. The page records its template:
+
+   ```bash
+   PAGES='localhost:1337/content-manager/collection-types/api::page.page'
+   curl -s -g -H "Authorization: Bearer $ADMIN" \
+     "$PAGES?filters[slug][\$eq]=open-source-explained" \
+     | jq -c '.results[0] | {pageType, templateId, templateVersion}'
+   # {"pageType":"landing","templateId":"<the template's id>","templateVersion":1}
+   ```
+
+5. Sample text keeps the page from publishing. Review is allowed; publishing is not:
+
+   ```bash
+   NEW=$(curl -s -g -H "Authorization: Bearer $ADMIN" \
+     "$PAGES?filters[slug][\$eq]=open-source-explained" | jq -r '.results[0].documentId')
+   PUBLISH() { curl -s -w '\n%{http_code}\n' -X POST localhost:1337/micelio/transitions \
+     -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+     -d "{\"uid\":\"api::page.page\",\"documentId\":\"$1\",\"locale\":\"en\",\"to\":\"$2\"}"; }
+   PUBLISH "$NEW" in_review    # 200
+   PUBLISH "$NEW" published    # 409 sampleTextPresent, "blocks" naming hero, feature-grid, cta
+   ```
+
+   In the builder replace the texts the refusal names (the Hero's title and text, the Feature
+   grid's title and the title and text of each item, the Cta's title and text) and write a text
+   in Rich text. Publish again after each save: the refusal lists what is left, and when nothing
+   is, the answer is `200`.
+
+6. A template that cannot be CMS-wide. Make a second site, and turn the Cta off there:
+
+   ```bash
+   curl -s -X POST 'localhost:1337/content-manager/collection-types/plugin::micelio.site' \
+     -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+     -d '{"name":"Other","slug":"other","hosts":["other.localhost"],"modules":{}}' \
+     | jq -c .data.slug
+   ```
+
+   In **Micelio → Block catalogue** choose the site Other and switch **Cta** off. Open the
+   builder of step 2, press **Save as template…**, type `Everywhere` and choose **Every site of
+   this CMS**: the scope check turns red, "The cta block is disabled on other", and **Save
+   template** answers with it. **Other** names the site; scoping it to the default site only
+   saves it. Switch the Cta back on.
+
+7. Export and import, in the gallery and on the command line. In **New page**, press **Export
+   JSON** on Explainer landing: the browser saves `explainer-landing.micelio-template.json`. On
+   the command line (the stack's Strapi project is the container's working folder):
+
+   ```bash
+   docker compose -f compose.dev.yml exec cms node /plugin/bin/micelio.js template export \
+     'Explainer landing' --site default --output /tmp/explainer.json
+   # /tmp/explainer.json
+   docker compose -f compose.dev.yml exec cms node /plugin/bin/micelio.js template import \
+     /tmp/explainer.json --site default
+   # exit 1: templateNameTaken, the site has that name
+   docker compose -f compose.dev.yml exec cms node /plugin/bin/micelio.js template import \
+     /tmp/explainer.json --site other
+   # Explainer landing (<id>), version 1.
+   ```
+
+   In **New page**, choose the site Other: the template is there. **Import a template** with the
+   downloaded file on the site Other is refused the same way, as a notification.
+
+8. Set the language of your profile to Español and reload: the dialog and the gallery are in
+   Spanish. Set the theme to dark (Profile → Interface mode): both read in Strapi's dark colours.
+9. A role without **Manage the page templates of a site** and with permission to create Page opens
+   the drawer without **Save as template…** and the gallery without **Export JSON** and **Import a
+   template**; it still lists the templates and creates a page from one.
+
 ## Try the preview of an article
 
 The frontend reads an article draft with a `populate` of its cover, author, category, tags, blocks, references and translations (`ARTICLE_POPULATE` in `micelio`). The seed creates a draft article, "A draft article", with a cover and an author, of the fixture `docker/cms/src/api/article/`, which has the shape of the `article` of `micelio-cms`.

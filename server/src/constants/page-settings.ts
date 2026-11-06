@@ -21,3 +21,12 @@ export const SLUG_CHANGE_RULE = 'slug-change'
 
 /** Seconds a client or a shared cache may keep the answer of `GET /micelio/redirects`. */
 export const REDIRECTS_MAX_AGE_SECONDS = 60
+
+/** Name of the attribute that holds the `documentId` of the template a page was created from. */
+export const TEMPLATE_ID_ATTRIBUTE = 'templateId'
+
+/** Name of the attribute that holds the version the template had when the page was created. */
+export const TEMPLATE_VERSION_ATTRIBUTE = 'templateVersion'
+
+/** Name of the private attribute that holds the sample texts a page copied and has not replaced yet. */
+export const TEMPLATE_SAMPLES_ATTRIBUTE = 'templateSamples'

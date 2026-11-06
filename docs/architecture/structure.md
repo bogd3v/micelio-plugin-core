@@ -47,6 +47,26 @@ scans the site's pages for the blocks they hold (database only). `permissions.ts
 `plugin::micelio.blocks.read` and `.manage`. The type has `export: never` and is hidden from the
 Content Manager: the page is its editor.
 
+## Page templates
+
+`page-templates/` is what a template is made of (#54, [the guide](../guide/templates.md)).
+`rules.ts` is pure: `shapeContent` keeps the options, the settings and, for `sample`, the text of a
+block's stored content, never a file or a link, reading the component's attributes (applying it to
+its own result changes nothing); `samplesOf` and `findSampleText` are the sample texts a page
+copies and the blocks that still hold them; `costKbOf`, `thumbnailOf` and `parseTemplateDocument`
+are the structure's weight, its thumbnail and the read of an exported file. `check.ts` reads a
+draft for `performTransition`, which refuses `sampleTextPresent`. The `pageTemplates` service
+(`services/page-templates.ts`) runs the checks (`evaluate`: options, budget, scope over every site,
+name), stores the template through the document service and makes a page from one;
+`controllers/page-templates.ts` checks the permissions and answers the problem details.
+`permissions.ts` registers `plugin::micelio.templates.manage`. A CMS-wide template is a row of the
+site that saved it with `scope: cms`, so the type keeps `withSiteScope`. `withPageSettings` adds
+`templateId`, `templateVersion` and the private `templateSamples` to a page type. The admin has
+`components/SaveTemplateDialog.tsx` (opened from the page settings drawer),
+`pages/TemplatesGalleryPage.tsx` at `new/:uid` (opened by the create view's
+`components/NewFromTemplateAction.tsx`) and `components/TemplateThumbnail.tsx`; the builder greys
+the sample texts of `BuilderDocument.samples`.
+
 ## Site export and import
 
 `site-export/` writes and reads the site archive of `docs/export-format.md`, behind the `siteExport` service: `exporter.ts` (with its `scope`) and `importer.ts`, `dry-run.ts` (`preview`: what an import would do, written nowhere), `inspect.ts` (the decision for one document, shared by the import and its dry run), `keep-both.ts` (the policy that gives the archive's documents ids of their own), the types and documents they share (`model.ts`), the export names and policies a type declares (`names.ts`), each attribute to the archive and back (`serialise.ts`, `deserialise.ts`), what an import checks before it writes (`archive.ts`, `import-plan.ts`), the media bytes (`media.ts`, `store-media.ts`) and a ustar writer and reader (`tar.ts`).

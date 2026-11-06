@@ -137,6 +137,10 @@ interface PageSettingsDrawerProps {
   data: PageSettingsData
   isReadOnly: boolean
   onSave: (values: Partial<PageSettingsValues>) => Promise<SaveRefusal | undefined>
+  /** Opens the Save as template dialog; absent for a role that may not manage templates. */
+  onSaveAsTemplate?: () => void
+  /** The page has changes the CMS does not hold yet, which a template would miss. */
+  isDirty?: boolean
   onClose: () => void
 }
 
@@ -150,7 +154,8 @@ type Outcome = { kind: 'idle' | 'saving' | 'saved' } | { kind: 'failed'; detail:
  * It opens over the builder and leaves the preview in view; Esc and the close button shut it and
  * focus goes back to where it came from. Each choice is saved at once, with the draft's version
  * (`useBuilderDocument().saveSettings`); the slug is saved when its field is left. The other tabs
- * of the artboard (SEO and social, Template) belong to other issues and are not drawn.
+ * of the artboard (SEO and social, Template) belong to other issues and are not drawn. **Save as
+ * template…** opens the dialog of that name (`SaveTemplateDialog`) for a role that may manage templates.
  */
 export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
   const { colors } = useTheme()
@@ -432,15 +437,33 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
         ) : null}
       </Body>
       <Foot>
-        <span
-          role={outcome.kind === 'failed' ? 'alert' : 'status'}
-          style={{
-            fontSize: 12,
-            color: outcome.kind === 'failed' ? colors.danger700 : colors.neutral600,
-          }}
-        >
-          {status}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          {props.onSaveAsTemplate ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={props.isDirty === true}
+              aria-describedby={props.isDirty ? `${id}-template-unsaved` : undefined}
+              onClick={props.onSaveAsTemplate}
+            >
+              {t('builder.settings.saveTemplate')}
+            </Button>
+          ) : null}
+          <span
+            role={outcome.kind === 'failed' ? 'alert' : 'status'}
+            style={{
+              fontSize: 12,
+              color: outcome.kind === 'failed' ? colors.danger700 : colors.neutral600,
+            }}
+          >
+            {status}
+          </span>
+          {props.onSaveAsTemplate && props.isDirty ? (
+            <span id={`${id}-template-unsaved`} style={{ fontSize: 12, color: colors.neutral600 }}>
+              {t('builder.settings.saveTemplate.unsaved')}
+            </span>
+          ) : null}
+        </div>
         <Button type="button" onClick={props.onClose}>
           {t('builder.settings.done')}
         </Button>

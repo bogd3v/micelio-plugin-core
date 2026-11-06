@@ -5,6 +5,7 @@ import about from './about'
 import blocks from './blocks'
 import blockSettings from './block-settings'
 import budget from './budget'
+import pageTemplates from './page-templates'
 import preview from './preview'
 import redirects from './redirects'
 import extensions from './extensions'
@@ -18,6 +19,7 @@ export default {
   tag: factories.createCoreController(TAG_UID as UID.ContentType),
   blocks,
   blockSettings,
+  pageTemplates,
   budget,
   transitions,
   status,

@@ -1,6 +1,7 @@
 import { withSiteScope } from '../site-scope'
 import blockSetting from './block-setting/schema.json'
 import category from './category/schema.json'
+import pageTemplate from './page-template/schema.json'
 import previewCredential from './preview-credential/schema.json'
 import redirect from './redirect/schema.json'
 import site from './site/schema.json'
@@ -12,6 +13,7 @@ export default {
   'block-setting': { schema: withSiteScope(blockSetting) },
   category: { schema: withSiteScope(category) },
   tag: { schema: withSiteScope(tag) },
+  'page-template': { schema: withSiteScope(pageTemplate) },
   redirect: { schema: withSiteScope(redirect) },
   'preview-credential': { schema: withSiteScope(previewCredential) },
   transfer: { schema: withSiteScope(transfer) },

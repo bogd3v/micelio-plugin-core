@@ -8,6 +8,9 @@
 // - `micelio export <site> [--personal] [--include <section>]... [--output <file>]` writes the
 //   archive of one site (docs/export-format.md) and prints where.
 // - `micelio import <file> [--replace] [--into <site>]` imports an archive and prints what it did.
+// - `micelio template export <template> [--site <site>] [--output <file>]` writes a page template as
+//   JSON, and `micelio template import <file> --site <site> [--scope site|cms]` reads one
+//   (docs/guide/templates.md).
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -16,6 +19,8 @@ const USAGE = [
   'Usage: micelio doctor',
   '       micelio export <site slug> [--personal] [--include <section id>]... [--output <file>]',
   '       micelio import <file> [--replace] [--into <site slug>]',
+  '       micelio template export <template id or name> [--site <site slug>] [--output <file>]',
+  '       micelio template import <file> --site <site slug> [--scope site|cms]',
 ].join('\n')
 
 /**
@@ -106,6 +111,71 @@ async function importCommand(args) {
   })
 }
 
+/** Reads the flags of `micelio template export|import`: one positional, and `--site`, `--output`, `--scope`. */
+function parseTemplateArgs(args) {
+  const options = {}
+  for (let position = 0; position < args.length; position += 1) {
+    const arg = args[position]
+    if (arg === '--site' && args[position + 1]) options.site = args[++position]
+    else if (arg === '--output' && args[position + 1]) options.output = args[++position]
+    else if (arg === '--scope' && ['site', 'cms'].includes(args[position + 1])) {
+      options.scope = args[++position]
+    } else if (!arg.startsWith('--') && !options.target) options.target = arg
+    else return undefined
+  }
+  return options.target ? options : undefined
+}
+
+async function templateCommand(args) {
+  const [action, ...rest] = args
+  const options = action === 'export' || action === 'import' ? parseTemplateArgs(rest) : undefined
+  if (!options || (action === 'import' && !options.site)) {
+    process.stderr.write(`${USAGE}\n`)
+    return 2
+  }
+  if (action === 'import') {
+    const file = path.resolve(options.target)
+    const raw = JSON.parse(fs.readFileSync(file, 'utf8'))
+    return withStrapi(async (app) => {
+      const service = app.plugin('micelio').service('pageTemplates')
+      const site = await service.siteOf(options.site)
+      if (!site) throw new Error(`There is no site "${options.site}"`)
+      const template = await service.import(raw, site, options.scope)
+      process.stdout.write(`${template.name} (${template.id}), version ${template.version}.\n`)
+      return 0
+    })
+  }
+  return withStrapi(async (app) => {
+    const service = app.plugin('micelio').service('pageTemplates')
+    let template = await service.get(options.target)
+    if (!template && options.site) {
+      const site = await service.siteOf(options.site)
+      template = site
+        ? ((await service.list(site)).find(({ name }) => name === options.target) ?? null)
+        : null
+    }
+    if (!template)
+      throw new Error(
+        `There is no template "${options.target}"; name its --site to find it by name`
+      )
+    const document = await service.export(template.id)
+    const output = path.resolve(options.output ?? `${slugOf(template.name)}.micelio-template.json`)
+    fs.writeFileSync(output, `${JSON.stringify(document, null, 2)}\n`)
+    process.stdout.write(`${output}\n`)
+    return 0
+  })
+}
+
+/** A file name made of a template's name. */
+function slugOf(name) {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'template'
+  )
+}
+
 function parseImportArgs(args) {
   const options = { mode: 'merge' }
   for (let position = 0; position < args.length; position += 1) {
@@ -146,6 +216,7 @@ async function main(args) {
     if (command === 'doctor') return await doctor()
     if (command === 'export') return await exportCommand(rest)
     if (command === 'import') return await importCommand(rest)
+    if (command === 'template') return await templateCommand(rest)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     const code = error && typeof error === 'object' && 'code' in error ? ` (${error.code})` : ''

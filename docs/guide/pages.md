@@ -7,7 +7,7 @@ page type with `withPageSettings`.
 ## Turn them on
 
 `withPageSettings(schema)`, exported beside `withEditorial` from the plugin's server entry, adds
-two attributes to a content type:
+these attributes to a content type:
 
 - `pageType`, a string. The core's page types are `landing`, `standard` and `long-read`, and the
   site's budgets may name more ([Page budgets](../operate/budgets.md)).
@@ -15,7 +15,12 @@ two attributes to a content type:
 - `visibility`, the component `micelio-page.visibility` with `inMenu`, `inSitemap` and `noindex`.
   A page that was never saved with it shows in the menu and the sitemap and is indexable.
 
-Neither is localised: they describe the page, not one language of it.
+- `templateId`, a string, `templateVersion`, an integer, and `templateSamples`, a private JSON
+  list: the template the page was created from, the version it had, and the sample texts the page
+  copied and has not replaced yet ([Page templates](templates.md)). Nothing writes them by hand:
+  the gallery does, and a page made without a template leaves them empty.
+
+None is localised: they describe the page, not one language of it.
 
 ```js
 // src/api/page/content-types/page/schema.js
@@ -55,6 +60,7 @@ The **General** tab has:
 Every choice is saved with the draft, over the version the builder holds, so a save from another
 session is still reported as a conflict
 ([Two people on one page](builder.md#two-people-on-one-page)).
+**Save as template…** in the footer saves the page as a template ([Page templates](templates.md)).
 The other tabs of the design (SEO and social, Template) have their own issues.
 
 ## When the slug changes

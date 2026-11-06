@@ -65,3 +65,17 @@ const report = await strapi
 ```
 
 `export` answers the archive's manifest and `import` its report. Both refuse with an `ExportError` whose `code` is one of the format's.
+
+## Page templates
+
+A page template is not part of a site archive: the type has `export: never`. Move one with its own
+JSON file, from the same folder and environment ([Page templates](../guide/templates.md)):
+
+```bash
+npx micelio template export <template id or name> --site <site slug> --output <file>
+npx micelio template import <file> --site <site slug>
+```
+
+`export` writes the file only once the template is read. `import` runs the checks of a save and
+refuses a name the site already uses (`templateNameTaken`); `--scope site|cms` overrides the
+file's scope. Both exit with `1` and name the cause when they fail.

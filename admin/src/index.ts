@@ -39,7 +39,8 @@ const plugin: StrapiApp['appPlugins'][string] = {
     const add = apis.addDocumentHeaderAction
     if (typeof add !== 'function') return
     const { PreviewHeaderAction } = await import('./components/PreviewHeaderAction')
-    add([PreviewHeaderAction])
+    const { NewFromTemplateAction } = await import('./components/NewFromTemplateAction')
+    add([PreviewHeaderAction, NewFromTemplateAction])
     const addPanel = apis.addEditViewSidePanel
     if (typeof addPanel !== 'function') return
     const { CostPanel } = await import('./components/CostPanelAction')
