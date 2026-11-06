@@ -46,10 +46,20 @@ The address is `/admin/plugins/micelio/builder/<content type>/<documentId>`.
   **Content** has the block's text fields and its items.
   Select an item to edit it: the panel shows where you are
   (_Feature grid › Item 2_), and `Esc` goes up one level.
-  Media and links are edited in the Content Manager's form.
-  A required field that is empty is marked, and so is the block in the list and in the page.
+  Links are edited in the Content Manager's form.
+  A media field (a Gallery's images, an item's icon) shows each file with its thumbnail, name and
+  size, **Replace** and **Remove**; a field that takes several files adds, removes and reorders
+  them. **Choose a file** and **Replace** open Strapi's own Media Library, the one the Content
+  Manager opens, so the files, folders and permissions are the same; the builder never uploads.
+  The alternative text of an image sits under it and is the file's own `alternativeText` in the
+  Media Library, saved when you leave the field (with the permission you have there). **Decorative,
+  no text needed** stores an empty text for that file. Nothing checks the alternative text yet: a
+  missing one is only marked in the panel (_Required by the accessibility check_), and neither
+  save nor send to review is held by it.
+  A required field that is empty, text or media, is marked, and so is the block in the list and in
+  the page.
   The page is not saved while one is empty: the toolbar says _Not saved: a required field is empty_,
-  and everything you changed is saved as soon as the text is there.
+  and everything you changed is saved as soon as the text or the file is there.
   A block that the site disabled after it was put on the page stays on the page:
   you can select, move and remove it, and the panel says the catalogue no longer lists it.
   A copy of it is not offered: the site would refuse it as a new block.
@@ -65,6 +75,9 @@ The address is `/admin/plugins/micelio/builder/<content type>/<documentId>`.
   arrows in the panel, or drag it in the **Page blocks** list.
 - **Duplicate or remove:** the buttons in the panel (and duplicate in the page's marks).
 - **Edit text:** type in the panel. The text shows in the preview as you type, before it is saved.
+- **Pick files:** a media field of the panel opens the Media Library; the preview shows the file
+  once the page is saved. Changing the files of a field is a step you can undo (the message
+  says _Files changed_); writing an image's alternative text is not.
 - **Undo:** **Undo** in the message after a change. Undo goes back one step in this visit, and
   typing in a field or an item is one step for each pause; it forgets nothing of the page's
   history in Strapi.

@@ -170,7 +170,7 @@ function Builder() {
         {
           index,
           name: nameFor(block),
-          problem: isMissing ? t('builder.overlay.needsText') : undefined,
+          problem: isMissing ? t('builder.overlay.needsContent') : undefined,
         },
       ]
     }
