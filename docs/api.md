@@ -322,8 +322,8 @@ never serves a row that fails it, so a redirect cannot lead a visitor off the si
 
 The redirects are listed and removed with the Content Manager's own routes for the type, which
 the role's permissions on `plugin::micelio.redirect` guard; the builder's drawer uses them. The
-type is not in the site archive
-([What is never exported](export-format.md#what-is-never-exported)).
+type travels with the site archive from format `1.2`
+([Redirects](export-format.md#redirects)).
 
 An admin API route lists the page types of a site for the drawer:
 

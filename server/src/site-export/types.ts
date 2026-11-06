@@ -1,4 +1,4 @@
-// The archive of format 1.0 as the exporter writes it (`docs/export-format.md`).
+// The archive of format 1.x as the exporter writes it (`docs/export-format.md`).
 
 /** A reference to another document of the archive. */
 export interface DocumentRef {
@@ -74,6 +74,19 @@ export interface ManifestPlugin {
   entries: number
 }
 
+/** A redirect of the site, as `redirects.json` holds it: no id, no audit relation. */
+export interface RedirectEntry {
+  from: string
+  to: string
+  entryLocale: string | null
+}
+
+/** `redirects.json`: the redirects of the archive's site, in byte order of `from`. */
+export interface RedirectsFile {
+  site: { documentId: string; slug: string }
+  redirects: RedirectEntry[]
+}
+
 /** `manifest.json`. */
 export interface Manifest {
   format: string
@@ -91,5 +104,7 @@ export interface Manifest {
   plugins: ManifestPlugin[]
   types: ManifestType[]
   media: { file: string; count: number; bytes: number }
+  /** The redirects part; absent from a format 1.1 archive. */
+  redirects?: { file: string; count: number }
   files: Record<string, FileDigest>
 }

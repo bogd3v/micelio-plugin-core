@@ -9,12 +9,18 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { createGunzip } from 'node:zlib'
 import { z } from 'zod'
-import { EXPORT_FORMAT, MANIFEST_PATH, MEDIA_FOLDER, MEDIA_INDEX_PATH } from './constants'
+import {
+  EXPORT_FORMAT,
+  MANIFEST_PATH,
+  MEDIA_FOLDER,
+  MEDIA_INDEX_PATH,
+  REDIRECTS_PATH,
+} from './constants'
 import { ExportError } from './errors'
 import { readTar, type TarSink } from './tar'
 import { PLUGIN_SECTIONS_FOLDER } from '../constants/extensions'
 import type { ExportEntry } from '../types/extensions'
-import type { ContentFile, Manifest, MediaEntry } from './types'
+import type { ContentFile, Manifest, MediaEntry, RedirectEntry } from './types'
 
 /** An archive read and checked: what an import works from. */
 export interface StagedArchive {
@@ -22,6 +28,8 @@ export interface StagedArchive {
   /** The content files of the export names the manifest lists, by export name. */
   contents: Map<string, ContentFile>
   media: MediaEntry[]
+  /** The redirects of the archive's site; none for a format 1.1 archive. */
+  redirects: RedirectEntry[]
   /** Where each media file was staged, by SHA-256. */
   mediaFiles: Map<string, string>
   /** The files of each section of a sibling plugin, by section `id`, paths relative to its folder. */
@@ -66,6 +74,7 @@ const manifestSchema = z.looseObject({
     z.looseObject({ name: z.string(), uid: z.string(), file: z.string(), documents: z.number() })
   ),
   media: z.looseObject({ file: z.string(), count: z.number(), bytes: z.number() }),
+  redirects: z.looseObject({ file: z.string(), count: z.number() }).optional(),
   files: z.record(z.string(), digest),
 })
 const version = z.looseObject({
@@ -95,6 +104,17 @@ const mediaIndexSchema = z.looseObject({
       alternativeText: z.string().nullable(),
       caption: z.string().nullable(),
       folderPath: z.string(),
+    })
+  ),
+})
+
+// The shape only: whether a path is the site's own is the importer's to report, not a refusal.
+const redirectsSchema = z.looseObject({
+  redirects: z.array(
+    z.looseObject({
+      from: z.string(),
+      to: z.string(),
+      entryLocale: z.string().nullable().default(null),
     })
   ),
 })
@@ -202,6 +222,10 @@ export async function stageArchive(
     if (!mediaFiles.has(entry.sha256))
       throw corrupt(`Media file ${entry.sha256} is not in the archive`)
   }
+  const redirectsBody = json.get(REDIRECTS_PATH)
+  const redirects = redirectsBody
+    ? (parseJson(redirectsBody, redirectsSchema, REDIRECTS_PATH).redirects as RedirectEntry[])
+    : []
   const sections = new Map<string, ExportEntry[]>(manifest.plugins.map(({ id }) => [id, []]))
   for (const [name, body] of json) {
     if (!name.startsWith(`${PLUGIN_SECTIONS_FOLDER}/`)) continue
@@ -210,7 +234,7 @@ export async function stageArchive(
     if (!entries) throw corrupt(`${name} belongs to a section the manifest does not list`)
     entries.push({ path: rest.join('/'), body })
   }
-  return { manifest, contents, media, mediaFiles, sections }
+  return { manifest, contents, media, redirects, mediaFiles, sections }
 }
 
 function parseManifest(body: Buffer): Manifest {

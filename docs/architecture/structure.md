@@ -20,7 +20,7 @@ page: write one, point the older ones at the new address, drop the one from an a
 returns to) and `record.ts` writes them through the document service. `performTransition` calls
 `record.ts` inside one `strapi.db.transaction` with the publish, so a redirect that cannot be
 written leaves the page at its live address. `plugin::micelio.redirect`
-(`content-types/redirect/`, visible in the Content Manager, never exported) is keyed by site;
+(`content-types/redirect/`, visible in the Content Manager, exported as `redirects.json` and not as a content type) is keyed by site;
 its `rule` is `slug-change` (`createdBy` is Strapi's own audit relation).
 `controllers/redirects.ts` answers the content API list with its `ETag`.
 `documents.ts` is the document service middleware that refuses a redirect whose `from` or `to`

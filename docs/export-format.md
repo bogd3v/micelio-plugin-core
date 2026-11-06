@@ -1,6 +1,6 @@
 # Site export format
 
-**Kind:** reference. Format version `1.1`. The archive that carries one whole site out of a Micelio CMS and into another: its layout, how every content type is written, what is never in it, how an import behaves, and how the format itself changes. It is the source of truth of the site export contract (section 6 of the engineering standard): a release whose archive the previous release can no longer import is a breaking change.
+**Kind:** reference. Format version `1.2`. The archive that carries one whole site out of a Micelio CMS and into another: its layout, how every content type is written, what is never in it, how an import behaves, and how the format itself changes. It is the source of truth of the site export contract (section 6 of the engineering standard): a release whose archive the previous release can no longer import is a breaking change.
 
 Exporting and importing a whole site is what the preservation network, a move between hosting plans and a client's right to leave rest on (ADR-0017). No exporter or importer exists yet; this document comes first so the content types of the cut-over (release line `0.7`) are designed to serialise. It names every content type of `micelio-cms` at `v0.4.0`, and `test/export-format.test.ts` fails when one of them is missing from [Content types](#content-types).
 
@@ -16,6 +16,7 @@ content/site.json
 content/article.json
 content/page.json
 …                        one file per export name of the content types below
+redirects.json           the site's redirects (format 1.2)
 media/index.json
 media/sha256/<hex>       the bytes of each media file, named by their SHA-256
 plugins/<id>/…           the files of a sibling plugin's section, when there are any
@@ -31,7 +32,7 @@ plugins/<id>/…           the files of a sibling plugin's section, when there a
 ```json
 {
   "format": "micelio-site-export",
-  "formatVersion": "1.1",
+  "formatVersion": "1.2",
   "exportedAt": "2026-10-23T12:00:00.000Z",
   "generator": { "name": "@micelio/strapi-plugin-core", "version": "0.2.0" },
   "micelio": "0.7",
@@ -57,6 +58,7 @@ plugins/<id>/…           the files of a sibling plugin's section, when there a
     }
   ],
   "media": { "file": "media/index.json", "count": 30, "bytes": 48213990 },
+  "redirects": { "file": "redirects.json", "count": 2 },
   "files": {
     "content/article.json": { "sha256": "9f86d0…", "bytes": 18234 }
   }
@@ -78,6 +80,7 @@ plugins/<id>/…           the files of a sibling plugin's section, when there a
 | `plugins`       | The sections of sibling plugins written, each with the `id` that names its folder, its `version`, whether it holds personal data and its number of files. `[]` when none. See [Plugin sections](#plugin-sections) |
 | `types`         | Each content type written: its export name, the UID it had on the exporting instance, its file and its number of documents                                                                                        |
 | `media`         | The media index, the number of media files and their total bytes                                                                                                                                                  |
+| `redirects`     | The redirects part, its file and its number of redirects. Absent from a format `1.1` archive. See [Redirects](#redirects)                                                                                         |
 | `files`         | Every file of the archive except the manifest, with its SHA-256 (lower case hex) and its size in bytes                                                                                                            |
 
 ## Integrity
@@ -193,6 +196,40 @@ An importer resolves an item by `block` first and by `__component` only when `bl
 - An importer reuses a file of the target library with the same name, type and SHA-256. It stores any other file as it is, through the target's upload provider, without the optimisation the target applies to an uploaded image, so that its digest survives a second export; the target makes its thumbnail and formats as for an upload. It applies the target's rules: the size limit, and `security.deniedTypes` and `allowedTypes` on the type the archive declares, which is the type the file is served with. A file the target refuses refuses the archive (`exportMediaRefused`).
 - A multiple media attribute that names one digest twice holds it once after an import: the archive holds one file per digest, and Strapi links a file once per attribute.
 
+## Redirects
+
+The 301 redirects of the site (`plugin::micelio.redirect`, [api.md](api.md#redirects)) are a part
+of the archive of their own, `redirects.json`, and not a content type: they have no versions and no
+relations to other documents.
+
+```json
+{
+  "site": { "documentId": "k2v9…", "slug": "example" },
+  "redirects": [
+    { "from": "/landing", "to": "/open-source", "entryLocale": "en" },
+    { "from": "/old", "to": "/new", "entryLocale": null }
+  ]
+}
+```
+
+- Each redirect is written with `from`, `to` and `entryLocale` (`null` when the page's type is not
+  localised). The `documentId`, the numeric `id`, the timestamps, `rule`, `createdBy` and
+  `updatedBy` are not written. `site` is the manifest's.
+- Redirects are sorted by byte order of `from`, then of `entryLocale`. An exporter that leaves the
+  site's content out (`scope.content` off) writes the file with no redirects.
+- An importer **must** create the redirects on the site it imports into, in the same transaction
+  as the content. A redirect whose `from` the site already redirects, for the same `entryLocale`,
+  is reported and left as it is, never overwritten. A redirect whose `from` or `to` is not a path
+  of the site itself (one `/` first, then no `/` or `\`, no scheme, no space or control
+  character) or does not fit the type (512 characters, 32 for `entryLocale`) is reported and
+  skipped; the others are created. The report holds `redirects.created`, `redirects.existing` and
+  `redirects.invalid`.
+- Mode `replace` and the policy for existing documents do not touch redirects: the archive adds
+  the ones the site lacks and nothing else.
+- An archive of format `1.1` has no `redirects.json` and imports with no redirects. An importer
+  of an earlier release, which does not know the part, lists the file in `files` like any other,
+  checks it and ignores it: the site's content imports and the redirects are not created.
+
 ## Localisation
 
 - Each version carries its `locale`, and the manifest lists the locales used, with the instance default.
@@ -247,9 +284,6 @@ An archive **never** holds, whatever is asked:
   They are configuration of the site on this CMS, set again on the target.
   An import still checks the archive's pages against the target site's settings (`blockNotAllowed`,
   [api.md](api.md#what-a-disabled-block-does)).
-- The redirects of a site (`plugin::micelio.redirect`): the 301 redirects the plugin writes when
-  the published slug of a page changes ([api.md](api.md#redirects)). They belong to the addresses
-  of this CMS's frontend, which an import to another host does not keep.
 
 ## How a type declares its export
 
@@ -265,7 +299,7 @@ An attribute that declares nothing is written, except a `private` attribute, whi
 
 ## Content types
 
-Every content type of `micelio-cms` at `v0.4.0`, and the `site`, `category` and `tag` types of this plugin, with its export name and how it is written. The export name is what the archive uses; it never changes, whatever the UID becomes at the cut-over (ADR-0017, section 2). An instance before the cut-over has one site and no `site` relation: an exporter writes all its rows as the default site's.
+Every content type of `micelio-cms` at `v0.4.0`, and the `site`, `category` and `tag` types of this plugin (`plugin::micelio.redirect` is written as [Redirects](#redirects), not as a type), with its export name and how it is written. The export name is what the archive uses; it never changes, whatever the UID becomes at the cut-over (ADR-0017, section 2). An instance before the cut-over has one site and no `site` relation: an exporter writes all its rows as the default site's.
 
 ### Site
 
@@ -327,7 +361,8 @@ An import writes one archive into one target instance.
 - **Order.** Media first, then `site`, then the other types in byte order of export name. A reference to a document the import writes later is left out of the first write, and that document is written again once every document exists, in the same transaction.
 - **Timestamps.** Each version's `createdAt`, `updatedAt` and `publishedAt` are written as the archive has them.
 - **Older formats.** An importer of format `1.y` imports every `1.x` archive, with the content migrations its release ships for the blocks and types that changed since.
-- **A report.** The import answers with what it created, replaced, deleted and skipped per export name, the role codes of `editorialPolicy` the target does not have, and every export name it did not know.
+- **Redirects.** After the content, in the same transaction, as [Redirects](#redirects) says.
+- **A report.** The import answers with what it created, replaced, deleted and skipped per export name, the redirects it created, found and skipped, the role codes of `editorialPolicy` the target does not have, and every export name it did not know.
 
 Errors are problem details (section 4 of the standard) with these codes. The first two are the exporter's:
 
@@ -359,7 +394,7 @@ Errors are problem details (section 4 of the standard) with these codes. The fir
 
 ## Conformance checklist
 
-An exporter conforms to format `1.1` when:
+An exporter conforms to format `1.2` when:
 
 - [ ] It writes one site per archive, with the layout, the manifest and the checksums above.
 - [ ] Every content type of the site is written under its export name, as [Content types](#content-types) says, with `documentId`s and no numeric ids.
@@ -368,9 +403,10 @@ An exporter conforms to format `1.1` when:
 - [ ] Media is written once per SHA-256, as the library stores it, with its index entry.
 - [ ] Nothing of [What is never exported](#what-is-never-exported) is in the archive, and personal data only with `personal: true`.
 - [ ] Two exports of an unchanged site differ only in `exportedAt`.
+- [ ] The site's redirects are written in `redirects.json`, with the manifest's `redirects` entry.
 - [ ] A plugin section is written under `plugins/<id>/` with its manifest entry, and only when it has no personal data or is asked for by `id`.
 
-An importer conforms to format `1.1` when:
+An importer conforms to format `1.2` when:
 
 - [ ] It checks every size and hash, the layout and every document before it writes anything.
 - [ ] It refuses an unknown major and accepts a higher minor, reporting what it skipped.
@@ -378,4 +414,6 @@ An importer conforms to format `1.1` when:
 - [ ] It imports editorial states and published versions as a restore, without the transition policy or the hooks.
 - [ ] It refuses missing locales, taken slugs and taken hosts, and never changes the target's default site.
 - [ ] It reuses media by SHA-256 and applies the target's upload rules.
+- [ ] It creates the redirects, skips those that are not paths of the site or that the site has,
+      and reports both.
 - [ ] It writes the content in one transaction, and a second import of the same archive writes nothing.

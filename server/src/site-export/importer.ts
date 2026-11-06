@@ -21,6 +21,7 @@ import {
   serialiseContext,
 } from './inspect'
 import { compare, exportedTypes, siteRowsOf, type ExportedType } from './model'
+import { importRedirects, type RedirectsReport } from './redirects'
 import { readSections } from './sections'
 import { removeMedia, storeMedia } from './store-media'
 import type { SectionImportReport } from '../types/extensions'
@@ -93,6 +94,8 @@ export interface ImportReport {
   /** References to documents neither the archive nor the target holds: left out. */
   missingReferences: number
   media: { stored: number; reused: number }
+  /** What the import did with the archive's redirects; none to create for a format 1.1 archive. */
+  redirects: RedirectsReport
   /** What each plugin section's `read` did, by section `id`. */
   plugins: Record<string, SectionImportReport>
   /** Sections of the archive that were not read: no plugin registered them, or another major. */
@@ -139,6 +142,7 @@ async function importStaged(
     unknownRoles: [],
     missingReferences: 0,
     media: { stored: 0, reused: 0 },
+    redirects: { created: 0, existing: [], invalid: [] },
     plugins: {},
     skippedPlugins: [],
   }
@@ -154,6 +158,7 @@ async function importStaged(
     await strapi.db.transaction(() =>
       runAsTransition(async () => {
         await writeContent(strapi, plan, media.files, request, report)
+        report.redirects = await importRedirects(strapi, plan.site.documentId, staged.redirects)
         const sections = await readSections(strapi, staged.manifest.plugins, staged.sections, {
           documentId: plan.site.documentId,
           slug: plan.site.slug,
