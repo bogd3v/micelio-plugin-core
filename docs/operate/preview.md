@@ -65,7 +65,8 @@ The page is `/admin/plugins/micelio/preview/<content type uid>/<documentId>` (fo
 - The message schema, `@micelio/strapi-plugin-core/preview.schema.json`,
   to validate the messages of both phases.
 - To be edited in [the builder](../guide/builder.md), the block messages of
-  bogd3v/micelio#732 (`micelio:blocks`, `micelio:selected`, `micelio:select`, `micelio:patch`…):
+  bogd3v/micelio#732 (`micelio:blocks`, `micelio:selected`, `micelio:select`, `micelio:patch`, and
+  `micelio:renderMode` for an island's static alternative, bogd3v/micelio#735…):
   a frontend without them still previews, and the builder shows no outline over it.
 
 Never put a token or a grant in a log, a cache key, an error or a `Referer`.

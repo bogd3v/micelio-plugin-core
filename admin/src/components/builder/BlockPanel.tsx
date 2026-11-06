@@ -10,10 +10,12 @@ import {
   type TextField,
 } from '../../utils/builder/fields'
 import type { BuilderBlock } from '../../utils/builder/model'
+import { weightText, type IslandInfo } from '../../utils/builder/islands'
 import { Segment, Tool } from './controls'
 import { fieldLabel, Input, labelStyle } from './fieldStyle'
 import { MediaInputs } from './MediaInputs'
 import { ChevronRightIcon, DownIcon, DuplicateIcon, TrashIcon, UpIcon } from './icons'
+import { IslandBadge, alternativeName } from './IslandBadge'
 
 const Aside = styled.aside`
   flex: 0 1 320px;
@@ -108,6 +110,74 @@ const AddItem = styled.button`
   }
 `
 
+/** What the island costs the visitor, and when (the Heavy island artboard): in the design's blue. */
+function IslandCost(props: { island: IslandInfo; name: string }) {
+  const { colors } = useTheme()
+  const { t } = useMessages()
+  const { island } = props
+  const weight = weightText(island.loadKb)
+  return (
+    <section
+      aria-label={t('builder.island.cost.title')}
+      data-testid="island-cost"
+      style={{
+        padding: 12,
+        borderRadius: 4,
+        background: colors.secondary100,
+        border: `1px solid ${colors.secondary200}`,
+        fontSize: 13,
+      }}
+    >
+      <strong style={{ display: 'block', marginBottom: 4 }}>
+        {t('builder.island.cost.title')}
+      </strong>
+      {t(`builder.island.cost.${island.trigger}`, {
+        weight: t(`builder.island.${weight.unit}`, { value: weight.value }),
+        alternative: alternativeName(t, island.alternative[0]),
+      })}
+    </section>
+  )
+}
+
+/**
+ * "Run here and fill expected output" (the Heavy islands artboard): the output of the code would
+ * become the expected output, which is the static alternative of a runtime island.
+ *
+ * @remarks
+ * Not available yet: the admin has no runtime to run Python, SQL or JavaScript with, and running the
+ * editor's code in the page would need a content security policy the admin does not have by default.
+ * The button is shown disabled with the reason, so the editor sees where the field comes from.
+ */
+function RunHere() {
+  const { colors } = useTheme()
+  const { t } = useMessages()
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <button
+        type="button"
+        disabled
+        aria-describedby="run-unavailable"
+        style={{
+          height: 36,
+          padding: '0 12px',
+          border: `1px solid ${colors.neutral200}`,
+          borderRadius: 4,
+          background: colors.neutral100,
+          color: colors.neutral600,
+          fontSize: 13,
+          fontWeight: 600,
+          textAlign: 'left',
+        }}
+      >
+        {t('builder.island.run')}
+      </button>
+      <span id="run-unavailable" style={{ fontSize: 12, color: colors.neutral600 }}>
+        {t('builder.island.runUnavailable')}
+      </span>
+    </div>
+  )
+}
+
 interface BlockPanelProps {
   block: BuilderBlock
   name: string
@@ -121,6 +191,8 @@ interface BlockPanelProps {
   item: { field: string; index: number } | undefined
   /** What the block adds to the page; `undefined` for a block the site's catalogue no longer lists. */
   cost: { kb: number; isIsland: boolean } | undefined
+  /** The island the block renders: its badge, what it costs the visitor and its static alternative. */
+  island?: IslandInfo
   isReadOnly: boolean
   onSetFields: (values: Record<string, unknown>, isStep?: boolean) => void
   onSetItem: (
@@ -143,6 +215,8 @@ function TextInputs(props: {
   isReadOnly: boolean
   idPrefix: string
   missing: string[]
+  /** The fields of the block's island alternative: required before the page goes to review. */
+  alternative?: readonly string[]
 }) {
   const { colors } = useTheme()
   const { t } = useMessages()
@@ -153,20 +227,27 @@ function TextInputs(props: {
         const value =
           typeof props.values[field.name] === 'string' ? (props.values[field.name] as string) : ''
         const isInvalid = props.missing.includes(field.name)
+        const isAlternative = props.alternative?.includes(field.name) === true
+        const isAlternativeMissing = isAlternative && !isInvalid && value.trim() === ''
+        const isRequired = field.required || isAlternative
         const common = {
           id,
           value,
           readOnly: props.isReadOnly,
           required: field.required,
           'aria-invalid': isInvalid,
-          'aria-describedby': isInvalid ? `${id}-error` : undefined,
-          placeholder: field.required ? undefined : t('builder.panel.optional'),
+          'aria-describedby': isInvalid
+            ? `${id}-error`
+            : isAlternativeMissing
+              ? `${id}-alternative`
+              : undefined,
+          placeholder: isRequired ? undefined : t('builder.panel.optional'),
         }
         return (
           <div key={field.name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label htmlFor={id} style={labelStyle(colors.neutral800)}>
               {fieldLabel(field.name, t)}
-              {field.required ? <span aria-hidden="true"> *</span> : null}
+              {isRequired ? <span aria-hidden="true"> *</span> : null}
             </label>
             {field.multiline ? (
               <Textarea
@@ -182,6 +263,15 @@ function TextInputs(props: {
             {isInvalid ? (
               <span id={`${id}-error`} style={{ fontSize: 12, color: colors.danger700 }}>
                 {t('builder.panel.required')}
+              </span>
+            ) : null}
+            {isAlternativeMissing ? (
+              <span
+                id={`${id}-alternative`}
+                data-testid="alternative-missing"
+                style={{ fontSize: 12, color: colors.danger700 }}
+              >
+                {t('builder.island.alternativeRequired')}
               </span>
             ) : null}
           </div>
@@ -231,6 +321,11 @@ export function BlockPanel(props: BlockPanelProps) {
             <code>{block.component}</code> ·{' '}
             {t('builder.panel.position', { position: props.position + 1, total: props.total })}
           </div>
+          {props.island ? (
+            <div style={{ marginTop: 6 }}>
+              <IslandBadge island={props.island} variant="chip" />
+            </div>
+          ) : null}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           <Tool
@@ -309,6 +404,7 @@ export function BlockPanel(props: BlockPanelProps) {
               idPrefix={`${id}-item`}
               isReadOnly={props.isReadOnly}
               missing={missing}
+              alternative={props.island?.alternative}
               onChange={(name, value, isStep) =>
                 props.onSetItem(item.field, item.index, { [name]: value }, isStep)
               }
@@ -316,6 +412,7 @@ export function BlockPanel(props: BlockPanelProps) {
           </>
         ) : (
           <>
+            {props.island ? <IslandCost island={props.island} name={props.name} /> : null}
             {fields.options.length > 0 ? (
               <>
                 <Heading>{t('builder.panel.presentation')}</Heading>
@@ -359,14 +456,17 @@ export function BlockPanel(props: BlockPanelProps) {
               idPrefix={`${id}-field`}
               isReadOnly={props.isReadOnly}
               missing={missing}
+              alternative={props.island?.alternative}
               onChange={(name, value) => props.onSetFields({ [name]: value })}
             />
+            {props.island?.kind === 'runtime' ? <RunHere /> : null}
             <MediaInputs
               fields={fields.media ?? []}
               values={block.fields}
               idPrefix={`${id}-field`}
               isReadOnly={props.isReadOnly}
               missing={missing}
+              alternative={props.island?.alternative}
               onChange={(name, value, isStep) => props.onSetFields({ [name]: value }, isStep)}
             />
             {fields.items.map((group) => {

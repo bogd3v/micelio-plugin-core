@@ -1,0 +1,20 @@
+{
+  "collectionName": "components_shared_playgrounds",
+  "info": {
+    "displayName": "Playground",
+    "icon": "code",
+    "description": "The `playground` block (an article block, a runtime island) with its expected output, which is its static alternative, as in micelio-cms"
+  },
+  "options": {},
+  "attributes": {
+    "runtime": {
+      "type": "enumeration",
+      "enum": ["python", "sql", "javascript"],
+      "required": true
+    },
+    "code": { "type": "text", "required": true, "maxLength": 5000 },
+    "expectedOutput": { "type": "text", "maxLength": 5000 },
+    "setup": { "type": "text", "maxLength": 20000 },
+    "caption": { "type": "text" }
+  }
+}

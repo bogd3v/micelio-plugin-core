@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import prettier from 'prettier'
 import { BLOCKS, optionsOf, type Block } from '../../contract/blocks'
+import { triggerOf } from '../../contract/islands'
 import { blockJsonSchema, strapiComponents, type StrapiAttribute } from '../../contract/strapi'
 
 const SCHEMA_FILE = new URL('../../contract/blocks.schema.json', import.meta.url)
@@ -75,7 +76,9 @@ function reference(): string {
 
 function summaryTable(): string {
   const rows = BLOCKS.map((block) => {
-    const island = block.cost.island ? `\`${block.cost.island.id}\`` : 'No'
+    const island = block.cost.island
+      ? `\`${block.cost.island.id}\` (${block.cost.island.kind})`
+      : 'No'
     const variant = block.options.variant?.values.map((value) => `\`${value}\``).join(', ') ?? ''
     const options = optionsOf(block)
       .filter(([name]) => name !== 'variant')
@@ -104,6 +107,12 @@ function blockSection(block: Block, attributes: Record<string, StrapiAttribute>)
         `  - \`${name}\`: ${option.values.map((value) => `\`${value}\``).join(', ')}; default \`${option.default}\``
     ),
     `- **Cost:** ${block.cost.css} B of CSS and ${block.cost.js} B of JS, gzip${island ? `; the \`${island.id}\` island (budget \`${island.budget}\`) loads ${island.js} B of JS, gzip, once used` : ''}`,
+    ...(island
+      ? [
+          `- **Island:** \`${island.kind}\`; loads ${island.loadKb} kB once used, ${triggerOf(island.loadKb) === 'click' ? 'on a click' : 'when it scrolls into view'}`,
+          `- **Static alternative needs:** ${island.alternative.map((field) => `\`${field}\``).join(', ')}, filled in before the page is sent to review`,
+        ]
+      : []),
     `- **Static:** ${block.static}`,
   ]
   return [`### \`${block.id}\``, lines.join('\n'), fieldTable(content)].join('\n\n')

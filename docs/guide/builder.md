@@ -31,7 +31,9 @@ The address is `/admin/plugins/micelio/builder/<content type>/<documentId>`.
   **Save** saves now.
 - **Blocks (left).**
   The blocks your site offers for this kind of page, each with what it adds to the page in kB.
-  A block marked _island_ loads a script when it is used and has a static alternative.
+  A block with a blue badge is an _island_: it loads a script when it is used and has a static
+  alternative. The icon is its kind (3D, runtime, media, diagram or data); the badge on hover,
+  in the panel and in the page says how it loads, _in view_ or _on click_, and what it weighs.
   Type in the search box to find a block.
   A block the site does not allow on this page type is dimmed and says so.
   A block that costs more than what the budget has left stays available,
@@ -64,6 +66,24 @@ The address is `/admin/plugins/micelio/builder/<content type>/<documentId>`.
   A block that the site disabled after it was put on the page stays on the page:
   you can select, move and remove it, and the panel says the catalogue no longer lists it.
   A copy of it is not offered: the site would refuse it as a new block.
+
+## Islands
+
+A page may hold one Scene with the variant _background_;
+a second one is refused when the page is saved.
+
+- **In the page.** An island carries its icon in its corner. Hover it to read how it loads and
+  what it weighs. When it is selected, its label says its kind (_Scene · 3D island · 2 of 3_) and a
+  **static** button shows this one island as its static alternative, without leaving the dynamic
+  page; the badge then reads what replaced it (_3D → poster_). **As static site** in the toolbar
+  does the same for the whole page. The choice is not saved: a reload of the preview forgets it,
+  and the builder sends it again.
+- **In the panel.** _What this costs the visitor_ says what the island adds and when it loads.
+  The fields of its static alternative (a Scene's poster and alt text, a Playground's expected
+  output) are marked required: a page cannot be sent to review while one is empty, and the panel
+  says which. A poster is chosen in the Content Manager's form, as every file is.
+- **Run here and fill expected output** (Playground) is shown disabled: the admin has no runtime
+  to run the code with yet. Write the expected output by hand.
 
 ## Compose
 

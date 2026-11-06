@@ -124,7 +124,17 @@ describe('the palette', () => {
 
   it('weighs a block in kB with one decimal, an island’s on-demand script apart', () => {
     expect(costKbOf(entry('a', { cost: { css: 737, js: 1556, island: null } }))).toBe(2.2)
-    expect(costKbOf(entry('b', { cost: { css: 0, js: 0, island: { js: 99999 } } }))).toBe(0)
+    expect(
+      costKbOf(
+        entry('b', {
+          cost: {
+            css: 0,
+            js: 0,
+            island: { js: 99999, kind: '3d', loadKb: 151.3, alternative: ['poster'] },
+          },
+        })
+      )
+    ).toBe(0)
   })
 
   it('refuses a block the page type’s catalogue excludes and flags one over the remaining budget', () => {
@@ -279,6 +289,29 @@ describe('the media fields of the panel', () => {
     expect(missingRequired(fields, { images: [image], cover: null })).toEqual([])
     expect(isIncomplete(fields, {}, { images: [] })).toBe(true)
     expect(isIncomplete(fields, {}, { images: [image] })).toBe(false)
+  })
+
+  it('leaves an island’s static alternative out of the save: a Scene without a poster saves', () => {
+    const scene = fieldsOf(
+      {
+        uid: 'section.scene',
+        attributes: {
+          poster: { type: 'media', multiple: false, allowedTypes: ['images'], required: true },
+          alt: { type: 'string', required: true },
+        },
+      },
+      {}
+    )
+    const alternative = ['poster', 'alt']
+    expect(missingRequired(scene, {})).toEqual(['alt', 'poster'])
+    expect(missingRequired(scene, {}, alternative)).toEqual([])
+    expect(isIncomplete(scene, {}, {}, alternative)).toBe(false)
+  })
+
+  it('still holds the save for a Gallery without images, with an island’s fields skipped', () => {
+    const fields = fieldsOf(gallery, {})
+    expect(missingRequired(fields, { images: [] }, ['poster'])).toEqual(['images'])
+    expect(isIncomplete(fields, {}, { images: [] }, ['poster'])).toBe(true)
   })
 
   it('counts an item’s required media in the page’s check', () => {

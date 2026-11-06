@@ -41,6 +41,7 @@ const phase2 = [
   },
   { v: 1, type: 'micelio:selected', payload: { address, item: null, box } },
   { v: 1, type: 'micelio:hovered', payload: { address: null, item: null, box: null } },
+  { v: 1, type: 'micelio:renderMode', payload: { address, mode: 'static' } },
 ]
 
 describe('the phase 2 preview messages (ADR-0019, amendment of 2026-11-02)', () => {
@@ -67,6 +68,29 @@ describe('the phase 2 preview messages (ADR-0019, amendment of 2026-11-02)', () 
     for (const message of bad) expect(parsePreviewMessage({ v: 1, ...message })).toBeUndefined()
   })
 
+  it('rejects a render mode that is neither dynamic nor static, and one with no address', () => {
+    const renderMode = phase2.at(-1)!
+    for (const payload of [
+      { address, mode: 'inline' },
+      { address, mode: null },
+      { address: null, mode: 'static' },
+      { mode: 'dynamic' },
+    ]) {
+      expect(parsePreviewMessage({ ...renderMode, payload })).toBeUndefined()
+    }
+    expect(parsePreviewMessage({ ...renderMode, payload: { address, mode: 'dynamic' } })).toEqual({
+      ...renderMode,
+      payload: { address, mode: 'dynamic' },
+    })
+  })
+
+  it('carries no mode on a patch: a mode sent with one is dropped', () => {
+    const patch = phase2[4]!
+    const payload = { ...(patch.payload as object), mode: 'static' }
+    // `mode` is not a field of a patch, and a field the contract does not list is ignored, not carried.
+    expect(parsePreviewMessage({ ...patch, payload })).toEqual(patch)
+  })
+
   it('has the phase 2 messages in the generated schema, by their namespaced type', () => {
     const text = JSON.stringify(previewJsonSchema())
     for (const type of [
@@ -77,6 +101,7 @@ describe('the phase 2 preview messages (ADR-0019, amendment of 2026-11-02)', () 
       'micelio:blocks',
       'micelio:selected',
       'micelio:hovered',
+      'micelio:renderMode',
     ]) {
       expect(text).toContain(type)
     }

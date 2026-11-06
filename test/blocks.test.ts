@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { BLOCKS, blockContentSchema, type Block } from '../contract/blocks'
+import { BLOCKS, ISLAND_KINDS, blockContentSchema, type Block } from '../contract/blocks'
 import { OPTION_NAMES } from '../contract/options'
 import { strapiComponents, type StrapiAttributes } from '../contract/strapi'
 import fixture from './fixtures/micelio-cms-v0.4.0-components.json'
@@ -142,6 +142,30 @@ describe('the block catalogue', () => {
   it('declares an island for scene and playground only, with their registry id and budget', () => {
     const islands = BLOCKS.filter((block) => block.cost.island)
     expect(Object.fromEntries(islands.map((block) => [block.id, pick(block)]))).toEqual(ISLANDS)
+  })
+
+  it('gives each island a kind, a load weight and the fields of its static alternative', () => {
+    const islands = BLOCKS.flatMap((block) =>
+      block.cost.island ? [{ block, island: block.cost.island }] : []
+    )
+    expect(
+      Object.fromEntries(
+        islands.map(({ block, island }) => [
+          block.id,
+          { kind: island.kind, loadKb: island.loadKb, alternative: island.alternative },
+        ])
+      )
+    ).toEqual({
+      scene: { kind: '3d', loadKb: 151.3, alternative: ['poster', 'alt'] },
+      playground: { kind: 'runtime', loadKb: 406.7, alternative: ['expectedOutput'] },
+    })
+    for (const { block, island } of islands) {
+      expect(ISLAND_KINDS).toContain(island.kind)
+      // The alternative is made of fields of the block's own schema.
+      for (const field of island.alternative) {
+        expect(block.schema.fields.shape).toHaveProperty(field)
+      }
+    }
   })
 
   it('validates content as the content API answers it', () => {

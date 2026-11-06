@@ -172,6 +172,8 @@ export function MediaInputs(props: {
   idPrefix: string
   isReadOnly: boolean
   missing: string[]
+  /** The fields of the block's island alternative: required before the page goes to review. */
+  alternative?: readonly string[]
   /** `isStep` is false for a change to a file's alternative text: it is not a step to undo. */
   onChange: (name: string, value: MediaFile | MediaFile[] | null, isStep?: boolean) => void
 }) {
@@ -227,9 +229,11 @@ export function MediaInputs(props: {
         const id = `${props.idPrefix}-${field.name}`
         const files = filesOf(props.values, field.name)
         const isInvalid = props.missing.includes(field.name)
+        const isAlternative = props.alternative?.includes(field.name) === true
         return (
           <div
             key={field.name}
+            data-testid={isAlternative ? `alternative-${field.name}` : undefined}
             role="group"
             aria-labelledby={`${id}-label`}
             style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
@@ -322,7 +326,18 @@ export function MediaInputs(props: {
                 </div>
               )
             })}
-            {isInvalid ? (
+            {isAlternative ? (
+              <span
+                style={{ fontSize: 12, color: isInvalid ? colors.danger700 : colors.neutral600 }}
+                data-testid={isInvalid ? 'alternative-missing' : undefined}
+              >
+                {t(
+                  isInvalid
+                    ? 'builder.island.alternativeRequired'
+                    : 'builder.island.alternativeNote'
+                )}
+              </span>
+            ) : isInvalid ? (
               <span style={{ fontSize: 12, color: colors.danger700 }}>
                 {t('builder.panel.requiredMedia')}
               </span>

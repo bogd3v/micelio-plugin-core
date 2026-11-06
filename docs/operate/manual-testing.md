@@ -17,7 +17,7 @@ The first run writes `.env.docker` (gitignored) with new throwaway secrets, buil
 | Admin    | `http://localhost:1337/admin` | Strapi asks for the first admin's name, email and password on the first visit; use any values. |
 | Frontend | `http://localhost:3000`       | The published image `ghcr.io/bogd3v/micelio:edge`, or the one `FRONTEND_IMAGE` names.          |
 
-The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site", the host `localhost` and the `url` `http://localhost:3000`, creates a custom API token for the frontend (every `find` and `findOne`, which a read-only token has, plus the two preview routes it needs to exchange preview tokens and read drafts) and another, with only the two preview routes, for trying the preview with `curl`, and creates a draft **Page**, "Open source, in plain words", with a text section and a scene, a heavy island (a one-triangle model) whose poster is its static alternative, and a second one, "A heavy page", over the stack's page budget ([Try the page budget](#try-the-page-budget)). The seed stores the two files' URLs with `CMS_PUBLIC_URL` (`http://localhost:1337`) and the frontend lists it as `NUXT_MEDIA_URL`: the frontend prefixes a relative media URL with `NUXT_PUBLIC_STRAPI_URL`, which is `http://cms:1337` inside Compose and which your browser cannot resolve. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview with `curl`; `docker/cms/src/api/page/` has the shape of the `page` of `micelio-cms`, because the frontend previews `api::page.page` and asks the CMS for every section of the catalogue. `docker/cms/dev.mjs` writes those sections' schemas into `docker/cms/src/components/` (gitignored) from `test/fixtures/micelio-cms-v0.4.0-components.json`. Like the rest of the stack, none of it is the distribution's.
+The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site", the host `localhost` and the `url` `http://localhost:3000`, creates a custom API token for the frontend (every `find` and `findOne`, which a read-only token has, plus the two preview routes it needs to exchange preview tokens and read drafts) and another, with only the two preview routes, for trying the preview with `curl`, and creates a draft **Page**, "Open source, in plain words", with a text section and a scene, a heavy island (a one-triangle model) whose poster is its static alternative, a second one, "A heavy page", over the stack's page budget ([Try the page budget](#try-the-page-budget)), and a third, "Islands without their alternative" ([Try the islands](#try-the-islands)). The seed stores the two files' URLs with `CMS_PUBLIC_URL` (`http://localhost:1337`) and the frontend lists it as `NUXT_MEDIA_URL`: the frontend prefixes a relative media URL with `NUXT_PUBLIC_STRAPI_URL`, which is `http://cms:1337` inside Compose and which your browser cannot resolve. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview with `curl`; `docker/cms/src/api/page/` has the shape of the `page` of `micelio-cms`, because the frontend previews `api::page.page` and asks the CMS for every section of the catalogue. `docker/cms/dev.mjs` writes those sections' schemas into `docker/cms/src/components/` (gitignored) from `test/fixtures/micelio-cms-v0.4.0-components.json`. Like the rest of the stack, none of it is the distribution's.
 
 The plugin owns **Category** and **Tag** (`/api/categories` and `/api/tags`, as in `micelio-cms`; the fixture article and the `post-list` section point at them, and `docker/cms/src/extensions/micelio/` adds the inverse `articles` as the distribution does), so the frontend's category requests answer. Until the rest of the content types of `micelio-cms` move into the plugin (the cut-over of release line 0.7) its request for the site settings fails with a 404, and it shows an empty site outside the preview. Its log says so (`docker compose -f compose.dev.yml logs frontend`). Use the admin to see what the plugin does: the **Micelio** status page, the Content Manager and the Content-Type Builder.
 
@@ -53,7 +53,7 @@ Without it the page still previews, and the builder shows no outline over it.
    `http://localhost:1337/admin/plugins/micelio/builder/api::page.page/<documentId>` directly.
 2. The toolbar shows the title, **Draft**, and the page weight meter.
    The palette lists the blocks of the site's catalogue that the Page type accepts,
-   each with its cost, and a blue _island_ badge on the heavy ones.
+   each with its cost, and a blue badge with the kind's icon on the heavy ones.
    Click the search box and type `scene`: the match is in bold and the count reads "1 of N match".
 3. Click the "Open source, in plain words" text in the frame: it gets a solid outline,
    a label with its name and position, and up, down and duplicate buttons.
@@ -112,6 +112,63 @@ Open the builder on "Open source, in plain words", as above, with two images at 
 7. Open the same builder in a second tab and save a change there. In the first, change the
    gallery's order and press **Keep my version**: the images are still the ones you left.
 8. Turn on reduced motion and set the language to Español, and reload: the labels are in Spanish.
+
+## Try the islands
+
+The seed adds a draft page, "Islands without their alternative": a text section, a Scene with no
+poster and a Playground with no expected output. The commands run on the stack of
+`npm run dev:docker` (first admin created, as above).
+
+1. In Content Manager → Page, open "Islands without their alternative" and copy its `documentId`.
+   Open `http://localhost:1337/admin/plugins/micelio/builder/api::page.page/<documentId>`.
+2. In the palette, **Scene** and **Playground** each have a blue badge: a cube for the Scene
+   (3D) and `</>` for the Playground (runtime). The two rows of **Page blocks** carry the same
+   badge. Hover a badge: its title says the kind, how it loads and what it weighs
+   ("3D island · in view · 151.3 kB").
+3. In the frame, the Scene carries its icon in its corner. Hover it: the icon grows into
+   "3D · in view · 151.3 kB" and the outline turns dashed blue. The frontend must speak phase 2
+   (`micelio:blocks`) for the outline to show.
+4. Click the Scene. The label reads "Scene · 3D island · 2 of 3" and has a **static** button; the
+   panel shows the badge, "What this costs the visitor" and **Poster \***, with
+   **Choose a file** (the Media Library, as in the media steps above) and "The static alternative.
+   Required before the page goes to review." The poster does not hold the save: the toolbar says
+   _Saved_ with the poster empty. Pick one and the note changes to "The static alternative, shown
+   before the island loads and on the static site."
+5. Click **static**: the button reads as pressed, and the badge in the corner says "3D → poster"
+   once you select another block. The frame changes only when the frontend handles the message
+   (bogd3v/micelio#735). To see the message, open the browser's console on the admin tab, pick the
+   preview frame in the console's context menu, and run this before you click:
+
+   ```js
+   addEventListener('message', (event) => {
+     if (event.data?.type === 'micelio:renderMode') console.log(event.data.payload)
+   })
+   ```
+
+   It logs `{ address: { zone: 'sections', index: 1, block: 'scene', version }, mode: 'static' }`.
+   Click **static** again: `mode: 'dynamic'`.
+
+6. Select the Playground. **Expected output \*** is marked required and says so. **Run here and
+   fill expected output** is disabled, with its reason.
+7. Send the page to review as the admin route does (the password is the one you chose; nothing is
+   written to a file):
+
+   ```bash
+   ADMIN=$(curl -s -X POST localhost:1337/admin/login -H 'Content-Type: application/json' \
+     -d '{"email":"<your email>","password":"<your password>"}' | jq -r .data.token)
+   curl -s -w '\n%{http_code}\n' -X POST localhost:1337/micelio/transitions \
+     -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+     -d '{"uid":"api::page.page","documentId":"<documentId>","locale":"en","to":"in_review"}'
+   ```
+
+   The answer is `409` with `"code": "islandAlternativeMissing"` and `blocks` naming the Scene
+   (`poster`) and the Playground (`expectedOutput`). The page is still a draft.
+
+8. In Content Manager, choose a poster for the Scene and write an expected output for the
+   Playground, run the command again: `200`.
+9. Two background Scenes: in the builder, insert a second **Scene** and set both to _Background_.
+   The save is refused with _The page was not saved_ and the detail "A page may hold 1 scene
+   block with variant background, and this one has 2". Set one back to _Inline_: it saves.
 
 ## Try the page settings
 

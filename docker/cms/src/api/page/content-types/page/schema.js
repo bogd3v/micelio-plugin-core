@@ -47,6 +47,8 @@ module.exports = withSiteScope(
             'section.rich-text',
             'section.gallery',
             'section.scene',
+            // An article block with an island of its own, here so the builder shows both kinds.
+            'shared.playground',
           ],
           pluginOptions: localized,
         },

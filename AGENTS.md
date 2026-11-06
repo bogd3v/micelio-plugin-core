@@ -69,6 +69,13 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
   - `budget/` is the page weight budget (ADR-0019): `rules.ts`, `weight-client.ts` and the `budget` service, which `performTransition` calls on every publish of a measured type. Details: [docs/architecture/structure.md](docs/architecture/structure.md#page-weight-budget); how-to: `docs/operate/budgets.md`.
   - `extensions/` is the registry behind the `extensions` service (ADR-0017): the four extension points a sibling plugin registers (`registerAdminPage`, `registerSiteSection`, `registerStatusChecks`, `registerExportSection`), declared in `types/extensions.ts`, a contract (section 6). `validate.ts` checks a registration, `checks.ts` runs a plugin's status checks, `site-sections.ts` gives every site an instance of each section. `controllers/extensions.ts` serves `GET /micelio/admin-pages` and `GET /micelio/sites`; `status/refresh.ts` is the daily cron job; `site-export/sections.ts` writes and reads the archive's `plugins/<id>/` folders. `docs/plugins/extension-points.md` is the how-to.
   - `block-options/` is the validation of a block's presentation options at save (ADR-0018): `rules.ts` (pure: the first option of a dynamic zone that its block does not expose or whose value is outside the block's set), `documents.ts` (the document service middleware, on `create`, `update` and `clone`) and `error.ts` (`BlockOptionError`, which the `site-scope` route middleware answers as the problem detail `blockOptionInvalid`). `docs/blocks.md` describes the options.
+  - `islands/` is the rule of the islands (#56): `rules.ts` (pure: the island blocks of a zone whose
+    static alternative lacks a field, `islandAlternativeMissing`, and a zone with more than one
+    `scene` of `variant: background`, `sceneBackgroundLimit`), `check.ts` (reads a draft's zones
+    with the media of the island blocks populated) and `error.ts`. `performTransition` refuses a
+    move out of `draft`, and a publish or republish, with `islandAlternativeMissing`; the
+    `block-options` document service middleware and the dry run of an import refuse the second
+    background Scene.
   - `block-settings/` is what a site manages of the catalogue (#51):
     `plugin::micelio.block-setting` (hidden, `export: never`), the `blockSettings` service,
     `GET /micelio/blocks?site=` (the merged view the palette reads) and the checks at save:
@@ -95,13 +102,16 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
     a site's settings of a block and a page that holds one) it is the shared folder of section 4 of
     the standard.
 - `contract/` — the block catalogue (ADR-0018): `blocks.ts` (the 19 entries),
-  `options.ts` (the presentation options vocabulary: eight names,
+  `islands.ts` (what the catalogue and the admin share about islands: the five kinds, the 1 MB
+  rule that decides the trigger, and what counts as a filled field), `options.ts` (the
+  presentation options vocabulary: eight names,
   their values and what articles withhold), `fields.ts` (the zod field builders),
   `strapi.ts` (a block's JSON Schema read back as Strapi attributes) and the generated
   `blocks.schema.json`, published as `./blocks.schema.json`.
   `GET /micelio/blocks` serves it (`?site=` merges a site's settings);
   `docs/blocks.md` has the reference and how `cost` is measured. Next to it,
   `preview.ts` holds the zod schemas of the messages between the admin and the preview frame
+  (`micelio:renderMode` among them: an island's render mode, never saved)
   (ADR-0019, section 4) and the generated `preview.schema.json`,
   published as `./preview.schema.json`.
 - `admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`),
@@ -147,6 +157,9 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
 - The extension points are a contract too (section 6, "Plugin hooks API"): adding one is a MINOR, renaming or removing one or changing what a registration means is a MAJOR. A change to `server/src/types/extensions.ts` regenerates `docs/hooks.md` in the same pull request.
 - The hooks are a contract too: adding one is a MINOR, renaming or removing one or changing a payload is a MAJOR. A payload is plain data, never a Strapi entity. A change to `server/src/types/hooks.ts` regenerates `docs/hooks.md` (`npm run reference`) in the same pull request; `lint:reference` fails otherwise.
 - The block catalogue is a contract (section 6; ADR-0018, section 2): a change to `contract/blocks.ts` regenerates its schema and reference in the same pull request (`lint:blocks` fails otherwise), and a new tag of `micelio-cms` regenerates the fixture. The preview messages are one too (ADR-0019, section 4): a change to `contract/preview.ts` regenerates `preview.schema.json` in the same pull request (`lint:preview` fails otherwise); a breaking change raises the envelope `v`.
+- Blue, the design's `secondary` token, is for islands and nothing else in the builder
+  (`IslandBadge` and the island marks of `Overlay`, `Palette` and `BlockPanel`); Strapi's
+  `variant="secondary"` on a button is a different thing and is not it.
 - A site-scoped, editorial type with a dynamic zone that `budgets.contentTypes` lists is measured by the frontend when it is published (any other publishes as before), and the publish is refused above its budget or without the measurement (`budget/`): nothing publishes it outside the `transitions` service (the import of a site archive is the one deliberate exception: it restores what was published), and the frontend's API token needs `plugin::micelio.preview.draft`. The test app lists `api::story.story` by default; a suite that needs another lists it while it runs (the browser suite of the cost meter `api::landing.landing`, the page-settings suites `api::guide.guide`). A suite that publishes such a type needs a frontend that answers the weight route (`strapi/weight-site.ts`).
 - Every user-facing string of the admin lands in `en` and `es` in the same pull request.
 - The suites run on the clean Strapi of `test/strapi/app/`: Strapi's defaults and no other plugin (users-permissions is not installed by default; only `test/strapi/taxonomy-takeover.test.ts` turns it on, with `MICELIO_TEST_USERS_PERMISSIONS`, because the public role's grants are what the takeover keeps). What the distribution adds (security middlewares, CSP, uploads provider) is never added there; the host check (#7) is what verifies it.

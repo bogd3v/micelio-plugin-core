@@ -2,6 +2,8 @@
 // two: `ready` (frame → admin) and `load-draft` (admin → frame). Phase 2 adds the block messages of
 // the amendment of 2026-11-02 (bogd3v/micelio#732), namespaced `micelio:`: `select`, `hover`,
 // `insertGap` and `patch` towards the frame, `blocks`, `selected` and `hovered` towards the admin.
+// The amendment of 2026-11-04 (bogd3v/micelio#837) adds `micelio:renderMode`, the render mode of
+// one block, towards the frame.
 // The JSON Schema generated from these schemas is `preview.schema.json`; the frontend validates
 // against it.
 import { z } from 'zod'
@@ -153,6 +155,31 @@ export const patchMessage = envelope
     description: 'Admin → frame: new text for a block.',
   })
 
+/** How a block is shown: as the page renders it, or as its static alternative. */
+export const renderMode = z.enum(['dynamic', 'static'])
+
+/**
+ * Admin → frame: show a block in a render mode.
+ *
+ * @remarks
+ * The mode is state of the frame, never saved: a reload shows every block as it loads, and the admin
+ * sends the message again after the next `ready`. The frame answers nothing. `micelio:patch` is for
+ * text and carries no mode (ADR-0019, amendment of 2026-11-04).
+ */
+export const renderModeMessage = envelope
+  .extend({
+    type: z.literal('micelio:renderMode'),
+    payload: z.object({
+      address: blockAddress,
+      mode: renderMode,
+    }),
+  })
+  .meta({
+    id: 'micelio:renderMode',
+    title: 'micelio:renderMode',
+    description: 'Admin → frame: show a block as its static alternative or as the page renders it.',
+  })
+
 /** Frame → admin: every block and item with its box, on each reflow and scroll. */
 export const blocksMessage = envelope
   .extend({
@@ -201,7 +228,7 @@ export const hoveredMessage = envelope
     description: 'Frame → admin: the hovered block.',
   })
 
-/** The messages of phases 1 and 2. */
+/** The messages of phases 1 and 2, and the render mode. */
 export const previewMessage = z.union([
   readyMessage,
   loadDraftMessage,
@@ -209,6 +236,7 @@ export const previewMessage = z.union([
   hoverMessage,
   insertGapMessage,
   patchMessage,
+  renderModeMessage,
   blocksMessage,
   selectedMessage,
   hoveredMessage,
@@ -216,6 +244,9 @@ export const previewMessage = z.union([
 
 /** A message of the protocol. */
 export type PreviewMessage = z.infer<typeof previewMessage>
+
+/** How a block is shown in the frame. */
+export type RenderMode = z.infer<typeof renderMode>
 
 /** The address of a block, as a message carries it. */
 export type BlockAddress = z.infer<typeof blockAddress>

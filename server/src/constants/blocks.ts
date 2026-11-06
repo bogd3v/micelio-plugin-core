@@ -18,3 +18,12 @@ export const LABEL_LOCALES = ['en', 'es'] as const
 
 /** The longest label of a block in the palette, in characters. */
 export const LABEL_MAX_LENGTH = 60
+
+/** The `code` of the transition refused because a block's static alternative is not filled in. */
+export const ISLAND_ALTERNATIVE_MISSING = 'islandAlternativeMissing'
+
+/** The `code` of the problem detail a save with more background Scenes than a page may hold answers. */
+export const SCENE_BACKGROUND_LIMIT_CODE = 'sceneBackgroundLimit'
+
+/** How many `scene` blocks with `variant: background` one dynamic zone may hold. */
+export const SCENE_BACKGROUND_LIMIT = 1

@@ -121,19 +121,34 @@ export function fieldsOf(
   return fields
 }
 
-/** The names of the required text fields, media fields and item lists of a block that are empty. */
-export function missingRequired(fields: BlockFields, values: Record<string, unknown>): string[] {
+/**
+ * The names of the required text fields, media fields and item lists of a block that are empty.
+ *
+ * @param skip - Fields to leave out: an island's static alternative is required before the page
+ * goes to review (`islandAlternativeMissing`), not to save.
+ */
+export function missingRequired(
+  fields: BlockFields,
+  values: Record<string, unknown>,
+  skip: readonly string[] = []
+): string[] {
   const text = fields.text
     .filter(
       ({ name, required }) =>
-        required && !(typeof values[name] === 'string' && values[name].trim() !== '')
+        required &&
+        !skip.includes(name) &&
+        !(typeof values[name] === 'string' && values[name].trim() !== '')
     )
     .map(({ name }) => name)
   const media = (fields.media ?? [])
-    .filter(({ name, required }) => required && filesOf(values, name).length === 0)
+    .filter(
+      ({ name, required }) => required && !skip.includes(name) && filesOf(values, name).length === 0
+    )
     .map(({ name }) => name)
   const items = fields.items
-    .filter(({ name, required }) => required && itemsOf(values, name).length === 0)
+    .filter(
+      ({ name, required }) => required && !skip.includes(name) && itemsOf(values, name).length === 0
+    )
     .map(({ name }) => name)
   return [...text, ...media, ...items]
 }
@@ -143,13 +158,15 @@ export function missingRequired(fields: BlockFields, values: Record<string, unkn
  * check the builder makes before it saves.
  *
  * @param itemFields - The fields of the item component, by the field that holds the items.
+ * @param skip - The block's own fields to leave out (see `missingRequired`).
  */
 export function isIncomplete(
   fields: BlockFields,
   itemFields: Record<string, BlockFields>,
-  values: Record<string, unknown>
+  values: Record<string, unknown>,
+  skip: readonly string[] = []
 ): boolean {
-  if (missingRequired(fields, values).length > 0) return true
+  if (missingRequired(fields, values, skip).length > 0) return true
   return fields.items.some(({ name }) => {
     const inner = itemFields[name]
     return (

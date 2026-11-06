@@ -3,6 +3,8 @@ import { EDITORIAL_ATTRIBUTE, type EditorialState } from '../constants/editorial
 import { SLUG_ATTRIBUTE } from '../constants/page-settings'
 import type { BudgetService } from '../services/budget'
 import { hooksOf } from '../hooks'
+import { findMissingAlternativesIn } from '../islands/check'
+import { ISLAND_ALTERNATIVE_MISSING } from '../constants/blocks'
 import { hasPageSettings } from '../page-settings'
 import { recordSlugChange, type SlugChange } from '../page-settings/record'
 import { SITE_ATTRIBUTE } from '../site-scope'
@@ -49,6 +51,7 @@ export type TransitionErrorCode =
   | 'editorialTransitionForbidden'
   | 'editorialPublishAtInvalid'
   | 'editorialTransitionRefused'
+  | 'islandAlternativeMissing'
   | 'pageOverBudget'
   | 'previewUnavailable'
 
@@ -98,6 +101,11 @@ interface EditorialEntry {
  * budget of its page type, or `previewUnavailable` when the measurement fails. It never publishes
  * without the measurement. Right before the write it checks that the draft was not saved since, and
  * refuses with `previewUnavailable` when it was.
+ *
+ * Moving an entry out of `draft` first checks that every island block of its draft has its static
+ * alternative filled in (`alternative` in `contract/blocks.ts`) and refuses with
+ * `islandAlternativeMissing`, naming the blocks, their positions and the empty fields. Moving back
+ * to `draft` and the scheduler's `scheduled -> published` are not checked.
  *
  * Publishing a page type made with `withPageSettings` whose slug differs from the live one writes
  * the redirect from the old address in the same transaction as the publish (`docs/guide/pages.md`):
@@ -167,6 +175,25 @@ export async function performTransition(
     publishAt = new Date(at).toISOString()
   } else if (transition.to === 'draft') {
     publishAt = null
+  }
+  // A page goes to review, is scheduled or is published with the static alternative of each island
+  // filled in: it is what a visitor gets before the island loads and what a static build and a feed
+  // carry. Moving back to draft is not checked, and the scheduler's own move was checked when the
+  // page was scheduled.
+  if (request.to !== 'draft' && transition.from !== 'scheduled') {
+    const missing = await findMissingAlternativesIn(strapi, {
+      uid,
+      documentId: entry.documentId,
+      locale: entry.locale,
+    })
+    if (missing.length > 0) {
+      throw new TransitionError(
+        409,
+        ISLAND_ALTERNATIVE_MISSING,
+        `The static alternative of ${missing.map(describeMissing).join(', ')} is not filled in`,
+        { blocks: missing }
+      )
+    }
   }
   const userId = request.actor.kind === 'user' ? request.actor.id : null
   const editorial = {
@@ -249,6 +276,10 @@ export async function performTransition(
     to: transition.to,
     site: entry.site?.documentId ?? null,
   }
+}
+
+function describeMissing(missing: { block: string; position: number; fields: string[] }): string {
+  return `the ${missing.block} block at position ${missing.position + 1} (${missing.fields.join(', ')})`
 }
 
 /** The change of address the publish of `entry` makes, or `null` when no version is live or the slug stays. */

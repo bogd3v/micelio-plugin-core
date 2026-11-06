@@ -1,9 +1,10 @@
 import type { Core } from '@strapi/strapi'
 import { BlockOptionError, BLOCK_OPTION_INVALID } from '../block-options/error'
 import { BlockNotAllowedError } from '../block-settings/error'
-import { BLOCK_NOT_ALLOWED } from '../constants/blocks'
+import { BLOCK_NOT_ALLOWED, SCENE_BACKGROUND_LIMIT_CODE } from '../constants/blocks'
 import { SITE_UID } from '../constants/site'
 import type { SiteScopeState } from '../site-scope'
+import { SceneBackgroundLimitError } from '../islands/error'
 import { pickSite, type SiteSummary } from '../site-scope/resolve'
 import { sendProblem } from '../utils/problem'
 
@@ -19,7 +20,8 @@ const BLOCK_OPTION_STATUS = 400
  * has answers a problem detail with the code `unknownSite`. A save the catalogue refuses for an
  * option a block does not allow answers `blockOptionInvalid`, naming the block, the option and the
  * values it allows, and one that adds a block the site disabled or does not allow on the page's type
- * answers `blockNotAllowed`, naming the block and why.
+ * answers `blockNotAllowed`, naming the block and why. A zone with more background Scenes than a
+ * page may hold answers `sceneBackgroundLimit`, naming the block, the count and the limit.
  */
 const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
   return async (ctx, next) => {
@@ -56,6 +58,20 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
           block,
           reason,
           ...(pageType === undefined ? {} : { pageType }),
+        })
+        return
+      }
+      if (error instanceof SceneBackgroundLimitError) {
+        const { block, count, limit } = error.excess
+        sendProblem(ctx, {
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: BLOCK_OPTION_STATUS,
+          detail: error.message,
+          code: SCENE_BACKGROUND_LIMIT_CODE,
+          block,
+          count,
+          limit,
         })
         return
       }

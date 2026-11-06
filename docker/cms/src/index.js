@@ -14,6 +14,7 @@ const TOKEN_NAME = 'Frontend (compose.dev.yml)'
 const PREVIEW_TOKEN_NAME = 'Preview by hand (compose.dev.yml)'
 const LANDING_SLUG = 'landing'
 const HEAVY_SLUG = 'heavy'
+const ISLANDS_SLUG = 'islands'
 const AUTHOR_NAME = 'Ada Example'
 const ARTICLE_SLUG = 'a-draft-article'
 // A 320x180 PNG, the poster of the scene: the static alternative of the island.
@@ -219,6 +220,42 @@ async function seedHeavyPage(strapi) {
   })
 }
 
+// A draft whose two islands lack their static alternative (a Scene with no poster, a Playground with
+// no expected output): the builder marks both, and sending it to review is refused until they are
+// filled (docs/operate/manual-testing.md, "Try the islands").
+async function seedIslandsPage(strapi) {
+  const site = await strapi.db.query('plugin::micelio.site').findOne({ where: { slug: SITE_SLUG } })
+  if (!site) return
+  if (await strapi.db.query('api::page.page').findOne({ where: { slug: ISLANDS_SLUG } })) return
+  await strapi.documents('api::page.page').create({
+    locale: 'en',
+    data: {
+      title: 'Islands without their alternative',
+      slug: ISLANDS_SLUG,
+      site: site.documentId,
+      sections: [
+        {
+          __component: 'section.rich-text',
+          body: 'Two islands, and neither has what a static site needs.',
+        },
+        {
+          __component: 'section.scene',
+          variant: 'inline',
+          title: 'A scene without a poster',
+          alt: 'A blue panel standing in for a 3D scene',
+          model: await upload(strapi, 'scene-2.glb', 'model/gltf-binary', triangleGlb()),
+        },
+        {
+          __component: 'shared.playground',
+          runtime: 'python',
+          code: 'print(sum(range(4)))',
+          caption: 'The expected output is empty on purpose.',
+        },
+      ],
+    },
+  })
+}
+
 // The draft article of the preview pane: a cover and an author, which the frontend reads with its
 // `populate` (docs/operate/manual-testing.md). The type is the fixture of docker/cms/src/api/article/.
 async function seedArticle(strapi) {
@@ -261,6 +298,7 @@ module.exports = {
     await seedPreviewToken(strapi)
     await seedLanding(strapi)
     await seedHeavyPage(strapi)
+    await seedIslandsPage(strapi)
     await seedArticle(strapi)
   },
 }

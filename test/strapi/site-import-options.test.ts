@@ -29,6 +29,22 @@ describe('the options of the blocks, in an import', () => {
     return tar(new Map([...files].sort(([a], [b]) => (a < b ? -1 : 1))))
   }
 
+  // The page with `variants` Scenes, each of the variant named: the archive of a page with islands.
+  const scenes = (variants: string[]): Buffer => {
+    const files = new Map(exported)
+    rewrite<ContentFile>(files, 'content/landing.json', (content) => {
+      for (const version of content.documents[0]!.versions) {
+        version.data.sections = variants.map((scene) => ({
+          __component: 'section.scene',
+          variant: scene,
+          alt: 'A scene',
+        }))
+      }
+      return content
+    })
+    return tar(new Map([...files].sort(([a], [b]) => (a < b ? -1 : 1))))
+  }
+
   beforeAll(async () => {
     strapi = await setupStrapi()
     const site = await strapi.documents(SITE_UID as UID.ContentType).findFirst({
@@ -66,6 +82,28 @@ describe('the options of the blocks, in an import', () => {
 
   it('imports the same page with a value the block offers', async () => {
     await service().import(Readable.from([variant('4')]), { into: 'default' })
+    expect(await strapi.db.query(LANDING).count()).toBeGreaterThan(0)
+  })
+
+  it('refuses a second background Scene, in the dry run and in the import, and writes nothing', async () => {
+    const two = scenes(['background', 'background'])
+    const before = await strapi.db.query(LANDING).count()
+    for (const run of [
+      () => service().preview(Readable.from([two]), { into: 'default' }),
+      () => service().import(Readable.from([two]), { into: 'default' }),
+    ]) {
+      await expect(run()).rejects.toMatchObject({
+        code: 'exportDocumentInvalid',
+        message: expect.stringContaining('2 scene blocks with variant background') as unknown,
+      })
+    }
+    expect(await strapi.db.query(LANDING).count()).toBe(before)
+  })
+
+  it('imports a page with one background Scene and any number of inline ones', async () => {
+    await service().import(Readable.from([scenes(['background', 'inline', 'inline'])]), {
+      into: 'default',
+    })
     expect(await strapi.db.query(LANDING).count()).toBeGreaterThan(0)
   })
 })
