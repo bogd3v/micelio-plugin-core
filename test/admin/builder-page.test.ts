@@ -390,6 +390,32 @@ describe('the builder page in the admin', () => {
     }
   })
 
+  it('says by how much a page already over its budget is over, in the palette row’s note', async () => {
+    // A standard page may weigh 120 kB: one block of 199.2 kB leaves -79.19999999999999.
+    const { baseKb, blockKb } = site.weight
+    site.weight.baseKb = 0
+    site.weight.blockKb = 199.2
+    try {
+      const documentId = await newLanding([{ __component: 'section.rich-text', body: 'One' }])
+      const page = await open(builderPath(documentId))
+      await eventually(() => shown(page)).toEqual(['rich-text'])
+      const palette = page.getByRole('complementary', { name: 'Block palette' })
+      await palette
+        .getByRole('region', { name: 'Over the remaining budget' })
+        .waitFor({ timeout: 20_000 })
+      const note = palette.getByText('This page is 79.2 kB over its budget.').first()
+      await note.waitFor()
+      expect(await note.textContent()).toBe(
+        'This page is 79.2 kB over its budget. You can add it, but publishing will be refused until the page fits.'
+      )
+      expect(await palette.getByText(/kB left on this page/).count()).toBe(0)
+      expect(await violationsOf(page)).toEqual([])
+    } finally {
+      site.weight.baseKb = baseKb
+      site.weight.blockKb = blockKb
+    }
+  })
+
   /** The messages of the protocol the frame received, by type. */
   const receivedBy = (page: Page, type: string) =>
     frameOf(page)

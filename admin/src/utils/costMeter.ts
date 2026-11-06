@@ -28,9 +28,19 @@ export function meterPercent(blocksKb: number, budgetKb: number): number {
   return Math.min(100, Math.round((blocksKb / budgetKb) * 1000) / 10)
 }
 
-/** A weight in kB with one decimal and no trailing zero: `42`, `42.5`. */
-export function formatKb(kb: number): string {
-  return String(Math.round(kb * 10) / 10)
+/**
+ * A weight in kB with one decimal, kept (`42.0`, `79.2`), in the editor's locale: `.` in English,
+ * `,` in Spanish. Rounds the way a person reads it, so `79.19999999999999` is `79.2`. The sign is
+ * kept: a caller that prints an amount "over" passes the absolute value.
+ *
+ * @param kb - The weight, in kB.
+ * @param locale - The editor's locale (`useIntl().locale`), for the decimal mark.
+ */
+export function formatKb(kb: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(Math.round(kb * 10) / 10)
 }
 
 /** The blocks that carry on-demand weight, heaviest first: what the page loads only once used. */

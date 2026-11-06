@@ -3,13 +3,7 @@ import styled, { useTheme } from 'styled-components'
 
 import type { BudgetResource } from '../hooks/useBudget'
 import { useMessages } from '../messages'
-import {
-  formatKb,
-  meterLevel,
-  meterPercent,
-  onDemandBlocks,
-  type MeterLevel,
-} from '../utils/costMeter'
+import { meterLevel, meterPercent, onDemandBlocks, type MeterLevel } from '../utils/costMeter'
 
 // The bar changes colour at 90 % and past 100 %, never along the way. The words say the same, so
 // the colour is never the only signal (WCAG 1.4.1); the fills hold 3:1 against the track (1.4.11).
@@ -66,14 +60,14 @@ const Table = styled.table`
 
 /** What the cost meter says of the page's standing, in words. */
 function standing(
-  t: ReturnType<typeof useMessages>['t'],
+  { t, kb }: Pick<ReturnType<typeof useMessages>, 't' | 'kb'>,
   level: MeterLevel,
   blocksKb: number,
   budgetKb: number,
   overByKb: number
 ): string {
-  if (level === 'over') return t('cost.level.over', { over: formatKb(overByKb) })
-  if (level === 'near') return t('cost.level.near', { left: formatKb(budgetKb - blocksKb) })
+  if (level === 'over') return t('cost.level.over', { over: kb(overByKb) })
+  if (level === 'near') return t('cost.level.near', { left: kb(budgetKb - blocksKb) })
   return t('cost.level.ok')
 }
 
@@ -137,12 +131,12 @@ function Measured(props: {
   measurement: Extract<BudgetResource, { kind: 'ready' }>['measurement']
   onMeasureAgain: () => void
 }) {
-  const { t, date } = useMessages()
+  const { t, date, kb } = useMessages()
   const { measurement, onMeasureAgain } = props
   const { blocksKb, frameworkKb, budgetKb, overByKb, onDemandKb } = measurement
   const level = meterLevel(blocksKb, budgetKb)
-  const text = standing(t, level, blocksKb, budgetKb, overByKb)
-  const line = t('cost.line', { total: formatKb(blocksKb), budget: formatKb(budgetKb) })
+  const text = standing({ t, kb }, level, blocksKb, budgetKb, overByKb)
+  const line = t('cost.line', { total: kb(blocksKb), budget: kb(budgetKb) })
   const heavy = onDemandBlocks(measurement.blocks)
   return (
     <>
@@ -170,10 +164,10 @@ function Measured(props: {
         {t('cost.pageType', { type: measurement.pageType })}
       </Typography>
       <Typography textColor="neutral700" tag="p" data-testid="cost-framework">
-        {t('cost.framework', { kb: formatKb(frameworkKb) })}
+        {t('cost.framework', { kb: kb(frameworkKb) })}
       </Typography>
       <Typography textColor="neutral700" tag="p" data-testid="cost-on-demand">
-        {t('cost.onDemand', { kb: formatKb(onDemandKb) })}
+        {t('cost.onDemand', { kb: kb(onDemandKb) })}
       </Typography>
       <details>
         <summary>{t('cost.details')}</summary>
@@ -191,8 +185,8 @@ function Measured(props: {
               <tr key={block.position}>
                 <td>{block.position}</td>
                 <td>{block.id}</td>
-                <td>{formatKb(block.kb)}</td>
-                <td>{block.onDemandKb > 0 ? formatKb(block.onDemandKb) : '–'}</td>
+                <td>{kb(block.kb)}</td>
+                <td>{block.onDemandKb > 0 ? kb(block.onDemandKb) : '–'}</td>
               </tr>
             ))}
           </tbody>
@@ -218,7 +212,7 @@ function Measured(props: {
 /** The meter of the builder's toolbar: the same measurement and thresholds as the card, in one line. */
 function CompactMeter({ resource }: { resource: BudgetResource }) {
   const { colors } = useTheme()
-  const { t } = useMessages()
+  const { t, kb } = useMessages()
   if (resource.kind !== 'ready') {
     return (
       <div
@@ -231,8 +225,8 @@ function CompactMeter({ resource }: { resource: BudgetResource }) {
   }
   const { blocksKb, budgetKb } = resource.measurement
   const level = meterLevel(blocksKb, budgetKb)
-  const used = formatKb(blocksKb)
-  const budget = formatKb(budgetKb)
+  const used = kb(blocksKb)
+  const budget = kb(budgetKb)
   // Islands load their script only once used: it is not in the weight, and the line says how many.
   const onDemand = onDemandBlocks(resource.measurement.blocks).length
   return (
@@ -250,8 +244,8 @@ function CompactMeter({ resource }: { resource: BudgetResource }) {
         aria-valuemax={budgetKb}
         aria-valuenow={Math.min(blocksKb, budgetKb)}
         aria-valuetext={t(`cost.level.${level}`, {
-          over: formatKb(resource.measurement.overByKb),
-          left: formatKb(budgetKb - blocksKb),
+          over: kb(resource.measurement.overByKb),
+          left: kb(budgetKb - blocksKb),
         })}
         data-level={level}
       >

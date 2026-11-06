@@ -6,7 +6,7 @@ import type { BudgetMeasurement } from '../../../server/src/types/budget'
 import { useBudget, type BudgetError } from '../hooks/useBudget'
 import { usePreviewSource, type PreviewSourceError } from '../hooks/usePreviewSource'
 import { useMessages } from '../messages'
-import { formatKb, isSameVersion, meterLevel, weightRoute } from '../utils/costMeter'
+import { isSameVersion, meterLevel, weightRoute } from '../utils/costMeter'
 import { previewPagePath } from '../utils/previewAction'
 import { PreviewFrame, type FrameState } from './PreviewFrame'
 
@@ -117,7 +117,7 @@ export function Measurement({
  * measurement stays, marked as made before the last save when the draft has changed since.
  */
 export function CostPanelContent({ entry }: { entry: CostPanelEntry }) {
-  const { t, date } = useMessages()
+  const { t, date, kb } = useMessages()
   const { uid, documentId, locale, version } = entry
   const [run, setRun] = useState(0)
   const [isMeasuring, setIsMeasuring] = useState(false)
@@ -144,13 +144,13 @@ export function CostPanelContent({ entry }: { entry: CostPanelEntry }) {
     body = (
       <Flex direction="column" alignItems="stretch" gap={1}>
         <Typography variant="delta" tag="p" data-testid="cost-line" data-level={level}>
-          {t('cost.line', { total: formatKb(blocksKb), budget: formatKb(budgetKb) })}
+          {t('cost.line', { total: kb(blocksKb), budget: kb(budgetKb) })}
         </Typography>
         <Typography tag="p" fontWeight="bold" data-testid="cost-standing">
           {level === 'over'
-            ? t('cost.level.over', { over: formatKb(overByKb) })
+            ? t('cost.level.over', { over: kb(overByKb) })
             : level === 'near'
-              ? t('cost.level.near', { left: formatKb(budgetKb - blocksKb) })
+              ? t('cost.level.near', { left: kb(budgetKb - blocksKb) })
               : t('cost.level.ok')}
         </Typography>
         <Typography textColor="neutral700" tag="p" data-testid="cost-measured-at">

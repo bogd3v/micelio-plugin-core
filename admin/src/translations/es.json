@@ -426,6 +426,7 @@
   "builder.palette.costIsland": "isla · {weight}",
   "builder.palette.notAllowed": "No permitido en páginas {type}: el catálogo del tipo de página lo excluye.",
   "builder.palette.overBudget": "Quedan {left} kB en esta página. Puedes añadirlo, pero la publicación se rechazará hasta que la página quepa.",
+  "builder.palette.pageOver": "Esta página está {left} kB por encima de su presupuesto. Puedes añadirlo, pero la publicación se rechazará hasta que la página quepa.",
   "builder.palette.help.before": "Arrastra un bloque a la página, o selecciona un bloque y pulsa",
   "builder.palette.help.key": "Intro",
   "builder.palette.help.after": "para insertarlo después de la selección.",

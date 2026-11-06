@@ -77,8 +77,18 @@ describe('the on-demand weight', () => {
     expect(meterPercent(total, 120)).toBe(7.5)
   })
 
-  it('writes kB with one decimal and no trailing zero', () => {
-    expect([42, 42.5, 42.04, 0.1 + 0.2].map(formatKb)).toEqual(['42', '42.5', '42', '0.3'])
+  it('writes kB with one decimal always, and the locale’s mark', () => {
+    expect([42, 42.5, 42.04, 0.1 + 0.2].map((kb) => formatKb(kb, 'en'))).toEqual([
+      '42.0',
+      '42.5',
+      '42.0',
+      '0.3',
+    ])
+    expect(formatKb(79.19999999999999, 'en')).toBe('79.2')
+  })
+
+  it('writes the decimal mark of the editor’s locale', () => {
+    expect([42, 79.19999999999999].map((kb) => formatKb(kb, 'es'))).toEqual(['42,0', '79,2'])
   })
 })
 

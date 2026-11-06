@@ -226,12 +226,12 @@ describe('the General tab of the page settings in the builder', () => {
     const documentId = await newGuide('weigh')
     const page = await open(builderPath(GUIDE_UID, documentId))
     await openDrawer(page)
-    await eventually(() => page.getByTestId('toolbar-meter').textContent()).toContain('/ 120 kB')
+    await eventually(() => page.getByTestId('toolbar-meter').textContent()).toContain('/ 120.0 kB')
 
     await typeButtons(page).filter({ hasText: 'Landing' }).click()
 
     await eventually(async () => (await draftOf(documentId)).pageType).toBe('landing')
-    await eventually(() => page.getByTestId('toolbar-meter').textContent()).toContain('/ 60 kB')
+    await eventually(() => page.getByTestId('toolbar-meter').textContent()).toContain('/ 60.0 kB')
     await expect(
       typeButtons(page).filter({ hasText: 'Landing' }).getAttribute('aria-pressed')
     ).resolves.toBe('true')

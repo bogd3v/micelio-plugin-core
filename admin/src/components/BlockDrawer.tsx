@@ -15,7 +15,6 @@ import {
   type BlockUsage,
   type CatalogueBlock,
 } from '../utils/blocks'
-import { formatKb } from '../utils/costMeter'
 import { problemOf } from '../utils/fetchError'
 import { Measurement, type Outcome } from './CostPanel'
 
@@ -45,7 +44,7 @@ const LOCALES = ['en', 'es'] as const
  * contract itself is not editable here.
  */
 export function BlockDrawer({ block, site, pageTypes, canManage, onSaved, onClose }: DrawerProps) {
-  const { t } = useMessages()
+  const { t, kb } = useMessages()
   const { locale } = useIntl()
   const client = useFetchClient()
   const heading = useRef<HTMLHeadingElement>(null)
@@ -256,12 +255,12 @@ export function BlockDrawer({ block, site, pageTypes, canManage, onSaved, onClos
           <Typography tag="p" textColor="neutral700" data-testid="block-cost">
             {measured?.kind === 'ready' && compared
               ? t(`blocks.measure.${compared.kind}`, {
-                  declared: formatKb(block.costKb),
-                  measured: formatKb(measured.measuredKb),
+                  declared: kb(block.costKb),
+                  measured: kb(measured.measuredKb),
                   page: measured.page.title,
-                  difference: formatKb(compared.differenceKb),
+                  difference: kb(compared.differenceKb),
                 })
-              : t('blocks.measure.declared', { declared: formatKb(block.costKb) })}
+              : t('blocks.measure.declared', { declared: kb(block.costKb) })}
           </Typography>
           {isMeasuring ? <Typography role="status">{t('cost.loading')}</Typography> : null}
           {measured?.kind === 'error' ? (

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import en from '../admin/src/translations/en.json'
+import es from '../admin/src/translations/es.json'
 import {
   fieldsOf,
   filesOf,
@@ -16,6 +18,7 @@ import {
 } from '../admin/src/utils/builder/geometry'
 import { gapMessage, patchMessage, selectMessage } from '../admin/src/utils/builder/messages'
 import {
+  budgetNote,
   costKbOf,
   groupRows,
   highlight,
@@ -323,5 +326,38 @@ describe('the media fields of the panel', () => {
     const items = (icon: unknown) => ({ text: 'x', items: [{ icon }] })
     expect(isIncomplete(outer, { items: inner }, items(null))).toBe(true)
     expect(isIncomplete(outer, { items: inner }, items(image))).toBe(false)
+  })
+})
+
+describe('the note of an over-budget palette row', () => {
+  /** What the editor reads: the note's message of the locale, filled as the palette fills it. */
+  const noteIn = (leftKb: number, locale: 'en' | 'es') => {
+    const messages = (locale === 'en' ? en : es) as Record<string, string>
+    const { id, values } = budgetNote(leftKb, locale)
+    return messages[id].replace('{left}', values.left)
+  }
+
+  it('prints the room left with one decimal, whatever the rounding error of the float', () => {
+    expect(noteIn(79.19999999999999, 'en')).toMatch(/^79\.2 kB left on this page\./)
+    expect(noteIn(0, 'en')).toMatch(/^0\.0 kB left on this page\./)
+  })
+
+  it('says by how much a page is over its budget, not a negative amount left', () => {
+    const note = noteIn(-79.19999999999999, 'en')
+    expect(note).toMatch(/^This page is 79\.2 kB over its budget\./)
+    expect(note).not.toContain('-')
+    expect(note).not.toContain('left')
+  })
+
+  it('decides on the tenth it prints: a remainder that rounds to 0.0 is not over', () => {
+    expect(noteIn(-0.04, 'en')).toMatch(/^0\.0 kB left on this page\./)
+    expect(noteIn(-0.06, 'en')).toMatch(/^This page is 0\.1 kB over its budget\./)
+  })
+
+  it('writes the decimal mark of the editor’s locale', () => {
+    expect(noteIn(79.19999999999999, 'es')).toMatch(/^Quedan 79,2 kB en esta página\./)
+    expect(noteIn(-79.19999999999999, 'es')).toMatch(
+      /^Esta página está 79,2 kB por encima de su presupuesto\./
+    )
   })
 })
