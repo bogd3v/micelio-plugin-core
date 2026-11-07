@@ -56,6 +56,10 @@ export interface BuilderDocument {
   siteName: string | undefined
   /** The sample texts the page copied from its template and has not replaced yet; empty for a page that has none. */
   samples: string[]
+  /** The blocks the page's template fixed: `{ block, nth }`, the nth block of that catalogue id. */
+  fixed: { block: string; nth: number }[]
+  /** The blocks of the zone as the page was loaded: a mark is read against these, by row. */
+  held: { component: string; id?: number }[]
   /** `draft` while no version is published, `published` or `modified` after. */
   state: 'draft' | 'published' | 'modified'
   /** Where the page is in the editorial workflow; `undefined` for a type made without `withEditorial`. */
@@ -123,6 +127,16 @@ function toDocument(answer: CmAnswer, documentId: string): BuilderDocument {
     samples: Array.isArray(data.templateSamples)
       ? data.templateSamples.filter((sample): sample is string => typeof sample === 'string')
       : [],
+    fixed: Array.isArray(data.templateFixed)
+      ? data.templateFixed.filter(
+          (mark): mark is { block: string; nth: number } =>
+            typeof mark === 'object' &&
+            mark !== null &&
+            typeof (mark as { block?: unknown }).block === 'string' &&
+            typeof (mark as { nth?: unknown }).nth === 'number'
+        )
+      : [],
+    held: [],
     state:
       meta?.availableStatus === undefined || meta.availableStatus.length === 0
         ? 'draft'
@@ -313,6 +327,7 @@ export function useBuilderDocument(
         setRefusal(undefined)
         setStatus('idle')
         const document = toDocument(answer, documentId)
+        document.held = loaded.map(({ component, id }) => ({ component, id }))
         // The Content Manager's answer carries no relations: the site comes from its relations route.
         if (!document.site) {
           try {

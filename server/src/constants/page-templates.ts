@@ -21,6 +21,10 @@ export const TEMPLATE_CODES = {
   overBudget: 'templateOverBudget',
   notFound: 'templateNotFound',
   forbidden: 'templatesForbidden',
+  readOnly: 'templateReadOnly',
+  retired: 'templateRetired',
+  versionConflict: 'templateVersionConflict',
+  blockFixed: 'templateBlockFixed',
 } as const
 
 /** The longest name of a template, in characters. */

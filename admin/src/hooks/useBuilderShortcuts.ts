@@ -29,6 +29,11 @@ export interface ShortcutContext {
   openPage: () => void
   backToEntry: () => void
   focusSearch: () => void
+  /**
+   * The only actions that run; the others leave their key to the browser. A page with a part of the
+   * keyboard (the template editor) names them, and shows no key outside them.
+   */
+  only?: readonly ShortcutId[]
 }
 
 /** The block being carried to a gap with the keyboard, and the position it started at. */
@@ -221,7 +226,9 @@ export function useBuilderShortcuts(ctx: ShortcutContext): { carrying: Carry | u
         where.isCarrying = false
       }
       const found = matchShortcut(event, where)
-      if (found && run(found.id, found.index, event)) event.preventDefault()
+      const only = latest.current.only
+      if (found && (!only || only.includes(found.id)) && run(found.id, found.index, event))
+        event.preventDefault()
     }
     function onKeyUp(event: KeyboardEvent): void {
       if (event.code === 'Space' && swallowSpace.current) {

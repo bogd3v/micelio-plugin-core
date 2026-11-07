@@ -8,6 +8,7 @@ import { budgetKbOf } from '../budget/rules'
 import type { PluginConfig } from '../config'
 import { BLOCK_SETTING_UID } from '../constants/blocks'
 import {
+  TEMPLATE_FIXED_ATTRIBUTE,
   TEMPLATE_ID_ATTRIBUTE,
   TEMPLATE_SAMPLES_ATTRIBUTE,
   TEMPLATE_VERSION_ATTRIBUTE,
@@ -21,11 +22,14 @@ import {
 } from '../constants/page-templates'
 import { SITE_UID } from '../constants/site'
 import { hasPageSettings } from '../page-settings'
+import { applyOffer, diffTemplates, fixedMarksOf, planSwitch } from '../page-templates/changes'
 import { TemplateError } from '../page-templates/error'
+import { asTemplateWrite } from '../page-templates/documents'
 import {
   blockOfComponent,
   costKbOf,
   optionsSummary,
+  parseTemplateBlocks,
   parseTemplateDocument,
   samplesOf,
   shapeContent,
@@ -36,11 +40,19 @@ import {
 import { SITE_ATTRIBUTE } from '../site-scope'
 import type {
   BlockChoice,
+  FixedMark,
   TemplateBlock,
+  TemplateCause,
   TemplateCheck,
   TemplateDocument,
+  TemplateEditable,
   TemplateInspection,
+  TemplateManaged,
+  TemplateOffer,
+  TemplatePage,
+  TemplateRevision,
   TemplateSummary,
+  TemplateSwitchPlan,
 } from '../types/page-templates'
 
 /** The site a template belongs to or is made for. */
@@ -67,6 +79,27 @@ export interface TemplateRequest {
   blocks?: BlockChoice[]
   /** Whether the caller may read the page's draft in the Content Manager; the route sets it. */
   mayRead?: (draft: Record<string, unknown>) => boolean
+  /** The name of the admin user who saves, for the template's history. */
+  by?: string
+}
+
+/** The page the Template tab acts on. */
+export interface PageTarget {
+  uid: string
+  documentId: string
+  locale?: string | null
+  /** Whether the caller may read the page's draft in the Content Manager; the route sets it. */
+  mayRead?: (draft: Record<string, unknown>) => boolean
+  /** Whether the caller may write the page's blocks in the Content Manager; the route sets it. */
+  mayUpdate?: (draft: Record<string, unknown>, zone: string) => boolean
+}
+
+/** What the builder sends to save a new version of a template. */
+export interface TemplateEdit {
+  /** The version the editor read; another one means someone saved first. */
+  expectedVersion: number
+  /** The blocks as `{ block, content, fixed, data }`. */
+  blocks: unknown
 }
 
 /** What the gallery sends to make a page from a template. */
@@ -102,8 +135,61 @@ export interface PageTemplatesService {
    */
   save(request: TemplateRequest): Promise<TemplateSummary>
 
-  /** The templates a site may start a page from: its own and the CMS-wide ones, by name. */
+  /** The templates a site may start a page from: its own and the CMS-wide ones that are not retired, by name. */
   list(site: TemplateSite): Promise<TemplateSummary[]>
+
+  /**
+   * Every template of a site, retired ones included, with the pages made from each and its history:
+   * what the Page templates page lists.
+   */
+  /**
+   * The templates the Page templates page lists, with where each is used.
+   *
+   * @param mayRead - Whether the caller may read the pages of a page type; the pages (and the count)
+   * of a type it may not read are left out.
+   */
+  manage(site: TemplateSite, mayRead?: (uid: string) => boolean): Promise<TemplateManaged[]>
+
+  /** A template as the builder edits it; `null` when there is none. */
+  detail(documentId: string): Promise<TemplateEditable | null>
+
+  /**
+   * Saves the builder's blocks as the next version of a template, with what changed since the
+   * version before. Nothing is written, and the version stays, when the blocks are the same.
+   *
+   * @throws {@link TemplateError} for a template of a theme (read-only), another version than the
+   * one read, or a refusal of a save.
+   */
+  update(documentId: string, edit: TemplateEdit, by?: string): Promise<TemplateSummary>
+
+  /** Hides a template from New page (or shows it again); the pages made from it are untouched. */
+  retire(documentId: string, retired: boolean): Promise<TemplateSummary>
+
+  /** A copy of a template on `site`, at version 1, under a name the site does not use. */
+  duplicate(documentId: string, site: TemplateSite, by?: string): Promise<TemplateSummary>
+
+  /** What the Template tab shows for a page: its template, what changed since, what is fixed. */
+  offer(target: PageTarget): Promise<TemplateOffer>
+
+  /**
+   * Applies the structure changes of the page's template: adds the new blocks with their sample
+   * text, changes an option only where the page kept the old default, and follows the fixed marks.
+   * Content and the editor's own changes stay.
+   */
+  apply(target: PageTarget): Promise<TemplateOffer>
+
+  /**
+   * What switching the page to another template keeps, adds and drops; with `isDryRun` false it
+   * does it.
+   */
+  switchTo(
+    target: PageTarget,
+    templateId: string,
+    isDryRun: boolean
+  ): Promise<{ plan: TemplateSwitchPlan; offer: TemplateOffer }>
+
+  /** Lifts the page's fixed blocks and stops its offers: the page no longer records a template. */
+  detach(target: PageTarget): Promise<TemplateOffer>
 
   /** The template `documentId`, or `null`. */
   get(documentId: string): Promise<TemplateSummary | null>
@@ -119,7 +205,12 @@ export interface PageTemplatesService {
    * @param scope - Where it is available; the document's own when absent.
    * @throws {@link TemplateError} for a document that is not a template, or any refusal of a save.
    */
-  import(raw: unknown, site: TemplateSite, scope?: 'site' | 'cms'): Promise<TemplateSummary>
+  import(
+    raw: unknown,
+    site: TemplateSite,
+    scope?: 'site' | 'cms',
+    by?: string
+  ): Promise<TemplateSummary>
 
   /**
    * Creates a draft page that copies a template's blocks and options: its sample text is recorded so
@@ -164,6 +255,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
       scope: row.scope === 'cms' ? 'cms' : 'site',
       origin: row.origin === 'theme' ? 'theme' : 'site',
       version: Number(row.version),
+      retired: row.retired === true,
       kb: costKbOf(blocks),
       site: owner?.slug ?? '',
       blocks: blocks.map((block) => ({
@@ -253,7 +345,9 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
   /** Every check of a template, each with what makes it fail. */
   async function evaluate(
     site: TemplateSite,
-    template: Pick<TemplateDocument, 'name' | 'pageTypes' | 'scope' | 'blocks'>
+    template: Pick<TemplateDocument, 'name' | 'pageTypes' | 'scope' | 'blocks'>,
+    /** The template being edited: it does not take its own name. */
+    editing?: string
   ): Promise<{ checks: TemplateCheck[]; failure?: Error; kb: number }> {
     const kb = costKbOf(template.blocks)
     const checks: TemplateCheck[] = []
@@ -356,7 +450,11 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
     const taken =
       template.name !== '' &&
       (await query().count({
-        where: { name: { $eqi: template.name }, site: { documentId: site.documentId } },
+        where: {
+          name: { $eqi: template.name },
+          site: { documentId: site.documentId },
+          ...(editing ? { documentId: { $ne: editing } } : {}),
+        },
       })) > 0
     checks.push({
       id: 'name',
@@ -402,7 +500,26 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
     return { name, description, pageTypes: request.pageTypes ?? [] }
   }
 
-  async function store(site: TemplateSite, template: TemplateDocument): Promise<TemplateSummary> {
+  /** The versions a template went through; one made before the history was kept has only its current one. */
+  const revisionsOf = (row: Row): (TemplateRevision & { blocks: TemplateBlock[] })[] =>
+    Array.isArray(row.history)
+      ? (row.history as (TemplateRevision & { blocks: TemplateBlock[] })[])
+      : [
+          {
+            version: Number(row.version),
+            at: String(row.createdAt ?? new Date().toISOString()),
+            by: null,
+            cause: 'save',
+            changes: [],
+            blocks: row.blocks as TemplateBlock[],
+          },
+        ]
+
+  async function store(
+    site: TemplateSite,
+    template: TemplateDocument,
+    made: { cause: TemplateCause; source?: string; by?: string }
+  ): Promise<TemplateSummary> {
     const created = (await strapi.documents(PAGE_TEMPLATE_UID as UID.ContentType).create({
       data: {
         name: template.name,
@@ -413,10 +530,209 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
         blocks: template.blocks,
         version: template.version,
         thumbnail: thumbnailOf(template.blocks),
+        history: [
+          {
+            version: template.version,
+            at: new Date().toISOString(),
+            by: made.by ?? null,
+            cause: made.cause,
+            ...(made.source ? { source: made.source } : {}),
+            changes: [],
+            blocks: template.blocks,
+          },
+        ],
         [SITE_ATTRIBUTE]: site.documentId,
       } as never,
     })) as unknown as Row
     return summaryOf((await read(created.documentId))!)
+  }
+
+  /** The draft of the page the Template tab acts on, with its blocks and the site it belongs to. */
+  async function pageOf(target: PageTarget) {
+    const uid = target.uid as UID.ContentType
+    const model = strapi.contentType(uid)
+    if (!model || !hasPageSettings(model)) {
+      throw invalid('uid', `${target.uid} is not a page type with page settings`)
+    }
+    const draft = (await strapi.documents(uid).findOne({
+      documentId: target.documentId,
+      locale: target.locale ?? undefined,
+      status: 'draft',
+      populate: {
+        ...populateOf(
+          model.attributes,
+          (component) => attributesOf(component) as Record<string, unknown> | undefined
+        ),
+        [SITE_ATTRIBUTE]: { fields: ['documentId'] },
+      },
+    } as never)) as Row | null
+    if (!draft) throw new TemplateError(404, TEMPLATE_CODES.notFound, 'There is no such page')
+    if (target.mayRead && !target.mayRead(draft)) {
+      throw new TemplateError(
+        403,
+        TEMPLATE_CODES.forbidden,
+        `This needs the permission to read ${target.uid} in the Content Manager.`
+      )
+    }
+    return { uid, model, draft }
+  }
+
+  /** The dynamic zone of a page type that accepts every component of `blocks`. */
+  function zoneFor(
+    model: { attributes: unknown },
+    uid: string,
+    blocks: readonly Pick<TemplateBlock, 'component'>[]
+  ): string {
+    const zone = Object.entries(
+      model.attributes as Record<string, { type?: string; components?: string[] }>
+    ).find(
+      ([, attribute]) =>
+        attribute.type === 'dynamiczone' &&
+        blocks.every((block) => attribute.components?.includes(block.component))
+    )?.[0]
+    if (!zone) throw invalid('uid', `${uid} has no zone that accepts every block of the template`)
+    return zone
+  }
+
+  const marksOf = (draft: Row): FixedMark[] =>
+    Array.isArray(draft[TEMPLATE_FIXED_ATTRIBUTE])
+      ? (draft[TEMPLATE_FIXED_ATTRIBUTE] as FixedMark[])
+      : []
+
+  const mayUpdate = (target: PageTarget, draft: Row, zone: string) => {
+    if (target.mayUpdate && !target.mayUpdate(draft, zone)) {
+      throw new TemplateError(
+        403,
+        TEMPLATE_CODES.forbidden,
+        `This needs the permission to update ${zone} on ${target.uid} in the Content Manager.`
+      )
+    }
+  }
+
+  async function offerOf(draft: Row): Promise<{ offer: TemplateOffer; row: Row | null }> {
+    const templateId = draft[TEMPLATE_ID_ATTRIBUTE]
+    const version = Number(draft[TEMPLATE_VERSION_ATTRIBUTE]) || null
+    const fixed = marksOf(draft)
+    const startedAt = typeof draft.createdAt === 'string' ? draft.createdAt : null
+    if (typeof templateId !== 'string' || templateId === '') {
+      return {
+        row: null,
+        offer: {
+          isLinked: false,
+          template: null,
+          version: null,
+          startedAt: null,
+          changes: [],
+          fixed,
+        },
+      }
+    }
+    const row = await read(templateId)
+    if (!row) {
+      return {
+        row: null,
+        offer: { isLinked: true, template: null, version, startedAt, changes: [], fixed },
+      }
+    }
+    const current = Number(row.version)
+    const base = revisionsOf(row).find((revision) => revision.version === version)?.blocks
+    const changes =
+      version !== null && version < current && base
+        ? diffTemplates(base, row.blocks as TemplateBlock[])
+        : []
+    return {
+      row,
+      offer: {
+        isLinked: true,
+        template: {
+          id: row.documentId,
+          name: String(row.name),
+          version: current,
+          retired: row.retired === true,
+          thumbnail: thumbnailOf(row.blocks as TemplateBlock[]),
+        },
+        version,
+        startedAt,
+        changes,
+        fixed,
+      },
+    }
+  }
+
+  async function writePage(
+    uid: UID.ContentType,
+    target: PageTarget,
+    data: Record<string, unknown>
+  ): Promise<void> {
+    await asTemplateWrite(() =>
+      strapi.documents(uid).update({
+        documentId: target.documentId,
+        locale: target.locale ?? undefined,
+        data: data as never,
+      })
+    )
+  }
+
+  /** Every page made from a template and still linked to it, by template. */
+  async function usageOf(mayRead?: (uid: string) => boolean): Promise<Map<string, TemplatePage[]>> {
+    const usage = new Map<string, TemplatePage[]>()
+    for (const [uid, model] of Object.entries(strapi.contentTypes)) {
+      if (!hasPageSettings(model) || (mayRead && !mayRead(uid))) continue
+      const names = Object.keys(model.attributes)
+      const fields = ['title', 'slug', TEMPLATE_ID_ATTRIBUTE, TEMPLATE_VERSION_ATTRIBUTE].filter(
+        (name) => names.includes(name)
+      )
+      const filters = { [TEMPLATE_ID_ATTRIBUTE]: { $notNull: true } }
+      const service = strapi.documents(uid as UID.ContentType)
+      const drafts = (await service.findMany({
+        filters,
+        fields,
+        status: 'draft',
+        locale: '*',
+      } as never)) as unknown as Row[]
+      const live = (await service.findMany({
+        filters,
+        fields: [TEMPLATE_ID_ATTRIBUTE],
+        status: 'published',
+        locale: '*',
+      } as never)) as unknown as Row[]
+      const published = new Set(live.map((page) => `${page.documentId}|${String(page.locale)}`))
+      for (const page of drafts) {
+        const id = String(page[TEMPLATE_ID_ATTRIBUTE])
+        const list = usage.get(id) ?? []
+        list.push({
+          uid,
+          documentId: page.documentId,
+          locale: typeof page.locale === 'string' ? page.locale : null,
+          title: String(page.title ?? page.slug ?? page.documentId),
+          version: Number(page[TEMPLATE_VERSION_ATTRIBUTE]) || 1,
+          state: published.has(`${page.documentId}|${String(page.locale)}`) ? 'published' : 'draft',
+        })
+        usage.set(id, list)
+      }
+    }
+    return usage
+  }
+
+  async function mustRead(documentId: string): Promise<Row> {
+    const row = await read(documentId)
+    if (!row) throw new TemplateError(404, TEMPLATE_CODES.notFound, 'There is no such template')
+    return row
+  }
+
+  function mustBeEditable(row: Row): void {
+    if (row.origin === 'theme') {
+      throw new TemplateError(
+        409,
+        TEMPLATE_CODES.readOnly,
+        `The template "${String(row.name)}" comes from a theme and is read-only: duplicate it to change it`
+      )
+    }
+  }
+
+  const siteOfRow = (row: Row): TemplateSite => {
+    const owner = row.site as { documentId?: string; slug?: string } | null | undefined
+    return { documentId: String(owner?.documentId ?? ''), slug: String(owner?.slug ?? '') }
   }
 
   return {
@@ -472,7 +788,11 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
       }
       const { failure } = await evaluate(request.site, template)
       if (failure) throw failure
-      return store(request.site, template)
+      return store(request.site, template, {
+        cause: 'save',
+        source: String(draft.title ?? draft.slug ?? ''),
+        by: request.by,
+      })
     },
 
     async list(site) {
@@ -481,7 +801,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
         populate: withSite,
         orderBy: { name: 'asc' },
       })) as Row[]
-      return rows.map(summaryOf)
+      return rows.filter((row) => row.retired !== true).map(summaryOf)
     },
 
     async get(documentId) {
@@ -504,14 +824,226 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
       }
     },
 
-    async import(raw, site, scope) {
+    async import(raw, site, scope, by) {
       const parsed = parseTemplateDocument(raw, attributesOf, TEMPLATE_FORMAT)
       if ('field' in parsed) throw invalid(parsed.field, parsed.detail)
       const template = { ...parsed, scope: scope ?? parsed.scope }
       validated({ ...template, site, uid: '', documentId: '' })
       const { failure } = await evaluate(site, template)
       if (failure) throw failure
-      return store(site, template)
+      return store(site, template, { cause: 'import', by })
+    },
+
+    async manage(site, mayRead) {
+      const rows = (await query().findMany({
+        where: { $or: [{ site: { documentId: site.documentId } }, { scope: 'cms' }] },
+        populate: withSite,
+        orderBy: { name: 'asc' },
+      })) as Row[]
+      const usage = await usageOf(mayRead)
+      return rows.map((row) => {
+        const pages = (usage.get(row.documentId) ?? []).sort((a, b) =>
+          a.title.localeCompare(b.title)
+        )
+        return {
+          ...summaryOf(row),
+          usage: { count: pages.length, pages: pages.slice(0, 50) },
+          history: revisionsOf(row)
+            .map(({ blocks: _blocks, ...revision }) => revision)
+            .sort((a, b) => b.version - a.version),
+        }
+      })
+    },
+
+    async detail(documentId) {
+      const row = await read(documentId)
+      if (!row) return null
+      return {
+        id: row.documentId,
+        name: String(row.name),
+        version: Number(row.version),
+        site: siteOfRow(row).slug,
+        origin: row.origin === 'theme' ? 'theme' : 'site',
+        retired: row.retired === true,
+        pageTypes: Array.isArray(row.pageTypes) ? (row.pageTypes as string[]) : [],
+        blocks: row.blocks as TemplateBlock[],
+      }
+    },
+
+    async update(documentId, edit, by) {
+      const row = await mustRead(documentId)
+      mustBeEditable(row)
+      if (Number(row.version) !== edit.expectedVersion) {
+        throw new TemplateError(
+          409,
+          TEMPLATE_CODES.versionConflict,
+          `The template is at version ${Number(row.version)}, not ${edit.expectedVersion}: someone saved it first`
+        )
+      }
+      const blocks = parseTemplateBlocks(edit.blocks, attributesOf)
+      if ('field' in blocks) throw invalid(blocks.field, blocks.detail)
+      const before = row.blocks as TemplateBlock[]
+      if (JSON.stringify(before) === JSON.stringify(blocks)) return summaryOf(row)
+      const pageTypes = Array.isArray(row.pageTypes) ? (row.pageTypes as string[]) : []
+      const { failure } = await evaluate(
+        siteOfRow(row),
+        {
+          name: String(row.name),
+          pageTypes,
+          scope: row.scope === 'cms' ? 'cms' : 'site',
+          blocks,
+        },
+        documentId
+      )
+      if (failure) throw failure
+      const version = Number(row.version) + 1
+      await strapi.documents(PAGE_TEMPLATE_UID as UID.ContentType).update({
+        documentId,
+        data: {
+          blocks,
+          version,
+          thumbnail: thumbnailOf(blocks),
+          history: [
+            ...revisionsOf(row),
+            {
+              version,
+              at: new Date().toISOString(),
+              by: by ?? null,
+              cause: 'edit',
+              changes: diffTemplates(before, blocks),
+              blocks,
+            },
+          ],
+        } as never,
+      })
+      return summaryOf((await read(documentId))!)
+    },
+
+    async retire(documentId, retired) {
+      const row = await mustRead(documentId)
+      mustBeEditable(row)
+      await strapi
+        .documents(PAGE_TEMPLATE_UID as UID.ContentType)
+        .update({ documentId, data: { retired } as never })
+      return summaryOf((await read(documentId))!)
+    },
+
+    async duplicate(documentId, site, by) {
+      const row = await mustRead(documentId)
+      let name = `${String(row.name)} (copy)`.slice(0, TEMPLATE_NAME_MAX_LENGTH)
+      for (
+        let n = 2;
+        (await query().count({ where: { name, site: { documentId: site.documentId } } })) > 0;
+        n += 1
+      ) {
+        name = `${String(row.name).slice(0, TEMPLATE_NAME_MAX_LENGTH - 10)} (copy ${n})`
+      }
+      const template: TemplateDocument = {
+        format: TEMPLATE_FORMAT,
+        name,
+        description: typeof row.description === 'string' ? row.description : '',
+        pageTypes: Array.isArray(row.pageTypes) ? (row.pageTypes as string[]) : [],
+        scope: 'site',
+        origin: 'site',
+        version: 1,
+        blocks: structuredClone(row.blocks as TemplateBlock[]),
+      }
+      const { failure } = await evaluate(site, template)
+      if (failure) throw failure
+      return store(site, template, { cause: 'duplicate', source: String(row.name), by })
+    },
+
+    async offer(target) {
+      const { draft } = await pageOf(target)
+      return (await offerOf(draft)).offer
+    },
+
+    async apply(target) {
+      const { uid, model, draft } = await pageOf(target)
+      const { offer, row } = await offerOf(draft)
+      if (!row || offer.version === null) {
+        throw new TemplateError(404, TEMPLATE_CODES.notFound, 'The page has no template to apply')
+      }
+      const current = row.blocks as TemplateBlock[]
+      const base =
+        revisionsOf(row).find((revision) => revision.version === offer.version)?.blocks ?? current
+      const zone = zoneFor(model, target.uid, [...base, ...current])
+      mayUpdate(target, draft, zone)
+      const result = applyOffer(
+        Array.isArray(draft[zone]) ? (draft[zone] as Row[]) : [],
+        marksOf(draft),
+        base,
+        current
+      )
+      const samples = Array.isArray(draft[TEMPLATE_SAMPLES_ATTRIBUTE])
+        ? (draft[TEMPLATE_SAMPLES_ATTRIBUTE] as string[])
+        : []
+      await writePage(uid, target, {
+        [zone]: result.zone,
+        [TEMPLATE_VERSION_ATTRIBUTE]: Number(row.version),
+        [TEMPLATE_FIXED_ATTRIBUTE]: result.fixed,
+        [TEMPLATE_SAMPLES_ATTRIBUTE]: [
+          ...new Set([...samples, ...samplesOf(attributesOf, result.added)]),
+        ],
+      })
+      return (await offerOf((await pageOf(target)).draft)).offer
+    },
+
+    async switchTo(target, templateId, isDryRun) {
+      const { uid, model, draft } = await pageOf(target)
+      const row = await read(templateId)
+      const pageSite = (draft[SITE_ATTRIBUTE] as { documentId?: string } | null | undefined)
+        ?.documentId
+      const ownerId = (row?.site as { documentId?: string } | null | undefined)?.documentId
+      if (!row || (row.scope !== 'cms' && ownerId !== pageSite)) {
+        throw new TemplateError(
+          404,
+          TEMPLATE_CODES.notFound,
+          "There is no such template on the page's site"
+        )
+      }
+      if (row.retired === true) {
+        throw new TemplateError(
+          409,
+          TEMPLATE_CODES.retired,
+          `The template "${String(row.name)}" is retired: no page switches to it`
+        )
+      }
+      const blocks = row.blocks as TemplateBlock[]
+      const zone = zoneFor(model, target.uid, blocks)
+      const planned = planSwitch(Array.isArray(draft[zone]) ? (draft[zone] as Row[]) : [], blocks)
+      if (!isDryRun) {
+        mayUpdate(target, draft, zone)
+        const samples = Array.isArray(draft[TEMPLATE_SAMPLES_ATTRIBUTE])
+          ? (draft[TEMPLATE_SAMPLES_ATTRIBUTE] as string[])
+          : []
+        await writePage(uid, target, {
+          [zone]: planned.zone,
+          [TEMPLATE_ID_ATTRIBUTE]: templateId,
+          [TEMPLATE_VERSION_ATTRIBUTE]: Number(row.version),
+          [TEMPLATE_FIXED_ATTRIBUTE]: planned.fixed,
+          [TEMPLATE_SAMPLES_ATTRIBUTE]: [
+            ...new Set([...samples, ...samplesOf(attributesOf, planned.added)]),
+          ],
+        })
+      }
+      return {
+        plan: planned.plan,
+        offer: (await offerOf((await pageOf(target)).draft)).offer,
+      }
+    },
+
+    async detach(target) {
+      const { uid, draft } = await pageOf(target)
+      mayUpdate(target, draft, '')
+      await writePage(uid, target, {
+        [TEMPLATE_ID_ATTRIBUTE]: null,
+        [TEMPLATE_VERSION_ATTRIBUTE]: null,
+        [TEMPLATE_FIXED_ATTRIBUTE]: [],
+      })
+      return (
+        await offerOf({ ...draft, [TEMPLATE_ID_ATTRIBUTE]: null, [TEMPLATE_FIXED_ATTRIBUTE]: [] })
+      ).offer
     },
 
     async createPage(templateId, request) {
@@ -522,6 +1054,13 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
           404,
           TEMPLATE_CODES.notFound,
           'There is no such template on this site'
+        )
+      }
+      if (row.retired === true) {
+        throw new TemplateError(
+          409,
+          TEMPLATE_CODES.retired,
+          `The template "${String(row.name)}" is retired: no new page starts from it`
         )
       }
       const uid = request.uid as UID.ContentType
@@ -554,6 +1093,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
         [TEMPLATE_ID_ATTRIBUTE]: templateId,
         [TEMPLATE_VERSION_ATTRIBUTE]: Number(row.version),
         [TEMPLATE_SAMPLES_ATTRIBUTE]: samplesOf(attributesOf, blocks),
+        [TEMPLATE_FIXED_ATTRIBUTE]: fixedMarksOf(blocks),
       }
       if ('title' in attributes) data.title = title
       if ('slug' in attributes) {

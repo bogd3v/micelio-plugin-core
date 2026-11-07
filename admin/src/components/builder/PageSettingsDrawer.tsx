@@ -16,6 +16,7 @@ import type { SaveRefusal } from '../../utils/builder/refusal'
 import { Segment, Tool } from './controls'
 import { Input } from './fieldStyle'
 import { CloseIcon } from './icons'
+import { TemplateTab } from './TemplateTab'
 
 const Panel = styled.aside`
   position: fixed;
@@ -53,15 +54,16 @@ const Tabs = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.colors.neutral150};
 `
 
-const Tab = styled.button`
+const Tab = styled.button<{ $isActive: boolean }>`
   all: unset;
   box-sizing: border-box;
   padding: 10px 12px;
   font-size: 13px;
   font-weight: 600;
-  cursor: default;
-  color: ${({ theme }) => theme.colors.primary600};
-  border-bottom: 2px solid ${({ theme }) => theme.colors.primary600};
+  cursor: pointer;
+  color: ${({ $isActive, theme }) => ($isActive ? theme.colors.primary600 : theme.colors.neutral600)};
+  border-bottom: 2px solid
+    ${({ $isActive, theme }) => ($isActive ? theme.colors.primary600 : 'transparent')};
   margin-bottom: -1px;
   &:focus-visible {
     outline: 2px solid ${({ theme }) => theme.colors.primary600};
@@ -76,6 +78,9 @@ const Body = styled.div`
   display: flex;
   flex-direction: column;
   gap: 20px;
+  &[hidden] {
+    display: none;
+  }
 `
 
 const Foot = styled.footer`
@@ -141,6 +146,15 @@ interface PageSettingsDrawerProps {
   onSaveAsTemplate?: () => void
   /** The page has changes the CMS does not hold yet, which a template would miss. */
   isDirty?: boolean
+  /** The name of a block of the site's catalogue, by its id, for the Template tab. */
+  blockName: (id: string) => string
+  /** The page's address: the Template tab reads and changes its template. */
+  page: { uid: string; documentId: string; locale: string | null; site: string }
+  /** The Template tab changed the page on the server: the builder reads it again. */
+  onTemplateChanged: () => void
+  /** The tab shown. The builder keeps it: the page is read again after a change and the drawer opens anew. */
+  tab: 'general' | 'template'
+  onTab: (tab: 'general' | 'template') => void
   onClose: () => void
 }
 
@@ -154,7 +168,8 @@ type Outcome = { kind: 'idle' | 'saving' | 'saved' } | { kind: 'failed'; detail:
  * It opens over the builder and leaves the preview in view; Esc and the close button shut it and
  * focus goes back to where it came from. Each choice is saved at once, with the draft's version
  * (`useBuilderDocument().saveSettings`); the slug is saved when its field is left. The other tabs
- * of the artboard (SEO and social, Template) belong to other issues and are not drawn. **Save as
+ * of the artboard: SEO and social belongs to another issue and is not drawn; **Template**
+ * (`TemplateTab`) shows the page's template, its offer and its fixed blocks. **Save as
  * template…** opens the dialog of that name (`SaveTemplateDialog`) for a role that may manage templates.
  */
 export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
@@ -270,17 +285,40 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
         </Tool>
       </Head>
       <Tabs role="tablist" aria-label={t('builder.settings.tabs')}>
-        <Tab
-          type="button"
-          role="tab"
-          aria-selected="true"
-          id={`${id}-tab`}
-          aria-controls={`${id}-panel`}
-        >
-          {t('builder.settings.tab.general')}
-        </Tab>
+        {(['general', 'template'] as const).map((name) => (
+          <Tab
+            key={name}
+            type="button"
+            role="tab"
+            $isActive={props.tab === name}
+            aria-selected={props.tab === name}
+            id={`${id}-tab-${name}`}
+            aria-controls={`${id}-panel-${name}`}
+            onClick={() => props.onTab(name)}
+          >
+            {t(`builder.settings.tab.${name}`)}
+          </Tab>
+        ))}
       </Tabs>
-      <Body role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab`}>
+      {props.tab === 'template' ? (
+        <Body role="tabpanel" id={`${id}-panel-template`} aria-labelledby={`${id}-tab-template`}>
+          <TemplateTab
+            page={props.page}
+            blockName={props.blockName}
+            canManage={props.onSaveAsTemplate !== undefined}
+            isReadOnly={props.isReadOnly}
+            isDirty={props.isDirty === true}
+            onSaveAsTemplate={() => props.onSaveAsTemplate?.()}
+            onChanged={props.onTemplateChanged}
+          />
+        </Body>
+      ) : null}
+      <Body
+        role="tabpanel"
+        id={`${id}-panel-general`}
+        aria-labelledby={`${id}-tab-general`}
+        hidden={props.tab !== 'general'}
+      >
         <Pair>
           <Field>
             <label htmlFor={`${id}-site`} style={{ fontSize: 12, fontWeight: 600 }}>
@@ -438,7 +476,7 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
       </Body>
       <Foot>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          {props.onSaveAsTemplate ? (
+          {props.onSaveAsTemplate && props.tab === 'general' ? (
             <Button
               type="button"
               variant="secondary"
@@ -458,7 +496,7 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
           >
             {status}
           </span>
-          {props.onSaveAsTemplate && props.isDirty ? (
+          {props.onSaveAsTemplate && props.isDirty && props.tab === 'general' ? (
             <span id={`${id}-template-unsaved`} style={{ fontSize: 12, color: colors.neutral600 }}>
               {t('builder.settings.saveTemplate.unsaved')}
             </span>

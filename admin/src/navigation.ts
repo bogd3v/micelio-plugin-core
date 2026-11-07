@@ -3,6 +3,7 @@ import {
   BLOCKS_READ_PERMISSION,
   REVIEW_READ_PERMISSION,
   STATUS_READ_PERMISSION,
+  TEMPLATES_MANAGE_PERMISSION,
   TRANSFER_PERMISSION,
 } from './permissions'
 
@@ -33,6 +34,7 @@ export const CORE_NAV_ITEMS: CoreNavItem[] = [
   { id: 'status', group: 'overview', to: '', permission: STATUS_READ_PERMISSION },
   { id: 'review', group: 'content', to: 'review', permission: REVIEW_READ_PERMISSION },
   { id: 'blocks', group: 'content', to: 'blocks', permission: BLOCKS_READ_PERMISSION },
+  { id: 'templates', group: 'content', to: 'templates', permission: TEMPLATES_MANAGE_PERMISSION },
   { id: 'transfer', group: 'site', to: '_export-import', permission: TRANSFER_PERMISSION },
   { id: 'about', group: 'about', to: 'about' },
 ]

@@ -199,6 +199,8 @@ interface BlockPanelProps {
   island?: IslandInfo
   /** The sample texts of the page's template not replaced yet: greyed in the fields. */
   samples?: ReadonlySet<string>
+  /** The page's template fixed the block: it can be edited but not moved or removed. */
+  isFixed?: boolean
   isReadOnly: boolean
   onSetFields: (values: Record<string, unknown>, isStep?: boolean) => void
   onSetItem: (
@@ -334,6 +336,11 @@ export function BlockPanel(props: BlockPanelProps) {
             <code>{block.component}</code> ·{' '}
             {t('builder.panel.position', { position: props.position + 1, total: props.total })}
           </div>
+          {props.isFixed ? (
+            <div style={{ marginTop: 6, fontSize: 12, color: colors.neutral600 }}>
+              {t('builder.panel.fixed')}
+            </div>
+          ) : null}
           {props.island ? (
             <div style={{ marginTop: 6 }}>
               <IslandBadge island={props.island} variant="chip" />
@@ -345,7 +352,7 @@ export function BlockPanel(props: BlockPanelProps) {
             type="button"
             aria-label={t('builder.panel.up')}
             aria-keyshortcuts="Alt+ArrowUp"
-            disabled={props.isReadOnly || props.position === 0}
+            disabled={props.isReadOnly || props.isFixed === true || props.position === 0}
             onClick={() => props.onMove(-1)}
           >
             <UpIcon />
@@ -354,7 +361,9 @@ export function BlockPanel(props: BlockPanelProps) {
             type="button"
             aria-label={t('builder.panel.down')}
             aria-keyshortcuts="Alt+ArrowDown"
-            disabled={props.isReadOnly || props.position === props.total - 1}
+            disabled={
+              props.isReadOnly || props.isFixed === true || props.position === props.total - 1
+            }
             onClick={() => props.onMove(1)}
           >
             <DownIcon />
@@ -374,7 +383,7 @@ export function BlockPanel(props: BlockPanelProps) {
             $isDanger
             aria-label={t('builder.panel.remove')}
             aria-keyshortcuts="Control+Backspace Meta+Backspace"
-            disabled={props.isReadOnly}
+            disabled={props.isReadOnly || props.isFixed === true}
             onClick={props.onRemove}
           >
             <TrashIcon />

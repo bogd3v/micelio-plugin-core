@@ -15,10 +15,11 @@ these attributes to a content type:
 - `visibility`, the component `micelio-page.visibility` with `inMenu`, `inSitemap` and `noindex`.
   A page that was never saved with it shows in the menu and the sitemap and is indexable.
 
-- `templateId`, a string, `templateVersion`, an integer, and `templateSamples`, a private JSON
-  list: the template the page was created from, the version it had, and the sample texts the page
-  copied and has not replaced yet ([Page templates](templates.md)). Nothing writes them by hand:
-  the gallery does, and a page made without a template leaves them empty.
+- `templateId`, a string, `templateVersion`, an integer, and the private JSON lists
+  `templateSamples` and `templateFixed`: the template the page was created from, the version it
+  had, the sample texts the page copied and has not replaced yet, and the blocks the template fixed
+  (`{ block, nth }`) ([Page templates](templates.md)). Nothing writes them by hand: the gallery and
+  the Template tab do, and a page made without a template leaves them empty.
 
 None is localised: they describe the page, not one language of it.
 

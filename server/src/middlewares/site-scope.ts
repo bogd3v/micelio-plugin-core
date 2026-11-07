@@ -5,6 +5,8 @@ import { BLOCK_NOT_ALLOWED, SCENE_BACKGROUND_LIMIT_CODE } from '../constants/blo
 import { SITE_UID } from '../constants/site'
 import type { SiteScopeState } from '../site-scope'
 import { SceneBackgroundLimitError } from '../islands/error'
+import { TEMPLATE_CODES } from '../constants/page-templates'
+import { FixedBlockError } from '../page-templates/error'
 import { pickSite, type SiteSummary } from '../site-scope/resolve'
 import { sendProblem } from '../utils/problem'
 
@@ -58,6 +60,19 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
           block,
           reason,
           ...(pageType === undefined ? {} : { pageType }),
+        })
+        return
+      }
+      if (error instanceof FixedBlockError) {
+        const { block, reason } = error.violation
+        sendProblem(ctx, {
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: BLOCK_OPTION_STATUS,
+          detail: error.message,
+          code: TEMPLATE_CODES.blockFixed,
+          block,
+          reason,
         })
         return
       }

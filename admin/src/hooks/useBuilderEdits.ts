@@ -45,7 +45,9 @@ type Drag = { kind: 'new'; id: string; name: string } | { kind: 'move'; key: str
 
 /** What the edits need from the page. */
 interface EditContext {
-  state: BuilderState
+  state: Pick<BuilderState, 'blocks' | 'edit' | 'undo'>
+  /** The blocks the page's template fixed, by key: they cannot be removed or moved. */
+  lockedKeys?: ReadonlySet<string>
   catalogue: BuilderCatalogue | undefined
   language: string
   selection: Selection | undefined
@@ -101,6 +103,8 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
   const { t } = useMessages()
   const { state, catalogue, language, selection, select, selectedBlock } = ctx
   const { fieldsFor, addressOf, renderedAt, frame, recent, setRecent } = ctx
+  const isLocked = (key: string | undefined) =>
+    key !== undefined && ctx.lockedKeys?.has(key) === true
   const { blocks, edit } = state
   const selectedKey = selection?.key
   const frameVersion = ctx.frameVersion
@@ -147,6 +151,8 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
     if (drag?.kind === 'new') {
       const entry = catalogue?.entries.find(({ id }) => id === drag.id)
       if (entry) insertEntry(entry, position)
+    } else if (drag?.kind === 'move' && isLocked(drag.key)) {
+      say(t('builder.toast.fixed'))
     } else if (drag?.kind === 'move') {
       const from = blocks.findIndex((block) => block.key === drag.key)
       edit(moveTo(blocks, drag.key, from < position ? position - 1 : position))
@@ -170,6 +176,10 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
   }
   const move = (step: -1 | 1) => {
     if (!selectedKey) return
+    if (isLocked(selectedKey)) {
+      say(t('builder.toast.fixed'))
+      return
+    }
     const next = moveBy(blocks, selectedKey, step)
     if (next !== blocks) {
       edit(next)
@@ -185,6 +195,10 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
   }
   const remove = () => {
     if (!selectedBlock) return
+    if (isLocked(selectedBlock.key)) {
+      say(t('builder.toast.fixed'))
+      return
+    }
     const at = blocks.indexOf(selectedBlock)
     const rest = removeKey(blocks, selectedBlock.key)
     edit(rest)

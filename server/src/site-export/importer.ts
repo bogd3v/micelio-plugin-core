@@ -25,6 +25,7 @@ import { importRedirects, type RedirectsReport } from './redirects'
 import { readSections } from './sections'
 import { removeMedia, storeMedia } from './store-media'
 import type { SectionImportReport } from '../types/extensions'
+import { asTemplateWrite } from '../page-templates/documents'
 import type { ExportDocument, ExportVersion } from './types'
 
 /** What an import does with a document the target already holds. */
@@ -244,7 +245,7 @@ async function writeDocument(
       await documents.create({ locale, data: { ...data, documentId } } as never)
       exists = true
     } else {
-      await documents.update({ documentId, locale, data } as never)
+      await asTemplateWrite(() => documents.update({ documentId, locale, data } as never))
     }
   }
 

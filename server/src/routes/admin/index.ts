@@ -68,6 +68,36 @@ export default (): Core.RouterInput => ({
       config: { policies: ['admin::isAuthenticatedAdmin'] },
     },
     {
+      method: 'GET',
+      path: '/templates/manage',
+      handler: 'pageTemplates.manage',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
+      path: '/templates/offer',
+      handler: 'pageTemplates.offer',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/templates/apply',
+      handler: 'pageTemplates.apply',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/templates/switch',
+      handler: 'pageTemplates.switchTo',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/templates/detach',
+      handler: 'pageTemplates.detach',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
       method: 'POST',
       path: '/templates/inspect',
       handler: 'pageTemplates.inspect',
@@ -89,6 +119,30 @@ export default (): Core.RouterInput => ({
       method: 'GET',
       path: '/templates/:id/export',
       handler: 'pageTemplates.export',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
+      path: '/templates/:id',
+      handler: 'pageTemplates.detail',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'PUT',
+      path: '/templates/:id',
+      handler: 'pageTemplates.update',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/templates/:id/retire',
+      handler: 'pageTemplates.retire',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/templates/:id/duplicate',
+      handler: 'pageTemplates.duplicate',
       config: { policies: ['admin::isAuthenticatedAdmin'] },
     },
     {

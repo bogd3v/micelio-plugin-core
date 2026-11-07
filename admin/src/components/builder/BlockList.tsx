@@ -15,6 +15,8 @@ export interface ListedBlock {
   hasProblem: boolean
   /** The island the block renders, for its badge. */
   island?: IslandInfo
+  /** The page's template fixed the block: it cannot be dragged, moved or removed. */
+  isFixed?: boolean
 }
 
 const Section = styled.section`
@@ -144,7 +146,7 @@ export function BlockList(props: BlockListProps) {
               key={block.key}
               $isDragging={props.draggingKey === block.key && props.carrying?.key !== block.key}
               $isCarried={props.carrying?.key === block.key}
-              draggable={!props.isReadOnly}
+              draggable={!props.isReadOnly && !block.isFixed}
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/x-micelio-move', block.key)
                 event.dataTransfer.effectAllowed = 'move'
@@ -168,6 +170,11 @@ export function BlockList(props: BlockListProps) {
                 </span>
                 <span style={{ flexGrow: 1 }}>{block.name}</span>
                 {block.island ? <IslandBadge island={block.island} variant="box" /> : null}
+                {block.isFixed ? (
+                  <span style={{ fontSize: 11, color: colors.neutral600, fontWeight: 600 }}>
+                    {t('builder.list.fixed')}
+                  </span>
+                ) : null}
                 {block.hasProblem ? (
                   <span style={{ fontSize: 11, color: colors.danger700, fontWeight: 600 }}>
                     {t('builder.list.problem')}

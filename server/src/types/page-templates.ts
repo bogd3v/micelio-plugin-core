@@ -41,6 +41,8 @@ export interface TemplateSummary {
   scope: 'site' | 'cms'
   origin: 'site' | 'theme'
   version: number
+  /** Whether the template is hidden from New page; the pages made from it are untouched. */
+  retired: boolean
   /** What the blocks add to a page, in kB, before any content. */
   kb: number
   /** The slug of the site that owns the template. */
@@ -79,4 +81,100 @@ export interface TemplateDocument {
   origin: 'site' | 'theme'
   version: number
   blocks: TemplateBlock[]
+}
+
+/** A block a page's template fixed: the `nth` block (from 1) of the catalogue block `block`. */
+export interface FixedMark {
+  block: string
+  nth: number
+}
+
+/** One thing that changed between two versions of a template. */
+export interface TemplateChange {
+  kind: 'added' | 'removed' | 'fixed' | 'unfixed' | 'option'
+  /** The `id` of the block in the catalogue. */
+  block: string
+  /** `option`: the name of the option and its value before and after. */
+  option?: string
+  from?: string
+  to?: string
+  /** `added`: the catalogue id of the block it follows in the template, `null` when it comes first. */
+  after?: string | null
+}
+
+/** Why a version of a template exists. */
+export type TemplateCause = 'save' | 'import' | 'duplicate' | 'edit'
+
+/** A version of a template, as the manage page's history lists it. */
+export interface TemplateRevision {
+  version: number
+  /** When it was made, ISO 8601. */
+  at: string
+  /** The name of the admin user who made it, when known. */
+  by: string | null
+  cause: TemplateCause
+  /** `save`: the title of the page it was made from; `duplicate`: the name of the original. */
+  source?: string
+  /** What changed since the version before; empty for the first. */
+  changes: TemplateChange[]
+}
+
+/** A page made from a template, as the manage page lists it. */
+export interface TemplatePage {
+  uid: string
+  documentId: string
+  locale: string | null
+  title: string
+  /** The version of the template the page started from. */
+  version: number
+  state: 'draft' | 'published'
+}
+
+/** A template as the manage page lists it: with where it is used and its history. */
+export interface TemplateManaged extends TemplateSummary {
+  /** How many pages were made from it and are still linked to it. */
+  usage: { count: number; pages: TemplatePage[] }
+  history: TemplateRevision[]
+}
+
+/** A template as the builder edits it. */
+export interface TemplateEditable {
+  id: string
+  name: string
+  version: number
+  site: string
+  origin: 'site' | 'theme'
+  retired: boolean
+  pageTypes: string[]
+  blocks: TemplateBlock[]
+}
+
+/** What the Template tab of a page's settings shows. */
+export interface TemplateOffer {
+  /** Whether the page records a template. */
+  isLinked: boolean
+  /** The template, `null` when the page has none or it no longer exists. */
+  template: {
+    id: string
+    name: string
+    version: number
+    retired: boolean
+    thumbnail: ThumbnailShape[]
+  } | null
+  /** The version the page started from. */
+  version: number | null
+  /** When the page was created, ISO 8601. */
+  startedAt: string | null
+  /** What changed in the template since that version; empty when it did not move on. */
+  changes: TemplateChange[]
+  /** The blocks the template fixed on this page. */
+  fixed: FixedMark[]
+}
+
+/** What switching a page to another template keeps, adds and drops. */
+export interface TemplateSwitchPlan {
+  keeps: string[]
+  adds: string[]
+  /** What would be lost: the blocks the new template does not have, with whether they hold content. */
+  drops: { block: string; position: number }[]
 }

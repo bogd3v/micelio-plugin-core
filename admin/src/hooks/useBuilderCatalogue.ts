@@ -35,9 +35,14 @@ interface ComponentsAnswer {
  * (`GET /micelio/blocks?site=`), the dynamic zone of the content type and the schemas of the
  * components in it (the Content Manager's own routes).
  *
+ * @param uid - The page's content type; `undefined` for a template, which belongs to no content
+ * type: every block of the site's catalogue is offered and there is no zone to read.
  * @param site - The slug of the page's site, or `undefined` while it is not known.
  */
-export function useBuilderCatalogue(uid: string, site: string | undefined): CatalogueResource {
+export function useBuilderCatalogue(
+  uid: string | undefined,
+  site: string | undefined
+): CatalogueResource {
   // The client is rebuilt on every render; the effect must not depend on it.
   const client = useFetchClient()
   const clientRef = useRef(client)
@@ -52,13 +57,15 @@ export function useBuilderCatalogue(uid: string, site: string | undefined): Cata
         const api = clientRef.current
         const [blocks, types, components] = await Promise.all([
           api.get<{ data: CatalogueEntry[] }>('/micelio/blocks', { params: { site } }),
-          api.get<ContentTypeAnswer>('/content-manager/content-types'),
+          uid === undefined
+            ? Promise.resolve(undefined)
+            : api.get<ContentTypeAnswer>('/content-manager/content-types'),
           api.get<ComponentsAnswer>('/content-manager/components'),
         ])
-        const attributes = types.data.data.find((type) => type.uid === uid)?.attributes ?? {}
+        const attributes = types?.data.data.find((type) => type.uid === uid)?.attributes ?? {}
         // The preview protocol addresses the zone `sections` only (`blocks` is not spoken yet), and the
         // document hook reads and writes that attribute: another zone would show an empty page.
-        if (attributes[ZONE]?.type !== 'dynamiczone') {
+        if (uid !== undefined && attributes[ZONE]?.type !== 'dynamiczone') {
           if (isCurrent) setResource({ kind: 'error', reason: 'noZone' })
           return
         }
@@ -73,7 +80,10 @@ export function useBuilderCatalogue(uid: string, site: string | undefined): Cata
             kind: 'ready',
             catalogue: {
               entries: blocks.data.data,
-              zoneComponents: attributes[ZONE]?.components ?? [],
+              zoneComponents:
+                uid === undefined
+                  ? blocks.data.data.map((entry) => entry.component)
+                  : (attributes[ZONE]?.components ?? []),
               schemas,
             },
           })

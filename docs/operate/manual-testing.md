@@ -413,6 +413,19 @@ landing`, leave **For page types** on Landing, choose **Clear** for Rich text an
    the drawer without **Save as template…** and the gallery without **Export JSON** and **Import a
    template**; it still lists the templates and creates a page from one.
 
+10. Manage templates and the Template tab (#55). Open **Micelio → Page templates**: Explainer
+    landing is listed with its blocks, source and "1 page" or more (the pages of step 4). Select it:
+    the panel lists those pages with `v1 · draft`. Press **Edit in builder**: the builder opens
+    with the notice "No preview here" and no frame. Select the Rich text, tick **Fixed**, press
+    **Save as v2**; back on the list the history shows "v2 · … Rich text: now fixed".
+11. In the builder of the page of step 4 open the gear and the **Template** tab: it says the
+    template is now at v2 and lists "Rich text: now fixed". Nothing changed on the page yet. Press
+    **Apply the structure changes**: the tab reads "up to date" and the Rich text is fixed (in
+    the builder its remove and move controls are disabled). Press **Detach from template**: the
+    lock is gone and the tab says the page was made without a template. In **Page templates**
+    press **Retire** on Explainer landing: **New page** no longer lists it; **Restore** brings it
+    back. **Duplicate** adds "Explainer landing (copy)".
+
 ## Try the preview of an article
 
 The frontend reads an article draft with a `populate` of its cover, author, category, tags, blocks, references and translations (`ARTICLE_POPULATE` in `micelio`). The seed creates a draft article, "A draft article", with a cover and an author, of the fixture `docker/cms/src/api/article/`, which has the shape of the `article` of `micelio-cms`.

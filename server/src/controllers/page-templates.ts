@@ -9,6 +9,7 @@ import {
 import { TemplateError } from '../page-templates/error'
 import type {
   PageRequest,
+  PageTarget,
   PageTemplatesService,
   TemplateRequest,
   TemplateSite,
@@ -23,14 +24,31 @@ interface UserAbility {
 interface PermissionChecker {
   cannot: {
     create(entity?: Record<string, unknown>, field?: string): boolean
-    read(entity: Record<string, unknown>, field?: string): boolean
+    read(entity?: Record<string, unknown>, field?: string): boolean
+    update(entity: Record<string, unknown>, field?: string): boolean
   }
   sanitizeCreateInput(data: Record<string, unknown>): Promise<Record<string, unknown>>
 }
 
 type Handler = (ctx: Context) => Promise<void>
 
-type Action = 'sites' | 'list' | 'inspect' | 'save' | 'export' | 'import' | 'createPage'
+type Action =
+  | 'sites'
+  | 'list'
+  | 'manage'
+  | 'detail'
+  | 'update'
+  | 'retire'
+  | 'duplicate'
+  | 'offer'
+  | 'apply'
+  | 'switchTo'
+  | 'detach'
+  | 'inspect'
+  | 'save'
+  | 'export'
+  | 'import'
+  | 'createPage'
 
 const TITLES: Record<number, string> = {
   400: 'Bad Request',
@@ -128,6 +146,38 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<Action, Handler> =>
     return isRecord(body) ? body : {}
   }
 
+  /** The name of the admin user who makes the request, for a template's history. */
+  const byOf = (ctx: Context): string | undefined => {
+    const user = ctx.state.user as
+      { firstname?: string; lastname?: string; email?: string } | undefined
+    const name = [user?.firstname, user?.lastname].filter(Boolean).join(' ')
+    return name || user?.email
+  }
+
+  /** The page the Template tab acts on, read from the query or the body, with what the caller may do. */
+  function targetOf(ctx: Context, source: Record<string, unknown>): PageTarget | undefined {
+    const { uid, documentId, locale } = source
+    if (
+      typeof uid !== 'string' ||
+      typeof documentId !== 'string' ||
+      (locale !== undefined && locale !== null && typeof locale !== 'string')
+    ) {
+      refuse(ctx, 400, TEMPLATE_CODES.invalid, 'Name the page with uid, documentId and locale', {
+        field: 'uid',
+      })
+      return undefined
+    }
+    const checker = checkerOf(ctx, uid)
+    return {
+      uid,
+      documentId,
+      locale: locale ?? undefined,
+      mayRead: (draft) => checker !== undefined && !checker.cannot.read(draft),
+      mayUpdate: (draft, zone) =>
+        checker !== undefined && !checker.cannot.update(draft, zone === '' ? undefined : zone),
+    }
+  }
+
   function readRequest(ctx: Context, site: TemplateSite): TemplateRequest | undefined {
     const body = bodyOf(ctx)
     const { uid, documentId, locale, name, description, pageTypes, scope, blocks } = body
@@ -168,17 +218,22 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<Action, Handler> =>
       pageTypes: pageTypes as string[] | undefined,
       scope,
       blocks: choices as TemplateRequest['blocks'],
+      by: byOf(ctx),
     }
   }
 
   return {
     async sites(ctx) {
       const uid = ctx.query.uid
-      if (typeof uid !== 'string') {
+      // The Page templates page names no page type: it needs the permission to manage templates.
+      if (uid === undefined) {
+        if (!mayManage(ctx)) return
+      } else if (typeof uid !== 'string') {
         refuse(ctx, 400, TEMPLATE_CODES.invalid, 'Name a page type with ?uid=.', { field: 'uid' })
         return
+      } else if (!mayCreate(ctx, uid)) {
+        return
       }
-      if (!mayCreate(ctx, uid)) return
       const sites = await readSites(strapi)
       ctx.set('Cache-Control', 'private, no-store')
       ctx.body = { data: sites.map(({ slug, name, isDefault }) => ({ slug, name, isDefault })) }
@@ -195,6 +250,125 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<Action, Handler> =>
       if (!site) return
       ctx.set('Cache-Control', 'private, no-store')
       ctx.body = { data: await templates().list(site) }
+    },
+
+    async manage(ctx) {
+      if (!mayManage(ctx)) return
+      const site = await siteOf(ctx, ctx.query.site)
+      if (!site) return
+      await failing(ctx, async () => {
+        ctx.set('Cache-Control', 'private, no-store')
+        ctx.body = {
+          data: await templates().manage(site, (uid) => {
+            const checker = checkerOf(ctx, uid)
+            return checker !== undefined && !checker.cannot.read()
+          }),
+        }
+      })
+    },
+
+    async detail(ctx) {
+      if (!mayManage(ctx)) return
+      await failing(ctx, async () => {
+        const found = await templates().detail(String(ctx.params.id))
+        if (!found) {
+          refuse(ctx, 404, TEMPLATE_CODES.notFound, 'There is no such template')
+          return
+        }
+        ctx.set('Cache-Control', 'private, no-store')
+        ctx.body = { data: found }
+      })
+    },
+
+    async update(ctx) {
+      if (!mayManage(ctx)) return
+      const { expectedVersion, blocks } = bodyOf(ctx)
+      if (!Number.isInteger(expectedVersion)) {
+        refuse(ctx, 400, TEMPLATE_CODES.invalid, 'The body takes expectedVersion and blocks', {
+          field: 'expectedVersion',
+        })
+        return
+      }
+      await failing(ctx, async () => {
+        ctx.body = {
+          data: await templates().update(
+            String(ctx.params.id),
+            { expectedVersion: expectedVersion as number, blocks },
+            byOf(ctx)
+          ),
+        }
+      })
+    },
+
+    async retire(ctx) {
+      if (!mayManage(ctx)) return
+      const { retired } = bodyOf(ctx)
+      if (typeof retired !== 'boolean') {
+        refuse(ctx, 400, TEMPLATE_CODES.invalid, 'The body takes retired (true or false)', {
+          field: 'retired',
+        })
+        return
+      }
+      await failing(ctx, async () => {
+        ctx.body = { data: await templates().retire(String(ctx.params.id), retired) }
+      })
+    },
+
+    async duplicate(ctx) {
+      if (!mayManage(ctx)) return
+      const site = await siteOf(ctx, ctx.query.site)
+      if (!site) return
+      await failing(ctx, async () => {
+        ctx.status = 201
+        ctx.body = {
+          data: await templates().duplicate(String(ctx.params.id), site, byOf(ctx)),
+        }
+      })
+    },
+
+    async offer(ctx) {
+      const target = targetOf(ctx, ctx.query)
+      if (!target) return
+      await failing(ctx, async () => {
+        ctx.set('Cache-Control', 'private, no-store')
+        ctx.body = { data: await templates().offer(target) }
+      })
+    },
+
+    async apply(ctx) {
+      const target = targetOf(ctx, bodyOf(ctx))
+      if (!target) return
+      await failing(ctx, async () => {
+        ctx.body = { data: await templates().apply(target) }
+      })
+    },
+
+    async switchTo(ctx) {
+      const body = bodyOf(ctx)
+      const target = targetOf(ctx, body)
+      if (!target) return
+      if (
+        typeof body.to !== 'string' ||
+        (body.dryRun !== undefined && typeof body.dryRun !== 'boolean')
+      ) {
+        refuse(ctx, 400, TEMPLATE_CODES.invalid, 'The body takes to (a template id) and dryRun', {
+          field: 'to',
+        })
+        return
+      }
+      const { to, dryRun } = body as { to: string; dryRun?: boolean }
+      await failing(ctx, async () => {
+        ctx.body = { data: await templates().switchTo(target, to, dryRun !== false) }
+      })
+    },
+
+    async detach(ctx) {
+      if (!mayManage(ctx)) return
+      const target = targetOf(ctx, bodyOf(ctx))
+      if (!target) return
+      await failing(ctx, async () => {
+        ctx.body = { data: await templates().detach(target) }
+      })
     },
 
     async inspect(ctx) {
@@ -248,7 +422,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<Action, Handler> =>
       }
       await failing(ctx, async () => {
         ctx.status = 201
-        ctx.body = { data: await templates().import(ctx.request.body, site, scope) }
+        ctx.body = { data: await templates().import(ctx.request.body, site, scope, byOf(ctx)) }
       })
     },
 

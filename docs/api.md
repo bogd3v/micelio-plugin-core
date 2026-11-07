@@ -430,10 +430,38 @@ pageTypes?, scope, blocks? }`, `blocks` being `[{ content: "sample" | "clear", f
   blocks of the catalogue the saved draft holds, in order: stores the template at version 1 and
   answers `201` with it.
 - `GET /micelio/templates/<id>/export`: the JSON document of the template.
+- `GET /micelio/templates/manage?site=<slug>`: every template of the site, retired ones included,
+  each with `retired`, `usage` (`{ count, pages }`: the pages still linked to it, with their type,
+  `documentId`, title, the version they started from and `draft` or `published`) and `history`
+  (`{ version, at, by, cause, source?, changes }`, newest first). The pages of a page type the
+  caller may not read in the Content Manager are left out of `usage.pages` and of `usage.count`.
+  `GET /micelio/templates/sites` without `uid` lists the sites for it.
+- `GET /micelio/templates/<id>`: the template as the builder edits it, with the `data` of each
+  block. `PUT /micelio/templates/<id>` with `{ expectedVersion, blocks }`, `blocks` being
+  `[{ block, content, fixed, data }]`, stores them as the next version and records what changed in
+  its history (`added`, `removed`, `fixed`, `unfixed`, `option`); the same blocks change nothing.
+  Another `expectedVersion` is `templateVersionConflict` (409).
+- `POST /micelio/templates/<id>/retire` with `{ retired }` hides the template from the gallery and
+  from new pages (`templateRetired`, 409); pages made from it are untouched.
+  `POST /micelio/templates/<id>/duplicate?site=<slug>` stores a copy at version 1 as
+  `<name> (copy)`. A template with `origin: theme` is read-only (`templateReadOnly`, 409): edit
+  and retire refuse it, duplicate does not.
+- `GET /micelio/templates/offer?uid=&documentId=&locale=`: what the Template tab shows for a page:
+  `{ isLinked, template, version, startedAt, changes, fixed }`. It needs the permission to read the
+  page. `POST /micelio/templates/apply` with `{ uid, documentId, locale? }` applies the structure
+  changes: it adds the blocks the page lacks, after the block that precedes them in the template,
+  changes an option only where the page still holds the old value, follows the fixed marks and
+  never removes a block or touches a text. It needs the permission to update the page's blocks.
+  `POST /micelio/templates/switch` with the same body and `{ to, dryRun }` (a dry run unless
+  `dryRun` is `false`) answers `{ plan: { keeps, adds, drops }, offer }`: the page's blocks the new
+  template has keep their content, the others arrive with sample text, the rest are dropped.
+  `POST /micelio/templates/detach` clears `templateId`, `templateVersion` and the fixed marks, and
+  needs `plugin::micelio.templates.manage` and the permission to update the page.
 - `POST /micelio/templates/import?site=<slug>[&scope=site|cms]` with that document: stores it as
   the same template and answers `201`.
 
-Inspecting, saving, exporting and importing need `plugin::micelio.templates.manage`; inspecting
+Inspecting, saving, exporting, importing, listing for the manage page, editing, retiring,
+duplicating and detaching need `plugin::micelio.templates.manage`; inspecting
 and saving also need the permission to read the page's type in the Content Manager. A refusal is a
 problem detail with one of these codes:
 
@@ -447,6 +475,13 @@ problem detail with one of these codes:
   the first that refuses (by slug).
 - `templateNameTaken` (409): the site has a template of that name, compared without case.
 - `templateNotFound` (404) and `templatesForbidden` (403).
+- `templateVersionConflict`, `templateRetired` and `templateReadOnly` (409), above.
+- `templateBlockFixed` (400) with `block` and `reason` (`removed` or `moved`): a save of a page
+  removes a block its template fixed, or reorders the fixed blocks. A fixed block is the stored
+  row (its component and `id`): a new block of the same type, or a block sent without its `id`,
+  is not it, and a save that shifts the occurrence of a fixed block moves its mark with it. The
+  plugin's own writes (apply, switch, detach, an import) are not checked; naming `templateFixed`
+  in a request lifts nothing, and the attribute is not writable from a route.
 
 The exported document is `{ format: 1, name, description, pageTypes, scope, origin, version,
 blocks }`; each block is `{ block, component, content, fixed, data }`, `data` holding the

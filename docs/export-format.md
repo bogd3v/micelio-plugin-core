@@ -290,8 +290,8 @@ An archive **never** holds, whatever is asked:
 - The page templates of a site (`plugin::micelio.page-template`, [the guide](guide/templates.md)):
   a template moves as a JSON file of its own (`micelio template export` and `import`), not in the
   archive. A page made from one still carries `templateId`, `templateVersion` and the private
-  `templateSamples` (declared `always`), so a page that moves keeps the sample texts it must
-  replace before it is published.
+  `templateSamples` and `templateFixed` (declared `always`), so a page that moves keeps the sample
+  texts it must replace before it is published and the blocks its template fixed.
 
 ## How a type declares its export
 
