@@ -1,5 +1,6 @@
 import {
   PAGE_TYPE_ATTRIBUTE,
+  TEMPLATE_FIXED_ATTRIBUTE,
   TEMPLATE_ID_ATTRIBUTE,
   TEMPLATE_SAMPLES_ATTRIBUTE,
   TEMPLATE_VERSION_ATTRIBUTE,
@@ -16,7 +17,9 @@ import type { ContentTypeSchema } from '../site-scope'
  * `templateId` and `templateVersion` record the template a page was created from (a copy, never a
  * link: the template may change or go, the page keeps its blocks), and `templateSamples` the sample
  * texts the page copied and has not replaced yet, which `performTransition` refuses to publish
- * (`sampleTextPresent`, `docs/guide/templates.md`).
+ * (`sampleTextPresent`, `docs/guide/templates.md`). `templateFixed` lists the blocks the template
+ * fixed (`{ block, nth }`: the nth block of that catalogue id), which editors may not remove or
+ * reorder until the page is detached.
  *
  * `pageType` is a string, not an enumeration: the budgets list the page types a site has
  * (`budgets.pageTypes`, custom ones included), and a page whose type nobody configured keeps the
@@ -64,6 +67,17 @@ export function withPageSettings<T extends ContentTypeSchema>(schema: T): T {
         min: 1,
         visible: false,
         pluginOptions: { i18n: { localized: false } },
+      },
+      [TEMPLATE_FIXED_ATTRIBUTE]: {
+        type: 'json',
+        private: true,
+        // Not writable from a route: a client that could name it would lift the fixed blocks.
+        writable: false,
+        visible: false,
+        // Not localized for i18n, and never copied between locales all the same: the attribute is
+        // hidden (`visible: false`), so no sync reaches it. The marks name the blocks of one
+        // locale's zone and are kept per locale, like `templateId`. Making it visible would start a sync.
+        pluginOptions: { i18n: { localized: false }, micelio: { export: 'always' } },
       },
       [TEMPLATE_SAMPLES_ATTRIBUTE]: {
         type: 'json',

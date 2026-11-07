@@ -61,11 +61,25 @@ name), stores the template through the document service and makes a page from on
 `controllers/page-templates.ts` checks the permissions and answers the problem details.
 `permissions.ts` registers `plugin::micelio.templates.manage`. A CMS-wide template is a row of the
 site that saved it with `scope: cms`, so the type keeps `withSiteScope`. `withPageSettings` adds
-`templateId`, `templateVersion` and the private `templateSamples` to a page type. The admin has
+`templateId`, `templateVersion` and the private `templateSamples` and `templateFixed` to a page
+type. `changes.ts` (pure, #55) diffs two versions of a template (`diffTemplates`), applies an offer
+to a page's zone (`applyOffer`), plans a switch (`planSwitch`) and finds a fixed block an edit
+would remove or reorder (`findFixedViolation`) and moves the marks with their blocks
+(`followFixed`); blocks are matched by catalogue id and occurrence, since a page keeps no id of
+its template's blocks, and a fixed block in an edit by its row `id`. `documents.ts` is the
+document service middleware that refuses that edit (`templateBlockFixed`); the plugin's own writes
+run inside `asTemplateWrite`, and `templateFixed` is not writable from a route. It is kept per locale, like `templateId` (the marks name the blocks of one
+locale's zone, and the attribute is hidden, so no sync copies it); detach acts on the locale it names. A template row keeps `retired` and its
+`history`: every version with its blocks, which is what the offer diffs against. The service also
+runs the manage page (`manage`, `update`, `retire`, `duplicate`) and the Template tab (`offer`,
+`apply`, `switchTo`, `detach`). The admin has
 `components/SaveTemplateDialog.tsx` (opened from the page settings drawer),
 `pages/TemplatesGalleryPage.tsx` at `new/:uid` (opened by the create view's
 `components/NewFromTemplateAction.tsx`) and `components/TemplateThumbnail.tsx`; the builder greys
-the sample texts of `BuilderDocument.samples`.
+the sample texts of `BuilderDocument.samples` and locks the blocks of `BuilderDocument.fixed`.
+`pages/TemplatesManagePage.tsx` (`templates`) is the Page templates page,
+`pages/TemplateBuilderPage.tsx` (`templates/:id/edit`) the builder without the preview frame, on
+`useTemplateDocument`, and `components/builder/TemplateTab.tsx` the Template tab of the drawer.
 
 ## Site export and import
 

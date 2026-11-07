@@ -9,13 +9,14 @@ import type { TemplateSummary } from '../../../server/src/types/page-templates'
 import { Input } from '../components/builder/fieldStyle'
 import { TemplateThumbnail } from '../components/TemplateThumbnail'
 import { useLoaded } from '../hooks/useAsync'
+import { useTemplateExport } from '../hooks/useTemplateExport'
 import { useMessages } from '../messages'
 import { TEMPLATES_MANAGE_PERMISSION } from '../permissions'
 import { pageTypeName } from '../utils/builder/pageSettings'
 import { nameOf, type CatalogueEntry } from '../utils/builder/palette'
-import { ANSWER_REFUSALS, outcomeOf, problemOf } from '../utils/fetchError'
+import { ANSWER_REFUSALS, outcomeOf } from '../utils/fetchError'
 import { builderPagePath } from '../utils/previewAction'
-import { blockNamesLine, templateFileName, type TemplateSiteOption } from '../utils/templates'
+import { blockNamesLine, type TemplateSiteOption } from '../utils/templates'
 
 const Grid = styled.div`
   display: grid;
@@ -172,26 +173,7 @@ function Gallery({ uid }: { uid: string }) {
     setIsCreating(false)
   }
 
-  async function exportTemplate(template: TemplateSummary) {
-    try {
-      const answer = await clientRef.current.get<{ data: unknown }>(
-        `/micelio/templates/${template.id}/export`
-      )
-      const blob = new Blob([`${JSON.stringify(answer.data.data, null, 2)}\n`], {
-        type: 'application/json',
-      })
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.download = templateFileName(template.name)
-      link.click()
-      URL.revokeObjectURL(link.href)
-    } catch (error) {
-      toggleNotification({
-        type: 'danger',
-        message: problemOf(error)?.detail ?? t('template.gallery.export.failed'),
-      })
-    }
-  }
+  const exportTemplate = useTemplateExport()
 
   async function importTemplate(file: File) {
     if (!site) return

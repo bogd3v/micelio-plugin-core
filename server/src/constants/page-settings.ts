@@ -30,3 +30,6 @@ export const TEMPLATE_VERSION_ATTRIBUTE = 'templateVersion'
 
 /** Name of the private attribute that holds the sample texts a page copied and has not replaced yet. */
 export const TEMPLATE_SAMPLES_ATTRIBUTE = 'templateSamples'
+
+/** Name of the private attribute that holds the blocks of a page its template fixed (`{ block, nth }`). */
+export const TEMPLATE_FIXED_ATTRIBUTE = 'templateFixed'

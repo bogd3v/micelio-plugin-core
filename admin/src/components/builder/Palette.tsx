@@ -172,8 +172,11 @@ interface PaletteProps {
   onDragEnd: () => void
   /** The editor may not edit this page: the rows do nothing. */
   isReadOnly: boolean
-  /** Opens the sheet of keyboard shortcuts, the pointer's way to what `?` opens. */
-  onShowShortcuts: () => void
+  /**
+   * Opens the sheet of keyboard shortcuts, the pointer's way to what `?` opens. The template
+   * editor has no keyboard layer, so it passes none and the link is not drawn.
+   */
+  onShowShortcuts?: () => void
 }
 
 function Name({ name, search }: { name: string; search: string }) {
@@ -344,9 +347,11 @@ export function Palette(props: PaletteProps) {
         <div>
           <kbd>⌥↑</kbd> <kbd>⌥↓</kbd> {t('builder.palette.keys.move')}
         </div>
-        <ShortcutsLink type="button" onClick={props.onShowShortcuts}>
-          {t('builder.palette.shortcuts')}
-        </ShortcutsLink>
+        {props.onShowShortcuts ? (
+          <ShortcutsLink type="button" onClick={props.onShowShortcuts}>
+            {t('builder.palette.shortcuts')}
+          </ShortcutsLink>
+        ) : null}
       </Foot>
     </Aside>
   )

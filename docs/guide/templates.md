@@ -22,8 +22,8 @@ The dialog asks for:
 - The **page type** the template is for.
 - For each block, **Keep as sample text** or **Clear**, and **Fixed**. The block and its options
   are always kept. A cleared block keeps its options and the number of its items, empty. Images
-  and links are never kept, whatever you choose. **Fixed** is recorded on the template; the
-  Template tab that enforces it on a page is not built yet (#55).
+  and links are never kept, whatever you choose. **Fixed** is recorded on the template and
+  enforced on the pages made from it (below).
 - **Available to**: this site only, or every site of the CMS.
 
 The checks show beside it, and the server repeats them when you save:
@@ -71,8 +71,47 @@ npx micelio template import <file> --site <site slug> [--scope site|cms]
 same template, with the same name, blocks and version, after the checks of a save; a name the site
 already uses is refused. A template of a theme is not read.
 
+## Manage templates
+
+**Micelio → Page templates** (permission `plugin::micelio.templates.manage`) lists the templates of
+a site with their page types, blocks, source and how many pages were made from each. Select one to
+see its structure, the pages made from it (with the version each started from) and its history.
+
+- **Edit in builder** opens the template in the builder with no preview frame: the frontend renders
+  only the content types it lists (`PREVIEW_CONTENT_TYPES`), and a template is not one. Each block
+  also says whether new pages keep its sample text or start cleared, and whether it is fixed.
+  **Save as v2** makes the next version and records what changed in its history. Pages made from
+  the template are not touched.
+- **Duplicate** copies a template to the site at version 1. **Export JSON** is the file above.
+- **Retire** hides a template from **New page**; pages made from it are untouched, and **Restore**
+  brings it back. A template a theme ships is read-only: duplicate it to change it.
+
+## The Template tab
+
+The page settings drawer has a **Template** tab. It shows the template and version the page started
+from and, when the template has moved on, what changed: blocks added or removed, blocks made fixed
+or no longer fixed, options whose default changed.
+
+- **Apply the structure changes** is an offer and never automatic. It adds the new blocks with
+  their sample text (which must be replaced before the page is published), changes an option only
+  where the page still holds the template's old value, and makes the fixed marks follow the
+  template. Your content and your own option changes stay, and a block the template dropped stays
+  on the page. **Keep v3** closes the offer until the next time you open the tab.
+- **Fixed blocks** are listed. Editors cannot remove them or reorder the fixed blocks (the
+  builder disables the controls, and a save that does it is refused with `templateBlockFixed`);
+  they can edit the content, and add other blocks around them (a block of the same type put
+  before a fixed one does not take its place: the server finds a fixed block by its row, and a
+  save that sends a fixed block without its `id` removes it). Only the plugin lifts a lock;
+  `templateFixed` is not writable from a route. The marks are kept per locale, like the blocks
+  they name: editing one locale never moves the marks of another. A locale made after the page is not
+  linked to the template (the link is kept per locale too): it gets a template and its marks
+  through **Switch template…**. Detach acts on the locale it names, and leaves the others as they are.
+- **Switch template…** shows what would be kept, added with sample text and dropped, and does
+  nothing until you confirm.
+- **Detach from template** (`templates.manage`) lifts the fixed blocks and stops offers; the page
+  keeps its blocks and its sample texts.
+- **Save this page as a new template…** (`templates.manage`) opens the dialog above.
+
 ## Not built yet
 
-- The page of templates, the Template tab of the page settings (usage, offers, switch and detach)
-  and the enforcement of **Fixed** on a page: #55.
 - Templates a theme ships in its package.

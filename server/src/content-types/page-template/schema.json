@@ -5,7 +5,7 @@
     "singularName": "page-template",
     "pluralName": "page-templates",
     "displayName": "Page template",
-    "description": "A saved sequence of blocks with their options, which a new page copies and never links to. Written through the Save as template dialog and the template import, never by hand"
+    "description": "A saved sequence of blocks with their options, which a new page copies and never links to. Written through the Save as template dialog, the template import and the Page templates page, never by hand"
   },
   "options": {
     "draftAndPublish": false
@@ -60,6 +60,13 @@
       "required": true
     },
     "thumbnail": {
+      "type": "json"
+    },
+    "retired": {
+      "type": "boolean",
+      "default": false
+    },
+    "history": {
       "type": "json"
     }
   }

@@ -3,6 +3,7 @@ import { CORE_NAV_ITEMS, visibleNavItems, type CoreNavItem } from '../admin/src/
 import {
   BLOCKS_READ_PERMISSION,
   STATUS_READ_PERMISSION,
+  TEMPLATES_MANAGE_PERMISSION,
   TRANSFER_PERMISSION,
 } from '../admin/src/permissions'
 
@@ -25,5 +26,6 @@ describe('the items of the core a role sees', () => {
     expect(ids([STATUS_READ_PERMISSION, REPORTS])).toEqual(['status', 'about', 'reports'])
     expect(ids([TRANSFER_PERMISSION])).toEqual(['transfer', 'about'])
     expect(ids([BLOCKS_READ_PERMISSION])).toEqual(['blocks', 'about'])
+    expect(ids([TEMPLATES_MANAGE_PERMISSION])).toEqual(['templates', 'about'])
   })
 })

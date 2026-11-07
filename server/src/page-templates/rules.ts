@@ -45,7 +45,7 @@ export function blockOfComponent(component: string): Block | undefined {
  * The names of the vocabulary's options a block does not expose, which its component may declare
  * all the same: the catalogue refuses them, so a template never keeps one.
  */
-function unexposedOptions(component: string): ReadonlySet<string> {
+export function unexposedOptions(component: string): ReadonlySet<string> {
   const block = blockOfComponent(component)
   const exposed = new Set(block ? optionsOf(block).map(([name]) => name) : [])
   return new Set(['variant', ...OPTION_NAMES].filter((name) => block && !exposed.has(name)))
@@ -96,6 +96,19 @@ export function shapeContent(
     }
   }
   return kept
+}
+
+/**
+ * The entry of a block's component without the options its catalogue entry does not expose.
+ *
+ * @remarks
+ * The document service stores a default for every option a component declares, and the catalogue
+ * refuses a write that names one the block does not expose (`blockOptionInvalid`), so a block read
+ * from a draft goes back in without them; they keep their stored value.
+ */
+export function withoutUnexposed(entry: Row): Row {
+  const hidden = unexposedOptions(String(entry.__component))
+  return Object.fromEntries(Object.entries(entry).filter(([name]) => !hidden.has(name)))
 }
 
 /** Every text a block's stored content holds, nested items included. */
@@ -280,25 +293,8 @@ export function parseTemplateDocument(
   if (!Number.isInteger(version) || (version as number) < 1) {
     return fail('version', 'version is a whole number from 1')
   }
-  if (!Array.isArray(blocks) || blocks.length === 0) return fail('blocks', 'A template has a block')
-  const read: TemplateBlock[] = []
-  for (const [position, entry] of blocks.entries()) {
-    if (!isRecord(entry)) return fail('blocks', `Block ${position + 1} is not an object`)
-    const block = BLOCKS.find((candidate) => candidate.id === entry.block)
-    if (!block) return fail('blocks', `The catalogue has no block "${String(entry.block)}"`)
-    if (entry.content !== 'sample' && entry.content !== 'clear') {
-      return fail('blocks', `Block ${position + 1} keeps "sample" or "clear"`)
-    }
-    if (typeof entry.fixed !== 'boolean')
-      return fail('blocks', `Block ${position + 1} is fixed or not`)
-    read.push({
-      block: block.id,
-      component: block.schema.component,
-      content: entry.content,
-      fixed: entry.fixed,
-      data: shapeContent(attributesOf, block.schema.component, entry.data, entry.content),
-    })
-  }
+  const read = parseTemplateBlocks(blocks, attributesOf)
+  if ('field' in read) return read
   return {
     format,
     name: name.trim(),
@@ -309,4 +305,37 @@ export function parseTemplateDocument(
     version: version as number,
     blocks: read,
   }
+}
+
+/**
+ * Reads the blocks of a template, from a document or from the builder, refusing what is not one.
+ *
+ * @remarks
+ * What a block holds is shaped again through the component's attributes, and its component is the
+ * catalogue's, whatever the input says.
+ */
+export function parseTemplateBlocks(
+  blocks: unknown,
+  attributesOf: AttributesOf
+): TemplateBlock[] | TemplateDocumentError {
+  const fail = (detail: string): TemplateDocumentError => ({ field: 'blocks', detail })
+  if (!Array.isArray(blocks) || blocks.length === 0) return fail('A template has a block')
+  const read: TemplateBlock[] = []
+  for (const [position, entry] of blocks.entries()) {
+    if (!isRecord(entry)) return fail(`Block ${position + 1} is not an object`)
+    const block = BLOCKS.find((candidate) => candidate.id === entry.block)
+    if (!block) return fail(`The catalogue has no block "${String(entry.block)}"`)
+    if (entry.content !== 'sample' && entry.content !== 'clear') {
+      return fail(`Block ${position + 1} keeps "sample" or "clear"`)
+    }
+    if (typeof entry.fixed !== 'boolean') return fail(`Block ${position + 1} is fixed or not`)
+    read.push({
+      block: block.id,
+      component: block.schema.component,
+      content: entry.content,
+      fixed: entry.fixed,
+      data: shapeContent(attributesOf, block.schema.component, entry.data, entry.content),
+    })
+  }
+  return read
 }

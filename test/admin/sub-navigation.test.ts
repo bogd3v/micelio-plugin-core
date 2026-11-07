@@ -73,6 +73,7 @@ describe('the sub-navigation in the admin', () => {
       'Status',
       'In review',
       'Block catalogue',
+      'Page templates',
       'Export and import',
       'Fixture page',
       'About Micelio',
@@ -135,6 +136,7 @@ describe('the sub-navigation in the admin', () => {
     for (const [name, path] of [
       ['In review', /\/plugins\/micelio\/review$/],
       ['Block catalogue', /\/plugins\/micelio\/blocks$/],
+      ['Page templates', /\/plugins\/micelio\/templates$/],
       ['Export and import', /\/plugins\/micelio\/_export-import$/],
       ['Fixture page', /\/plugins\/micelio\/fixture$/],
       ['About Micelio', /\/plugins\/micelio\/about$/],

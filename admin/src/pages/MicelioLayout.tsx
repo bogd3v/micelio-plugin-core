@@ -17,7 +17,9 @@ import BuilderPage from './BuilderPage'
 import PreviewPage from './PreviewPage'
 import ReviewPage from './ReviewPage'
 import StatusPage from './StatusPage'
+import TemplateBuilderPage from './TemplateBuilderPage'
 import TemplatesGalleryPage from './TemplatesGalleryPage'
+import TemplatesManagePage from './TemplatesManagePage'
 import TransferPage from './TransferPage'
 
 /**
@@ -27,7 +29,7 @@ import TransferPage from './TransferPage'
  * The core's items (`navigation.ts`) show to a role that has their permission; the pages of
  * sibling plugins come from `GET /micelio/admin-pages`, which lists only those the admin user has
  * the permission for. A group with nothing to show is left out. A role without the Status
- * permission lands on About. The gallery of templates (`new/:uid`) and the preview page (`preview/:uid/:documentId`) have no item: the entry's edit view
+ * permission lands on About. The gallery of templates (`new/:uid`), the template editor (`templates/:id/edit`) and the preview page (`preview/:uid/:documentId`) have no item: the entry's edit view
  * opens it, and its own permission protects it.
  */
 export default function MicelioLayout() {
@@ -91,6 +93,8 @@ export default function MicelioLayout() {
         <Route path="preview/:uid/:documentId" element={<PreviewPage />} />
         <Route path="builder/:uid/:documentId" element={<BuilderPage />} />
         <Route path="new/:uid" element={<TemplatesGalleryPage />} />
+        <Route path="templates" element={<TemplatesManagePage />} />
+        <Route path="templates/:id/edit" element={<TemplateBuilderPage />} />
         <Route path="*" element={<ExtensionPage pages={pages} isLoading={isLoading} />} />
       </Routes>
     </Layouts.Root>

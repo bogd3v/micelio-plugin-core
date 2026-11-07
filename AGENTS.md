@@ -89,7 +89,11 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
     (save a page as a template, the checks, export and import as JSON, make a page from one), the
     permission `plugin::micelio.templates.manage` and the check `performTransition` runs: a page
     made from a template is refused with `sampleTextPresent` while it holds a copied sample text.
-    `withPageSettings` records `templateId`, `templateVersion` and the private `templateSamples`.
+    `withPageSettings` records `templateId`, `templateVersion` and the private `templateSamples`
+    and `templateFixed`. `changes.ts` (#55) diffs versions, applies an offer and plans a switch;
+    `documents.ts` refuses an edit that removes or reorders a fixed block; the template keeps its
+    `history` and `retired`; the page templates page, the template editor (no preview frame) and
+    the Template tab of the drawer are its admin.
     Details: [docs/architecture/structure.md](docs/architecture/structure.md#page-templates); the
     guide is `docs/guide/templates.md`.
   - `block-settings/` is what a site manages of the catalogue (#51):
@@ -135,7 +139,8 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   each item shown to a role with its permission, and the pages of sibling plugins),
   the pages (`StatusPage`, `TransferPage` with `ExportPanel` and `ImportPanel`, `AboutPage`,
   `PreviewPage`, `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
-  Save as template dialog, `ReviewPage`, the In review page),
+  Save as template dialog, `ReviewPage` (the In review page), `TemplatesManagePage` at `templates`
+  and `TemplateBuilderPage` at `templates/:id/edit`),
   the cost meter and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them).
   The builder (`pages/BuilderPage.tsx` at `builder/:uid/:documentId`, #49): its panels in
   `components/builder/`, its hooks (`useBuilderDocument`, `useBuilderCatalogue`,

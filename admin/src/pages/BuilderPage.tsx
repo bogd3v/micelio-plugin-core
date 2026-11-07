@@ -46,6 +46,7 @@ import {
 import { islandOf } from '../utils/builder/islands'
 import { renderModeMessage } from '../utils/builder/messages'
 import { weightRoute } from '../utils/costMeter'
+import { lockedKeysOf } from '../utils/templateFixed'
 import { DEVICES, type DeviceId, type PreviewMode } from '../utils/previewPane'
 import { useIntl } from 'react-intl'
 
@@ -121,6 +122,7 @@ function Builder() {
   const [reviewRequest, setReviewRequest] = useState(0)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const navigate = useNavigate()
+  const [settingsTab, setSettingsTab] = useState<'general' | 'template'>('general')
   const { toggleNotification } = useNotification()
   const [recent, setRecent] = useState<string[]>(readRecent)
   // The render mode the editor chose for an island, by block key. It is the frame's state, never
@@ -273,6 +275,17 @@ function Builder() {
 
   const selectedBlock = blocks.find((block) => block.key === selectedKey)
   const isReadOnly = !canEdit
+  // The blocks the page's template fixed stay where they are until the page is detached.
+  const lockedKeys = useMemo(
+    () =>
+      lockedKeysOf(
+        blocks,
+        doc?.held ?? [],
+        doc?.fixed ?? [],
+        (block) => byComponent.get(block.component)?.id
+      ),
+    [blocks, doc?.held, doc?.fixed, byComponent]
+  )
   const edits = useBuilderEdits({
     state,
     catalogue,
@@ -280,6 +293,7 @@ function Builder() {
     selection,
     select,
     selectedBlock,
+    lockedKeys,
     fieldsFor,
     addressOf,
     renderedAt,
@@ -507,6 +521,7 @@ function Builder() {
                     islandOf(entryOf(block))?.alternative
                   ),
                   island: islandOf(entryOf(block)),
+                  isFixed: lockedKeys.has(block.key),
                 }))}
                 selectedKey={selectedKey}
                 onSelect={(key) => select({ key, item: undefined })}
@@ -606,6 +621,7 @@ function Builder() {
                 }
                 island={islandOf(selectedEntry)}
                 samples={samples}
+                isFixed={lockedKeys.has(selectedBlock.key)}
                 isReadOnly={isReadOnly}
                 onSetFields={setValues}
                 onSetItem={setItem}
@@ -640,6 +656,14 @@ function Builder() {
             onSave={state.saveSettings}
             onSaveAsTemplate={canSaveTemplate ? () => setIsTemplateOpen(true) : undefined}
             isDirty={state.isDirty || state.status === 'saving'}
+            blockName={(id) => {
+              const entry = catalogue?.entries.find((candidate) => candidate.id === id)
+              return entry ? nameOf(entry, language) : id
+            }}
+            page={{ uid, documentId, locale: doc.locale, site: doc.site ?? '' }}
+            onTemplateChanged={state.loadTheirs}
+            tab={settingsTab}
+            onTab={setSettingsTab}
             onClose={() => setIsSettingsOpen(false)}
           />
         ) : null}
