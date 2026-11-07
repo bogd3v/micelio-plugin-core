@@ -78,7 +78,11 @@ interface ReviewActionsProps {
   onMoved: () => void
   /** Asks the toolbar to open the schedule dialog, for the notice of a reset schedule. */
   scheduleRequest: number
+  /** Asks the toolbar to open the send to review dialog, for ⌘↵: counts up, 0 for never. */
+  reviewRequest: number
 }
+
+const isReview = (item: ReviewAction): boolean => item.dialog === 'review'
 
 /**
  * The editorial buttons of the builder's toolbar (the Review flow artboard): send to review, schedule,
@@ -98,6 +102,14 @@ export function ReviewActions(props: ReviewActionsProps) {
   useEffect(() => {
     if (props.scheduleRequest > 0) setOpen('schedule')
   }, [props.scheduleRequest])
+
+  // The key does what the button does: nothing while the page is busy or has no such button.
+  const canReview = !props.isBusy && !isWorking && actionsFor(props.state).some(isReview)
+  const canReviewRef = useRef(canReview)
+  canReviewRef.current = canReview
+  useEffect(() => {
+    if (props.reviewRequest > 0 && canReviewRef.current) setOpen('review')
+  }, [props.reviewRequest])
 
   async function run(action: ReviewAction, options: TransitionOptions = {}): Promise<boolean> {
     setIsWorking(true)

@@ -1,4 +1,4 @@
-import { Typography } from '@strapi/design-system'
+import { Typography, VisuallyHidden } from '@strapi/design-system'
 import { useId } from 'react'
 import styled, { useTheme } from 'styled-components'
 
@@ -30,10 +30,13 @@ const List = styled.ol`
   padding: 0;
 `
 
-const Row = styled.li<{ $isDragging: boolean }>`
+const Row = styled.li<{ $isDragging: boolean; $isCarried: boolean }>`
   display: flex;
   align-items: center;
   opacity: ${({ $isDragging }) => ($isDragging ? 0.5 : 1)};
+  /* A block picked up with the keyboard stays in view for as long as it is carried: marked, not faded. */
+  outline: ${({ $isCarried, theme }) => ($isCarried ? `2px dashed ${theme.colors.primary600}` : 'none')};
+  outline-offset: -2px;
 `
 
 const Pick = styled.button<{ $isSelected: boolean }>`
@@ -83,6 +86,8 @@ interface BlockListProps {
   /** The pointer is over the hit area of the gap at `position`; `undefined` when it left. */
   onHoverGap: (position: number | undefined) => void
   hoveredGap: number | undefined
+  /** The block picked up with Space, and the gap it would drop on: said to a screen reader. */
+  carrying?: { key: string; from: number }
   isReadOnly: boolean
 }
 
@@ -116,6 +121,17 @@ export function BlockList(props: BlockListProps) {
       <Typography variant="sigma" tag="h2" id={`${id}-title`} textColor="neutral600">
         {t('builder.list.title', { count: blocks.length })}
       </Typography>
+      <VisuallyHidden>
+        <span role="status">
+          {props.carrying
+            ? t('builder.list.carrying', {
+                name: blocks.find(({ key }) => key === props.carrying?.key)?.name ?? '',
+                gap: (props.hoveredGap ?? props.carrying.from) + 1,
+                total: blocks.length + 1,
+              })
+            : ''}
+        </span>
+      </VisuallyHidden>
       {blocks.length === 0 ? (
         <Typography variant="pi" textColor="neutral600" tag="p">
           {t('builder.list.empty')}
@@ -126,7 +142,8 @@ export function BlockList(props: BlockListProps) {
             props.isDragging ? gap(position) : null,
             <Row
               key={block.key}
-              $isDragging={props.draggingKey === block.key}
+              $isDragging={props.draggingKey === block.key && props.carrying?.key !== block.key}
+              $isCarried={props.carrying?.key === block.key}
               draggable={!props.isReadOnly}
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/x-micelio-move', block.key)
@@ -139,7 +156,7 @@ export function BlockList(props: BlockListProps) {
                 type="button"
                 $isSelected={props.selectedKey === block.key}
                 aria-current={props.selectedKey === block.key ? 'true' : undefined}
-                aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+                aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Space"
                 data-block-key={block.key}
                 onClick={() => props.onSelect(block.key)}
               >

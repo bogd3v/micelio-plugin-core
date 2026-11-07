@@ -324,15 +324,7 @@ export function BlockPanel(props: BlockPanelProps) {
     current ?? block.fields
   )
   return (
-    <Aside
-      aria-label={t('builder.panel.label')}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && item) {
-          event.stopPropagation()
-          props.onSelectItem(undefined)
-        }
-      }}
-    >
+    <Aside aria-label={t('builder.panel.label')} data-shortcut-region="panel" tabIndex={-1}>
       <Head>
         <div style={{ minWidth: 0 }}>
           <Typography variant="delta" tag="h2" fontWeight="bold">
@@ -370,6 +362,7 @@ export function BlockPanel(props: BlockPanelProps) {
           <Tool
             type="button"
             aria-label={t('builder.panel.duplicate')}
+            aria-keyshortcuts="Control+D Meta+D"
             // A copy of a block the site no longer lists would be refused as an addition.
             disabled={props.isReadOnly || props.cost === undefined}
             onClick={props.onDuplicate}
@@ -380,6 +373,7 @@ export function BlockPanel(props: BlockPanelProps) {
             type="button"
             $isDanger
             aria-label={t('builder.panel.remove')}
+            aria-keyshortcuts="Control+Backspace Meta+Backspace"
             disabled={props.isReadOnly}
             onClick={props.onRemove}
           >
@@ -448,7 +442,7 @@ export function BlockPanel(props: BlockPanelProps) {
                     <span id={`${id}-${option.name}`} style={labelStyle(colors.neutral800)}>
                       {fieldLabel(option.name, t)}
                     </span>
-                    <div style={{ display: 'flex' }}>
+                    <div style={{ display: 'flex' }} data-option-control>
                       {option.values.map((value) => (
                         <Segment
                           key={value}

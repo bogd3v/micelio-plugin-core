@@ -143,7 +143,10 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   pure helpers in `utils/builder/`; the editorial buttons and dialogs (`ReviewActions`, #57,
   `docs/guide/review.md`) follow Save; the gear next to the title opens `PageSettingsDrawer` (#52,
   `docs/guide/pages.md`); it talks to the
-  frame with the phase 2 messages of `contract/preview.ts`. Details:
+  frame with the phase 2 messages of `contract/preview.ts`. The keyboard (#50) is the table of
+  `admin/src/shortcuts.ts` (actions, keys, scopes, and the rules of `matchShortcut`), run by
+  `hooks/useBuilderShortcuts.ts` and listed by `components/builder/ShortcutSheet.tsx`
+  (`?`): a new key goes in the table, never in a handler of its own. Details:
   [docs/architecture/structure.md](docs/architecture/structure.md#builder), guide
   `docs/guide/builder.md`.
   It imports the server's types (`server/src/types/`) type-only, and nothing from `@strapi/icons`:

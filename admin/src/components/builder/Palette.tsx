@@ -86,6 +86,19 @@ const RowButton = styled.button<{ $state: PaletteRow['state'] }>`
   }
 `
 
+const ShortcutsLink = styled.button`
+  all: unset;
+  cursor: pointer;
+  margin-top: 8px;
+  color: ${({ theme }) => theme.colors.primary600};
+  text-decoration: underline;
+  font-size: 12px;
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.primary600};
+    outline-offset: 2px;
+  }
+`
+
 const iconBox = (c: DefaultTheme['colors']) => ({
   ok: `background:${c.neutral100};border:1px solid ${c.neutral200};`,
   overBudget: `background:${c.danger100};border:1px solid ${c.danger200};color:${c.danger700};`,
@@ -159,6 +172,8 @@ interface PaletteProps {
   onDragEnd: () => void
   /** The editor may not edit this page: the rows do nothing. */
   isReadOnly: boolean
+  /** Opens the sheet of keyboard shortcuts, the pointer's way to what `?` opens. */
+  onShowShortcuts: () => void
 }
 
 function Name({ name, search }: { name: string; search: string }) {
@@ -207,7 +222,11 @@ export function Palette(props: PaletteProps) {
         placeholder={t('builder.palette.placeholder', { count: total })}
         onChange={(event) => onSearch(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') onSearch('')
+          // Esc clears a search first; with nothing typed it goes up a level (`shortcuts.ts`).
+          if (event.key === 'Escape' && search !== '') {
+            event.stopPropagation()
+            onSearch('')
+          }
         }}
       />
       {isSearching ? (
@@ -325,6 +344,9 @@ export function Palette(props: PaletteProps) {
         <div>
           <kbd>⌥↑</kbd> <kbd>⌥↓</kbd> {t('builder.palette.keys.move')}
         </div>
+        <ShortcutsLink type="button" onClick={props.onShowShortcuts}>
+          {t('builder.palette.shortcuts')}
+        </ShortcutsLink>
       </Foot>
     </Aside>
   )

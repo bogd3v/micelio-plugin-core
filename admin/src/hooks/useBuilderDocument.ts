@@ -6,7 +6,7 @@ import {
   type PageSettingsValues,
   type Visibility,
 } from '../utils/builder/pageSettings'
-import { remember, undo, type History, EMPTY_HISTORY } from '../utils/builder/history'
+import { redo, remember, undo, type History, EMPTY_HISTORY } from '../utils/builder/history'
 import {
   adoptIds,
   forgetGoneItems,
@@ -162,6 +162,9 @@ export interface BuilderState {
   /** Goes back one step; `false` when there is nothing to go back to. */
   undo: () => boolean
   canUndo: boolean
+  /** Goes forward one step an undo went back from; `false` when there is none. */
+  redo: () => boolean
+  canRedo: boolean
   status: SaveStatus
   /** When the last save finished, as a time. */
   savedAt: number | undefined
@@ -495,7 +498,14 @@ export function useBuilderDocument(
   const blocksAt = useCallback((at: string) => rendersRef.current.get(instant(at)), [])
 
   const edit = useCallback((next: BuilderBlock[], isUndoable = true) => {
-    if (isUndoable) setHistory((past) => remember(past, blocksRef.current))
+    // Any change, a step or not, ends what a redo could bring back.
+    setHistory((past) =>
+      isUndoable
+        ? remember(past, blocksRef.current)
+        : past.future.length > 0
+          ? { ...past, future: [] }
+          : past
+    )
     setBlocks(next)
   }, [])
 
@@ -511,10 +521,18 @@ export function useBuilderDocument(
   )
 
   const goBack = useCallback((): boolean => {
-    const step = undo(history)
+    const step = undo(history, blocksRef.current)
     if (!step) return false
     setHistory(step.history)
     // The history holds ids that a later save or the other session removed: they come back as new.
+    setBlocks(cleanedForCms(step.blocks))
+    return true
+  }, [history, cleanedForCms])
+
+  const goForward = useCallback((): boolean => {
+    const step = redo(history, blocksRef.current)
+    if (!step) return false
+    setHistory(step.history)
     setBlocks(cleanedForCms(step.blocks))
     return true
   }, [history, cleanedForCms])
@@ -526,6 +544,8 @@ export function useBuilderDocument(
     edit,
     undo: goBack,
     canUndo: history.past.length > 0,
+    redo: goForward,
+    canRedo: history.future.length > 0,
     status,
     savedAt,
     savedCount,
