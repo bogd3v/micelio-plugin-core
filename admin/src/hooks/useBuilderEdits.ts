@@ -25,7 +25,6 @@ import {
   type BuilderBlock,
 } from '../utils/builder/model'
 import { nameOf, pushRecent, type CatalogueEntry } from '../utils/builder/palette'
-import { isTypingTarget } from '../utils/previewPane'
 import type { BuilderState } from './useBuilderDocument'
 import type { BuilderCatalogue } from './useBuilderCatalogue'
 
@@ -52,7 +51,6 @@ interface EditContext {
   selection: Selection | undefined
   select: (next: Selection | undefined, isFromFrame?: boolean) => void
   selectedBlock: BuilderBlock | undefined
-  isReadOnly: boolean
   fieldsFor: (block: BuilderBlock) => BlockFields
   addressOf: (key: string) => BlockAddress | undefined
   renderedAt: (version: string) => Pick<BuilderBlock, 'key' | 'component'>[]
@@ -87,12 +85,13 @@ export interface BuilderEdits {
   setItem: (field: string, index: number, values: Record<string, unknown>, isStep?: boolean) => void
   addItem: (field: string) => void
   goBack: () => void
+  /** Puts the selected block's options back to their defaults; `false` when there is nothing to reset. */
+  resetOptions: () => boolean
 }
 
 /**
  * The changes an editor makes to the page (issue #49): insert, move, duplicate, remove, type, drag
- * and undo, with the toast that says what happened and the key that moves (the rest of the
- * keyboard is #50).
+ * and undo, with the toast that says what happened (the keyboard is `useBuilderShortcuts`).
  *
  * @remarks
  * Each change goes through `edit` of the document hook, which saves it; text is also sent to the
@@ -100,7 +99,7 @@ export interface BuilderEdits {
  */
 export function useBuilderEdits(ctx: EditContext): BuilderEdits {
   const { t } = useMessages()
-  const { state, catalogue, language, selection, select, selectedBlock, isReadOnly } = ctx
+  const { state, catalogue, language, selection, select, selectedBlock } = ctx
   const { fieldsFor, addressOf, renderedAt, frame, recent, setRecent } = ctx
   const { blocks, edit } = state
   const selectedKey = selection?.key
@@ -255,28 +254,22 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
   const goBack = () => {
     if (state.undo()) setToast(undefined)
   }
-
-  // Keyboard: move with Alt+Arrow and Esc up one level; the rest of the keys is bogd3v/micelio-plugin-core#50.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent): void {
-      if (isTypingTarget(event.target)) return
-      if (
-        event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        !event.shiftKey &&
-        (event.code === 'ArrowUp' || event.code === 'ArrowDown')
-      ) {
-        if (isReadOnly) return
-        event.preventDefault()
-        move(event.code === 'ArrowUp' ? -1 : 1)
-      } else if (event.key === 'Escape' && selection?.item) {
-        select({ key: selection.key, item: undefined })
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  })
+  // Every option of the selected block back to the contract's default, as one step.
+  const resetOptions = (): boolean => {
+    const entry = selectedBlock
+      ? catalogue?.entries.find(({ component }) => component === selectedBlock.component)
+      : undefined
+    if (!selectedBlock || !entry) return false
+    const defaults = Object.fromEntries(
+      Object.entries(entry.options)
+        .filter(([name, option]) => selectedBlock.fields[name] !== option.default)
+        .map(([name, option]) => [name, option.default])
+    )
+    if (Object.keys(defaults).length === 0) return false
+    edit(setFields(blocks, selectedBlock.key, defaults))
+    say(t('builder.toast.optionsReset'))
+    return true
+  }
 
   useEffect(() => {
     if (!toast) return
@@ -304,5 +297,6 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
     setItem,
     addItem,
     goBack,
+    resetOptions,
   }
 }

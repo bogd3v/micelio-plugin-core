@@ -93,15 +93,47 @@ a second one is refused when the page is saved.
 - **Insert in a place:** drag the row into a gap between two blocks. The gap opens in the preview
   and says _Drop here_. Only gaps between blocks accept a drop.
 - **Move a block:** select it and press `⌥↑` or `⌥↓` (`Alt` on Windows and Linux), or use the
-  arrows in the panel, or drag it in the **Page blocks** list.
-- **Duplicate or remove:** the buttons in the panel (and duplicate in the page's marks).
+  arrows in the panel, or drag it in the **Page blocks** list (the [keys](#keyboard) pick it
+  up too).
+- **Duplicate or remove:** the buttons in the panel (and duplicate in the page's marks), or
+  `⌘D` and `⌘⌫`.
 - **Edit text:** type in the panel. The text shows in the preview as you type, before it is saved.
 - **Pick files:** a media field of the panel opens the Media Library; the preview shows the file
   once the page is saved. Changing the files of a field is a step you can undo (the message
   says _Files changed_); writing an image's alternative text is not.
-- **Undo:** **Undo** in the message after a change. Undo goes back one step in this visit, and
+- **Undo:** **Undo** in the message after a change, or `⌘Z` (`⇧⌘Z` redoes). Undo goes back one
+  step in this visit, and
   typing in a field or an item is one step for each pause; it forgets nothing of the page's
   history in Strapi.
+
+## Keyboard
+
+The keyboard is the main way to compose: every action of the mouse has a key, and `?` opens the
+sheet that lists them (so does **Keyboard shortcuts** under the palette). In the sheet, ⌘ is `Ctrl`
+on Windows and Linux, and the keys are written with the symbols of your system.
+The sheet is made from the same table the keys run on (`admin/src/shortcuts.ts`), so it never says
+what the page does not do.
+
+- **Selecting.** `↓` and `↑` select the next and previous block (from the row that has focus in
+  the list, else from the selection), `1` to `9` jump to a block, `→` goes into the first item of
+  the block, `Esc` goes up one level (item, block, page), `⌘1` focuses the panel and `⌘2` the
+  preview.
+- **Composing.** `/` goes to the search of the palette, `Enter` (on the page or on a row of the
+  list) too, and a row of the palette then inserts after the selection. `⌥↑` and `⌥↓` move the
+  block. To drag with the keys, focus a row of **Page blocks** and press `Space` to pick it up,
+  `↑` and `↓` to choose a gap and `Space` to drop it (`Esc` puts it down where it was).
+  `⌘D` duplicates, `⌘⌫` removes, `⌘Z` undoes and `⇧⌘Z` redoes.
+- **Options.** With focus on a choice of an option, `←` and `→` go to the previous and the next
+  value, round the ends. `⌥⌫` puts the block's options back to their defaults.
+- **Preview.** `⌘⇧1`, `⌘⇧2` and `⌘⇧3` set the width, `⌘⇧S` toggles **As static site** and `⌘⇧O`
+  opens the page in a new tab.
+- **Page.** `⌘S` saves, `⌘↵` opens **Send to review** (on a draft), `⌘,` opens the page
+  settings and `⌘⇧←` goes back to the entry.
+
+Rules: a shortcut never fires while you type in a field, except save, undo, redo and `Esc` (`Esc`
+in the search clears it first). Keys without a modifier are not used inside the preview, whose
+controls keep `Enter`, `Space` and the arrows. Nothing fires inside a dialog. Tab follows the
+order of the screen: palette, list, preview, panel.
 
 ## Autosave
 
@@ -134,8 +166,8 @@ replace what the builder saved a moment earlier; the builder then shows the noti
 
 ## What is not here yet
 
-The SEO tab and the Template tab of the page settings, the complete keyboard and the shortcuts
-sheet each have their own issue. Sending a page to review, scheduling and publishing it are in
+The SEO tab and the Template tab of the page settings each have their own issue.
+Sending a page to review, scheduling and publishing it are in
 [Review, schedule and publish](review.md).
 
 ## Motion

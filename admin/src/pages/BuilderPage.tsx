@@ -3,7 +3,7 @@ import { Page, useAuth, useNotification } from '@strapi/strapi/admin'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RenderMode } from '../../../contract/preview'
 import { useTheme } from 'styled-components'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { BlockList } from '../components/builder/BlockList'
 import { BlockPanel } from '../components/builder/BlockPanel'
@@ -15,6 +15,7 @@ import { ReviewActions } from '../components/builder/ReviewActions'
 import { alternativeName } from '../components/builder/IslandBadge'
 import { Overlay, type Pointed, type RenderedBlock } from '../components/builder/Overlay'
 import { Palette } from '../components/builder/Palette'
+import { ShortcutSheet } from '../components/builder/ShortcutSheet'
 import { Notice } from '../components/Notice'
 import { SaveTemplateDialog } from '../components/SaveTemplateDialog'
 import { PreviewFrame, type FrameState, type PreviewFrameHandle } from '../components/PreviewFrame'
@@ -27,7 +28,8 @@ import { useRefusalNotice } from '../hooks/useRefusalNotice'
 import { useTransition } from '../hooks/useTransition'
 import { useBuilderFrame } from '../hooks/useBuilderFrame'
 import { usePageSettings } from '../hooks/usePageSettings'
-import { usePreviewSource } from '../hooks/usePreviewSource'
+import { useBuilderShortcuts } from '../hooks/useBuilderShortcuts'
+import { useNewTab, usePreviewSource } from '../hooks/usePreviewSource'
 import { useMessages } from '../messages'
 import { PREVIEW_PERMISSION, TEMPLATES_MANAGE_PERMISSION } from '../permissions'
 import { isIncomplete } from '../utils/builder/fields'
@@ -116,6 +118,9 @@ function Builder() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isTemplateOpen, setIsTemplateOpen] = useState(false)
   const [scheduleRequest, setScheduleRequest] = useState(0)
+  const [reviewRequest, setReviewRequest] = useState(0)
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const navigate = useNavigate()
   const { toggleNotification } = useNotification()
   const [recent, setRecent] = useState<string[]>(readRecent)
   // The render mode the editor chose for an island, by block key. It is the frame's state, never
@@ -133,6 +138,7 @@ function Builder() {
     mode
   )
   const origin = source.kind === 'ready' ? source.origin : undefined
+  const newTab = useNewTab(doc ? { uid, documentId, locale: doc.locale } : undefined, mode)
   useEffect(() => setIsBlocked(false), [origin])
   const weightUrl =
     source.kind === 'ready' && frameState.protocol === 'ok'
@@ -157,18 +163,6 @@ function Builder() {
   const canSaveTemplate = permissions.some(
     ({ action }) => action === TEMPLATES_MANAGE_PERMISSION.action
   )
-  // ⌘, (Ctrl+, elsewhere) opens the page settings, from anywhere on the page.
-  useEffect(() => {
-    if (!canOpenSettings) return
-    function onKeyDown(event: KeyboardEvent): void {
-      if (event.code === 'Comma' && (event.metaKey || event.ctrlKey) && !event.altKey) {
-        event.preventDefault()
-        setIsSettingsOpen(true)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [canOpenSettings])
   const leftKb =
     budget.kind === 'ready' ? budget.measurement.budgetKb - budget.measurement.blocksKb : undefined
 
@@ -286,7 +280,6 @@ function Builder() {
     selection,
     select,
     selectedBlock,
-    isReadOnly,
     fieldsFor,
     addressOf,
     renderedAt,
@@ -317,6 +310,27 @@ function Builder() {
     addItem,
     goBack,
   } = edits
+
+  const { carrying } = useBuilderShortcuts({
+    blocks,
+    selection,
+    select,
+    itemFieldsOf: (block) => Object.keys(itemFieldsFor(block)),
+    edits,
+    isReadOnly,
+    canDuplicate: selectedBlock !== undefined && entryOf(selectedBlock) !== undefined,
+    save: state.saveNow,
+    undo: state.undo,
+    redo: state.redo,
+    setDevice,
+    setMode,
+    openSettings: canOpenSettings ? () => setIsSettingsOpen(true) : undefined,
+    openSheet: () => setIsSheetOpen(true),
+    requestReview: doc?.editorial ? () => setReviewRequest((count) => count + 1) : undefined,
+    openPage: () => void newTab.open(),
+    backToEntry: () => navigate(entryPath),
+    focusSearch: () => searchInput.current?.focus(),
+  })
 
   if (state.resource.kind === 'error') {
     return (
@@ -404,6 +418,7 @@ function Builder() {
                 notify={transition.notify}
                 onMoved={() => void state.adopt()}
                 scheduleRequest={scheduleRequest}
+                reviewRequest={reviewRequest}
               />
             ) : null}
           </BuilderHeader>
@@ -479,6 +494,7 @@ function Builder() {
                 onDragStart={(row) => setDrag({ kind: 'new', id: row.entry.id, name: row.name })}
                 onDragEnd={endDrag}
                 isReadOnly={isReadOnly}
+                onShowShortcuts={() => setIsSheetOpen(true)}
               />
               <BlockList
                 blocks={blocks.map((block) => ({
@@ -501,15 +517,19 @@ function Builder() {
                 onDropAt={dropAtPosition}
                 onHoverGap={setListGap}
                 hoveredGap={listGap}
+                carrying={carrying}
                 isReadOnly={isReadOnly}
               />
             </div>
-            <Centre aria-label={t('preview.pane')}>
+            <Centre aria-label={t('preview.pane')} data-shortcut-region="preview">
               <Typography variant="pi" textColor="neutral600" tag="p">
                 {t('builder.live', { host: origin ? new URL(origin).host : '' })}
               </Typography>
               {source.kind === 'error' ? (
                 <Notice role="alert" text={t(`preview.error.${source.reason}`)} />
+              ) : null}
+              {newTab.error ? (
+                <Notice role="alert" text={t(`preview.error.${newTab.error}`)} />
               ) : null}
               {isBlocked ? (
                 <Notice
@@ -599,6 +619,8 @@ function Builder() {
               <Box
                 tag="aside"
                 aria-label={t('builder.panel.label')}
+                data-shortcut-region="panel"
+                tabIndex={-1}
                 padding={5}
                 background="neutral0"
                 style={{ flex: '0 1 320px', borderLeft: `1px solid ${colors.neutral150}` }}
@@ -608,6 +630,7 @@ function Builder() {
             )}
           </Columns>
         </Shell>
+        {isSheetOpen ? <ShortcutSheet onClose={() => setIsSheetOpen(false)} /> : null}
         {isSettingsOpen && doc ? (
           <PageSettingsDrawer
             document={doc}

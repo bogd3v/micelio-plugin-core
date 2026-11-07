@@ -84,6 +84,30 @@ Without it the page still previews, and the builder shows no outline over it.
 
 The builder does not offer **Send to review** until bogd3v/micelio-plugin-core#57.
 
+### Try the keyboard of the builder
+
+Open the builder on "Open source, in plain words", as above, and put the mouse aside.
+
+1. Press `?`: the sheet of keyboard shortcuts opens, in groups, with ⌘ on a Mac and `Ctrl`
+   elsewhere. `Esc` closes it and focus returns to where it was.
+2. Press `/` and type `scene`; press `Esc`: the search clears. Press `2`, then `↓` and `↑`: the
+   selection moves in the list and the frame. `⌘1` focuses the panel, `⌘2` the frame.
+3. With a block selected press `Enter`: focus goes to the palette's search. `Tab` to a row and
+   press `Enter`: the block is inserted after the selection.
+4. Press `⌥↑` and `⌥↓`: the block moves. Press `⌘D`, then `⌘⌫`, then `⌘Z` and `⇧⌘Z`: the copy
+   appears, goes, comes back and goes again.
+5. Focus a row of **Page blocks** (`Tab`), press `Space`, then `↓` (the sentence under the list is
+   read by a screen reader and the row is outlined), then `Space`: the block is in its new place.
+   `Esc` instead of the last `Space` puts it back.
+6. Select a block that has options (a Feature grid), focus a value of **Columns** and press `→`
+   and `←`: the value changes and goes round. Press `⌥⌫`: the options are the defaults.
+7. Click in a text field of the panel and press `1`, `/` and `?`: they are typed, nothing else
+   happens. `⌘Z` undoes the typing. `Esc` goes up from the field.
+8. Press `⌘⇧1`, `⌘⇧2`, `⌘⇧3` and `⌘⇧S`: the width and **As static site** change.
+   `⌘S` saves at once. `⌘↵` opens **Send to review** on a draft. `⌘⇧←` goes back to the entry.
+9. Compose and publish a page with the keyboard alone: add blocks, fill them, `⌘↵`, `Tab` to
+   **Send to review**, `Enter`, then `Tab` to **Publish** and `Enter`.
+
 ### Try the media fields of the builder
 
 Open the builder on "Open source, in plain words", as above, with two images at hand to upload.

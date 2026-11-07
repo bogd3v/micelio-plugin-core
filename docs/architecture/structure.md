@@ -123,15 +123,22 @@ The builder page (issue #49, [the guide](../guide/builder.md)) is `pages/Builder
   field holds the save. `useBuilderCatalogue.ts` reads the site's merged
   catalogue (`GET /micelio/blocks?site=`) and the components of the Content Manager.
   `useBuilderFrame.ts` is the conversation with the frame (phase 2 of the protocol),
-  `useBuilderEdits.ts` the changes, `useBlockLookup.ts` what the catalogue says of each block
+  `useBuilderEdits.ts` the changes, `useBuilderShortcuts.ts` the keyboard (issue #50: one window
+  listener over the table of `shortcuts.ts`, which also feeds
+  `components/builder/ShortcutSheet.tsx`), `useBlockLookup.ts` what the catalogue says of each block
   of the page, and `useRefusalNotice.ts` the notification of a refused save
   (the way to the block it names is a button in `BuilderPage`). `saveSettings` of
   `useBuilderDocument` saves the page's slug, type and visibility over the same version, and
   `usePageSettings.ts` reads what the drawer shows around them: the site's page types
   (`GET /micelio/budget/page-types`), the live slug and the redirects (the Content Manager's
   routes for `plugin::micelio.redirect`).
+- `shortcuts.ts` (in `admin/src/`) is pure: the table of actions with their keys and scopes, and
+  `matchShortcut`, which holds the rules (nothing fires in a field but save, undo and `Esc`; no
+  key without a modifier in the preview). The regions the rules read are marked in the markup
+  with `data-shortcut-region` (`preview`, `panel`), `data-block-key` and `data-option-control`.
 - `utils/builder/` is pure: the document model, the fields of the panel, the palette, the
-  overlay's geometry, the messages, the undo history, the reading of a refusal and `islands.ts`
+  overlay's geometry, the messages, the undo history (with redo), the reading of a refusal and
+  `islands.ts`
   (what the badge and the panel say of a block's island, from `contract/islands.ts`).
 - The render mode of an island (issue #56) is state of the page, by block key, never saved:
   `BuilderPage` sends `micelio:renderMode` when the island label's toggle changes it and again

@@ -973,28 +973,17 @@ describe('the builder page in the admin', () => {
     ])
   })
 
-  it('implements of the keyboard only what the issue asks: move with ⌥↑ and Esc', async () => {
+  it('undoes a removal with the Undo control', async () => {
     const documentId = await newLanding([
       { __component: 'section.rich-text', body: 'One' },
       { __component: 'section.logo-cloud', title: 'Two' },
     ])
     const page = await open(builderPath(documentId))
     await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud'])
-    // The complete keyboard is bogd3v/micelio-plugin-core#50: nothing announces a shortcut it lacks.
-    expect(await page.locator('[aria-keyshortcuts*="ArrowLeft"]').count()).toBe(0)
+    // The keyboard is test/admin/builder-shortcuts.test.ts; this is the pointer's way back.
     await frameOf(page).locator('[data-myc-index="1"]').click()
     await page.getByRole('button', { name: 'Remove' }).click()
     await eventually(() => shown(page)).toEqual(['rich-text'])
-    await page.locator('body').click({ position: { x: 5, y: 5 } })
-    // `/` does not move focus to the search, and Ctrl+Z does not undo: only the Undo control does.
-    await page.keyboard.press('/')
-    expect(
-      await page.getByLabel('Search blocks').evaluate((el) => el.ownerDocument.activeElement === el)
-    ).toBe(false)
-    await page.keyboard.press('Control+z')
-    await page.keyboard.press('Meta+z')
-    await settle(page, 5)
-    expect(await shown(page)).toEqual(['rich-text'])
     await page.getByRole('button', { name: 'Undo' }).click()
     await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud'])
   })
