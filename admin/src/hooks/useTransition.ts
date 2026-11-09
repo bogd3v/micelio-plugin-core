@@ -61,6 +61,14 @@ export function useTransition(page: TransitionPage | undefined): {
   const notify = useCallback(
     (problem: unknown, on: TransitionPage | undefined = page) => {
       const notice = transitionNotice(problem, locale, on)
+      // The problems of `seoInvalid` come as codes: each is said in the editor's language.
+      if (notice.code === 'seoInvalid' && typeof notice.values.problems === 'string') {
+        notice.values.problems = notice.values.problems
+          .split(',')
+          .filter((code) => code !== '')
+          .map((code) => t(`seo.problem.${code}`))
+          .join(' ')
+      }
       const link =
         notice.target && on
           ? { label: t('review.goToBlock'), url: `${root}${builderPath(on, notice.target)}` }

@@ -27,6 +27,28 @@ its `rule` is `slug-change` (`createdBy` is Strapi's own audit relation).
 is not a path of the site (`isSitePath` in `redirects.ts`: one `/`, no `//`, no backslash, no
 scheme, no control character) on `create`, `update` and `clone`; the list never serves a row that fails it.
 
+## SEO and social
+
+`seo/` and `contract/seo.ts` are the SEO and social fields of a page (#53,
+[the guide](../guide/seo.md)). `contract/seo.ts` imports nothing, so the server and the admin
+share it: the limits, the derivations (`deriveMetaTitle`, `deriveMetaDescription`,
+`firstParagraphOf`), the checks (`checkSeo`, `repeatsTitle`) and the structured data
+(`structuredDataFor`, `structuredDataProblem`). `index.ts` knows a type with a `seo` component
+(`hasSeo`) and lifts the `maxLength` that the host declares on `metaTitle` and `metaDescription`
+at `register` (`liftSeoLimits`): Strapi enforces it on a draft too, and the counters must never
+hold a save. `documents.ts` is the document service middleware on `create` and `update` of a page
+type with page settings and a `seo` component: it fills the empty fields from the page
+(`read.ts` reads the draft with the media of each block populated) and adds the `id` of the
+stored component to the data, so the fields a write does not name are kept, and refuses structured
+data that is not JSON-LD (`structuredDataInvalid`). `check.ts` is what `performTransition` runs
+on a move out of `draft` (`seoInvalid`, and the warning `descriptionRepeatsTitle`).
+
+The admin tab is `components/builder/SeoTab.tsx` (`SeoPreviews.tsx` draws the three previews,
+`SeoFields.tsx` is its field and help styles): `utils/builder/seo.ts` reads the component and
+draws no component; `Generate from title` fetches the frontend's card route with the editor's
+preview grant (`cardRoute`) and uploads the PNG with the admin's own client; it never goes
+through the server.
+
 ## Block settings
 
 `block-settings/` is what a site manages of the catalogue (#51; `docs/operate/block-catalogue.md`).

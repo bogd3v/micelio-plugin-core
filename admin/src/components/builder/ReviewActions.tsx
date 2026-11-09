@@ -31,7 +31,7 @@ const Pair = styled.div`
 `
 
 /** A round mark before a line of the checklist: a tick on success, an exclamation on a warning. */
-function Mark({ tone }: { tone: 'success' | 'warning' }) {
+export function Mark({ tone }: { tone: 'success' | 'warning' }) {
   const { colors } = useTheme()
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -50,7 +50,7 @@ function Mark({ tone }: { tone: 'success' | 'warning' }) {
   )
 }
 
-function Check({ tone, children }: { tone: 'success' | 'warning'; children: ReactNode }) {
+export function Check({ tone, children }: { tone: 'success' | 'warning'; children: ReactNode }) {
   return (
     <li style={{ display: 'flex', gap: 8, alignItems: 'flex-start', listStyle: 'none' }}>
       <span style={{ flex: '0 0 16px', marginTop: 2 }}>

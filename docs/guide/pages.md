@@ -62,7 +62,8 @@ Every choice is saved with the draft, over the version the builder holds, so a s
 session is still reported as a conflict
 ([Two people on one page](builder.md#two-people-on-one-page)).
 **Save as template…** in the footer saves the page as a template ([Page templates](templates.md)).
-The other tabs of the design (SEO and social, Template) have their own issues.
+The **SEO and social** tab ([SEO and social](seo.md)) and the **Template** tab
+([Page templates](templates.md)) follow it.
 
 ## When the slug changes
 

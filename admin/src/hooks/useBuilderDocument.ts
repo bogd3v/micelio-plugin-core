@@ -6,6 +6,7 @@ import {
   type PageSettingsValues,
   type Visibility,
 } from '../utils/builder/pageSettings'
+import { seoOf, type SeoValues } from '../utils/builder/seo'
 import { redo, remember, undo, type History, EMPTY_HISTORY } from '../utils/builder/history'
 import {
   adoptIds,
@@ -50,6 +51,10 @@ export interface BuilderDocument {
   slug: string
   /** Where the page shows up; the defaults while the component was never saved. */
   visibility: Visibility
+  /** Whether the content type has the `seo` component: it has the SEO and social tab. */
+  hasSeo: boolean
+  /** The page's `shared.seo` as stored; empty values while it was never saved. */
+  seo: SeoValues
   /** The slug of the page's site, when the answer names it. */
   site: string | undefined
   /** The name of the page's site, for the texts an editor reads; its slug when it has no name. */
@@ -122,6 +127,8 @@ function toDocument(answer: CmAnswer, documentId: string): BuilderDocument {
     hasPageSettings: 'pageType' in data,
     slug: text(data.slug) ?? '',
     visibility: visibilityOf(data.visibility),
+    hasSeo: 'seo' in data,
+    seo: seoOf(data.seo),
     site: text(site?.slug),
     siteName: text(site?.name) ?? text(site?.slug),
     samples: Array.isArray(data.templateSamples)
@@ -156,6 +163,7 @@ function settingsOf(
     slug: text(saved.slug) ?? now.slug,
     pageType: text(saved.pageType) ?? now.pageType,
     visibility: 'visibility' in saved ? visibilityOf(saved.visibility) : now.visibility,
+    seo: 'seo' in saved ? seoOf(saved.seo) : now.seo,
     editorial: editorialOf(saved) ?? now.editorial,
   }
 }

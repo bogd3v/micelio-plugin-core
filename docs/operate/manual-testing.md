@@ -17,7 +17,7 @@ The first run writes `.env.docker` (gitignored) with new throwaway secrets, buil
 | Admin    | `http://localhost:1337/admin` | Strapi asks for the first admin's name, email and password on the first visit; use any values. |
 | Frontend | `http://localhost:3000`       | The published image `ghcr.io/bogd3v/micelio:edge`, or the one `FRONTEND_IMAGE` names.          |
 
-The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site", the host `localhost` and the `url` `http://localhost:3000`, creates a custom API token for the frontend (every `find` and `findOne`, which a read-only token has, plus the two preview routes it needs to exchange preview tokens and read drafts) and another, with only the two preview routes, for trying the preview with `curl`, and creates a draft **Page**, "Open source, in plain words", with a text section and a scene, a heavy island (a one-triangle model) whose poster is its static alternative, a second one, "A heavy page", over the stack's page budget ([Try the page budget](#try-the-page-budget)), and a third, "Islands without their alternative" ([Try the islands](#try-the-islands)). The seed stores the two files' URLs with `CMS_PUBLIC_URL` (`http://localhost:1337`) and the frontend lists it as `NUXT_MEDIA_URL`: the frontend prefixes a relative media URL (what Strapi stores for an upload in the admin, `/uploads/...`) with `NUXT_PUBLIC_STRAPI_URL`, which is `http://localhost:1337` in `compose.dev.yml` so that your browser can resolve it. Inside the frontend's container that address is the container itself; the `media-forward` service shares its network and forwards the port to the `cms` service, so the frontend's own calls reach the CMS too. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview with `curl`; `docker/cms/src/api/page/` has the shape of the `page` of `micelio-cms`, because the frontend previews `api::page.page` and asks the CMS for every section of the catalogue. `docker/cms/dev.mjs` writes those sections' schemas into `docker/cms/src/components/` (gitignored) from `test/fixtures/micelio-cms-v0.4.0-components.json`. Like the rest of the stack, none of it is the distribution's.
+The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site", the host `localhost` and the `url` `http://localhost:3000`, creates a custom API token for the frontend (every `find` and `findOne`, which a read-only token has, plus the two preview routes it needs to exchange preview tokens and read drafts) and another, with only the two preview routes, for trying the preview with `curl`, and creates a draft **Page**, "Open source, in plain words", with a text section and a scene (each seeded page has a social image of 1200 by 630, which the checks before review ask for: [Try the SEO and social tab](#try-the-seo-and-social-tab)), a heavy island (a one-triangle model) whose poster is its static alternative, a second one, "A heavy page", over the stack's page budget ([Try the page budget](#try-the-page-budget)), and a third, "Islands without their alternative" ([Try the islands](#try-the-islands)). The seed stores the two files' URLs with `CMS_PUBLIC_URL` (`http://localhost:1337`) and the frontend lists it as `NUXT_MEDIA_URL`: the frontend prefixes a relative media URL (what Strapi stores for an upload in the admin, `/uploads/...`) with `NUXT_PUBLIC_STRAPI_URL`, which is `http://localhost:1337` in `compose.dev.yml` so that your browser can resolve it. Inside the frontend's container that address is the container itself; the `media-forward` service shares its network and forwards the port to the `cms` service, so the frontend's own calls reach the CMS too. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview with `curl`; `docker/cms/src/api/page/` has the shape of the `page` of `micelio-cms`, because the frontend previews `api::page.page` and asks the CMS for every section of the catalogue. `docker/cms/dev.mjs` writes those sections' schemas into `docker/cms/src/components/` (gitignored) from `test/fixtures/micelio-cms-v0.4.0-components.json`. Like the rest of the stack, none of it is the distribution's.
 
 The plugin owns **Category** and **Tag** (`/api/categories` and `/api/tags`, as in `micelio-cms`; the fixture article and the `post-list` section point at them, and `docker/cms/src/extensions/micelio/` adds the inverse `articles` as the distribution does), so the frontend's category requests answer. Until the rest of the content types of `micelio-cms` move into the plugin (the cut-over of release line 0.7) its request for the site settings fails with a 404, and it shows an empty site outside the preview. Its log says so (`docker compose -f compose.dev.yml logs frontend`). Use the admin to see what the plugin does: the **Micelio** status page, the Content Manager and the Content-Type Builder.
 
@@ -282,6 +282,61 @@ button yet (bogd3v/micelio-plugin-core#57), so the steps publish through the adm
    Set the theme to dark (Profile → Interface mode): the drawer reads in Strapi's dark colours.
 10. A role that may read the page but not edit it opens the drawer with every control disabled.
 
+## Try the SEO and social tab
+
+The **SEO and social** tab of the **Page settings** drawer holds the page's `seo` fields: the
+meta title, the meta description and the social image start from the page and are edited second
+([docs/guide/seo.md](../guide/seo.md)). `docker/cms` has the `seo` component of `micelio-cms` on
+its `page` type, and the seed gives the three draft pages a social image of 1200 by 630 so the
+steps above can send them to review. The frontend must allow the admin's origin
+(`NUXT_PREVIEW_ADMIN_ORIGIN`, already set in `compose.dev.yml`) for the card route of step 4.
+
+1. Bring the stack up and create the first admin as above. Open the builder of "Open source, in
+   plain words" (Content Manager → Page, then **Open in the builder**, or the address printed by
+   step 1 of [Try the page settings](#try-the-page-settings)), press the gear and open the second
+   tab, **SEO and social**. **Meta title** reads `Open source, in plain words · Example Site`
+   with the counter `42 / 60`, **Meta description** reads the first paragraph of the page's
+   text (the line that says "This page is a draft…"), and **Social image** names the file the
+   seed attached, `card-landing.png · 1200×630`. Under **Preview**, **Search result**, **Link card** and
+   **Fediverse** draw the same fields. **Checks before review** are all ticked.
+2. Type 60 more characters at the end of **Meta description**. The counter reads `… / 160: n over`
+   in red and **Checks before review** names the description, and leaving the field saves it all
+   the same (the drawer says _Saved_). Try the send to review as the admin route does:
+
+   ```bash
+   ADMIN=$(curl -s -X POST localhost:1337/admin/login -H 'Content-Type: application/json' \
+     -d '{"email":"admin@example.com","password":"Password1234"}' | jq -r .data.token)
+   LANDING=$(curl -s -g -H "Authorization: Bearer $ADMIN" \
+     "localhost:1337/content-manager/collection-types/api::page.page?filters[slug][\$eq]=landing" \
+     | jq -r '.results[0].documentId')
+   curl -s -X POST localhost:1337/micelio/transitions -H "Authorization: Bearer $ADMIN" \
+     -H 'Content-Type: application/json' \
+     -d "{\"uid\":\"api::page.page\",\"documentId\":\"$LANDING\",\"locale\":\"en\",\"to\":\"in_review\"}" \
+     | jq -c '{status, code, problems}'
+   # {"status":409,"code":"seoInvalid","problems":[{"code":"metaDescriptionTooLong"}]}
+   ```
+
+   Cut the description under 161 characters: the same command answers `200` with no `status`
+   (`jq` prints `null` for the members it does not find).
+
+3. Say the title again: set **Meta description** to
+   `Open source, in plain words: open source, in plain words, again.` and, in the builder, press
+   **Send to review**. The dialog lists _The meta description only says again the title_ as a
+   warning, and the button reads **Send anyway**.
+4. **Generate from title.** On another page (the heavy one) open **SEO and social**, press
+   **Generate from title**: the button reads _Generating…_, then **Social image** names a new `card-heavy.png`
+   of `1200×630`, a PNG with the page's title and the site's name in the theme's font. The file
+   is in Media Library with the title as its alternative text. With the preview not loaded
+   (open the drawer in the first seconds, before the frame shows the page) the button is
+   disabled and says so.
+5. Open **Advanced**: **Canonical URL**, **Robots** (read only; tick **Hidden from search
+   engines** in General and it reads `noindex`), **Keywords** and **Structured data**, which
+   shows the generated `WebPage` JSON-LD. Write `{"@type": "Article"}` in **Your own JSON-LD** and
+   leave the box: _Not saved: Each object needs a "@context"…_. Write a full object
+   (`{"@context": "https://schema.org", "@type": "Article", "headline": "Hi"}`) and leave the
+   box: it is saved and the visible JSON-LD becomes yours.
+6. Set the language of your profile to Español and reload: the tab is in Spanish.
+
 ## Try page templates
 
 A page is saved as a template from the builder's **Page settings** drawer and a new page is made
@@ -364,6 +419,15 @@ landing`, leave **For page types** on Landing, choose **Clear** for Rich text an
    PUBLISH() { curl -s -w '\n%{http_code}\n' -X POST localhost:1337/micelio/transitions \
      -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
      -d "{\"uid\":\"api::page.page\",\"documentId\":\"$1\",\"locale\":\"en\",\"to\":\"$2\"}"; }
+   PUBLISH "$NEW" in_review    # 409 seoInvalid: a page needs its SEO fields before review
+   ```
+
+   Open the builder of the new page, press the gear, open **SEO and social** and press
+   **Generate from title** (the page needs a social image of 1200 by 630 and a description of
+   50 to 160 characters: write one if the tab left it empty; [Try the SEO and social
+   tab](#try-the-seo-and-social-tab)). Then:
+
+   ```bash
    PUBLISH "$NEW" in_review    # 200
    PUBLISH "$NEW" published    # 409 sampleTextPresent, "blocks" naming hero, feature-grid, cta
    ```

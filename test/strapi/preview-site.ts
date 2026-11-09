@@ -6,6 +6,7 @@
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { blocksScript, markBlocks } from './preview-site-blocks'
+import { solidPng } from './png'
 import { answerWeight, newWeightBehaviour, type WeightBehaviour } from './weight-site'
 
 /** The stub site of the browser suite. */
@@ -23,6 +24,12 @@ export interface PreviewSite {
   readonly exchanges: number
   /** How many times the draft route answered a page. */
   readonly draftLoads: number
+  /**
+   * The requests its card route got (`GET /api/preview/<uid>/<documentId>/card`, bogd3v/micelio#734): it
+   * answers a PNG of 1200 by 630 to the editor's grant in the cookie, with the CORS headers of the
+   * admin's credentialed `fetch`, and a 404 to anything else, as the frontend does.
+   */
+  readonly cardRequests: { uid: string; documentId: string; grant: string | undefined }[]
   /** The envelope versions its page lists in `ready`; `[2]` plays a frontend this plugin cannot talk to. */
   speaks: number[]
   /** Its page never posts `ready`, as a frame that gets the 404 page of a refused cookie, or an older frontend. */
@@ -151,6 +158,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
   let cms: { base: string; apiToken: string; adminOrigin: string } | undefined
   let exchanges = 0
   let draftLoads = 0
+  const cardRequests: PreviewSite['cardRequests'] = []
 
   async function handle(request: http.IncomingMessage, response: http.ServerResponse) {
     const url = new URL(request.url ?? '/', 'http://stub')
@@ -177,6 +185,26 @@ export async function startPreviewSite(): Promise<PreviewSite> {
         response
       )
     ) {
+      return
+    }
+    const card = /^\/api\/preview\/([^/]+)\/([\w-]+)\/card$/.exec(url.pathname)
+    if (card) {
+      const grant = grantOf(request)
+      cardRequests.push({
+        uid: decodeURIComponent(card[1] ?? ''),
+        documentId: card[2] ?? '',
+        grant,
+      })
+      if (request.headers.origin === cms.adminOrigin) {
+        response.setHeader('Access-Control-Allow-Origin', cms.adminOrigin)
+        response.setHeader('Access-Control-Allow-Credentials', 'true')
+        response.setHeader('Vary', 'Origin')
+      }
+      if (!grant) {
+        response.writeHead(404).end('Page not found')
+        return
+      }
+      response.writeHead(200, { 'Content-Type': 'image/png' }).end(solidPng(1200, 630))
       return
     }
     if (url.pathname === '/_preview') {
@@ -277,6 +305,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     get draftLoads() {
       return draftLoads
     },
+    cardRequests,
     close: () => new Promise((resolve) => server.close(() => resolve())),
   }
   return site

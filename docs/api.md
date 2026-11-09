@@ -270,6 +270,14 @@ in its draft: a text of a field that still equals one of them. It is refused wit
 `scheduled → published` runs the check again: a page whose draft holds a sample text stays
 scheduled, and the scheduler logs it. Moving to review and moving back to `draft` are not checked.
 
+A page type with a `seo` component (`shared.seo`, [SEO and social](guide/seo.md)) moved out of
+`draft` (`draft → in_review`, `draft → scheduled`, `in_review → published`, `published →
+published`) first has its SEO fields checked: a meta title of at most 60 characters, a meta
+description of 50 to 160 and a social image of 1200 by 630 pixels. It is refused with `seoInvalid`
+before anything is written or measured. A description that only says again the title is the
+warning `descriptionRepeatsTitle` in `warnings`. Moving back to `draft` and the scheduler's
+`scheduled → published` are not checked.
+
 ### Errors
 
 Every refusal answers `application/problem+json`:
@@ -286,9 +294,18 @@ Every refusal answers `application/problem+json`:
 | 409    | `islandAlternativeMissing`     | An island of the draft lacks its static alternative   |
 | 409    | `pageOverBudget`               | The blocks of the draft weigh more than its budget    |
 | 409    | `sampleTextPresent`            | The page still holds a sample text of its template    |
+| 409    | `seoInvalid`                   | The SEO fields are over a limit or lack the image     |
 | 409    | `previewUnavailable`           | The draft could not be measured; see below            |
 
 A `note` over 1000 characters is `editorialRequestInvalid` too.
+
+`seoInvalid` carries `problems`: each as `{ code }`, one of `metaTitleMissing`,
+`metaTitleTooLong`, `metaDescriptionMissing`, `metaDescriptionTooShort`,
+`metaDescriptionTooLong`, `metaImageMissing` and `metaImageSize`.
+
+A save (`create` and `update` of the document service, so the Content Manager, the drawer and
+the code) whose `seo.structuredData` is not a JSON-LD object, or a list of them, is refused with
+`structuredDataInvalid` (`400`, `field: structuredData`).
 
 `sampleTextPresent` carries `blocks` the same way, each as `{ block, position, fields, zone }`;
 `fields` names the text fields that still hold a sample, such as `title` or `items[2].text`.

@@ -3,7 +3,7 @@
   "info": {
     "displayName": "SEO",
     "icon": "search",
-    "description": "The `seo` component of micelio-cms, reduced to what the preview fixture needs"
+    "description": "The `seo` component of micelio-cms, with the limits it declares (60 and 160 characters; the plugin lifts them) and nothing required, so the preview suites that save a page without one still pass"
   },
   "options": {},
   "attributes": {
@@ -19,6 +19,10 @@
       "type": "media",
       "multiple": false,
       "allowedTypes": ["images"]
-    }
+    },
+    "keywords": { "type": "text" },
+    "metaRobots": { "type": "string" },
+    "structuredData": { "type": "json" },
+    "canonicalURL": { "type": "string" }
   }
 }

@@ -56,15 +56,17 @@ top of the builder until the next move. A move without a note clears the previou
 A refused move is a notification of the admin, from the problem detail the server answered (its
 `code` is at the end of the text):
 
-| `code`                         | What it says                                    |
-| ------------------------------ | ----------------------------------------------- |
-| `pageOverBudget`               | Weight against the budget, the heaviest blocks  |
-| `previewUnavailable`           | The page could not be measured                  |
-| `editorialTransitionForbidden` | The site's policy or your permissions refuse it |
-| `editorialPublishAtInvalid`    | The time of a schedule has passed               |
-| `islandAlternativeMissing`     | The island block and its empty field            |
-| `sampleTextPresent`            | The block that holds sample text                |
-| `linkToDraft` (a warning)      | How many links, to which draft pages            |
+| `code`                                | What it says                                    |
+| ------------------------------------- | ----------------------------------------------- |
+| `pageOverBudget`                      | Weight against the budget, the heaviest blocks  |
+| `previewUnavailable`                  | The page could not be measured                  |
+| `editorialTransitionForbidden`        | The site's policy or your permissions refuse it |
+| `editorialPublishAtInvalid`           | The time of a schedule has passed               |
+| `islandAlternativeMissing`            | The island block and its empty field            |
+| `sampleTextPresent`                   | The block that holds sample text                |
+| `seoInvalid`                          | The SEO fields to fix, in Page settings         |
+| `descriptionRepeatsTitle` (a warning) | The description only says again the title       |
+| `linkToDraft` (a warning)             | How many links, to which draft pages            |
 
 When the problem names a block, the notification has **Go to the block**: it opens the builder in a
 new tab with that block selected (`?block=<id>&position=<n>`). `previewUnavailable` links to the
