@@ -23,8 +23,15 @@ export const eventually = <T>(read: () => Promise<T> | T) => expect.poll(read, {
 export interface BuilderSession {
   readonly base: string
   readonly strapi: Core.Strapi
-  /** Creates a page of `uid` with these sections and gives its document id. */
-  seed: (uid: string, sections: object[], title?: string) => Promise<string>
+  /** The stub frontend. */
+  readonly site: PreviewSite
+  /** Creates a page of `uid` with these sections and gives its document id; `extra` adds to its data. */
+  seed: (
+    uid: string,
+    sections: object[],
+    title?: string,
+    extra?: Record<string, unknown>
+  ) => Promise<string>
   /** Opens the builder on a page as a new admin, with the options of its browser. */
   open: (uid: string, documentId: string, options?: OpenOptions) => Promise<Page>
 }
@@ -96,10 +103,13 @@ export function useBuilderSession(): BuilderSession {
     get strapi() {
       return strapi
     },
-    async seed(uid, sections, title = 'Keyboard page') {
+    get site() {
+      return site
+    },
+    async seed(uid, sections, title = 'Keyboard page', extra = {}) {
       const created = await strapi.documents(uid as UID.ContentType).create({
         locale: 'en',
-        data: { title, site: siteDocumentId, sections } as never,
+        data: { title, site: siteDocumentId, sections, ...extra } as never,
       })
       return created.documentId
     },

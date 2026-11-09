@@ -12,10 +12,13 @@ import {
   type PageSettingsValues,
   type Visibility,
 } from '../../utils/builder/pageSettings'
+import type { BuilderBlock } from '../../utils/builder/model'
 import type { SaveRefusal } from '../../utils/builder/refusal'
+import type { SeoChange } from '../../utils/builder/seo'
 import { Segment, Tool } from './controls'
 import { Input } from './fieldStyle'
 import { CloseIcon } from './icons'
+import { SeoTab } from './SeoTab'
 import { TemplateTab } from './TemplateTab'
 
 const Panel = styled.aside`
@@ -152,11 +155,18 @@ interface PageSettingsDrawerProps {
   page: { uid: string; documentId: string; locale: string | null; site: string }
   /** The Template tab changed the page on the server: the builder reads it again. */
   onTemplateChanged: () => void
+  /** The page's blocks, for the SEO tab's default description. */
+  blocks: BuilderBlock[]
+  /** The frontend's social card route for the page; `undefined` while the preview has not loaded. */
+  cardUrl: string | undefined
   /** The tab shown. The builder keeps it: the page is read again after a change and the drawer opens anew. */
-  tab: 'general' | 'template'
-  onTab: (tab: 'general' | 'template') => void
+  tab: SettingsTab
+  onTab: (tab: SettingsTab) => void
   onClose: () => void
 }
+
+/** The tabs of the drawer, in the order of the artboard. */
+export type SettingsTab = 'general' | 'seo' | 'template'
 
 type Outcome = { kind: 'idle' | 'saving' | 'saved' } | { kind: 'failed'; detail: string }
 
@@ -168,8 +178,8 @@ type Outcome = { kind: 'idle' | 'saving' | 'saved' } | { kind: 'failed'; detail:
  * It opens over the builder and leaves the preview in view; Esc and the close button shut it and
  * focus goes back to where it came from. Each choice is saved at once, with the draft's version
  * (`useBuilderDocument().saveSettings`); the slug is saved when its field is left. The other tabs
- * of the artboard: SEO and social belongs to another issue and is not drawn; **Template**
- * (`TemplateTab`) shows the page's template, its offer and its fixed blocks. **Save as
+ * of the artboard: **SEO and social** (`SeoTab`, for a page type that has the `seo` component) and **Template**
+ * (`TemplateTab`), which shows the page's template, its offer and its fixed blocks. **Save as
  * template…** opens the dialog of that name (`SaveTemplateDialog`) for a role that may manage templates.
  */
 export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
@@ -218,7 +228,8 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
     if (pendingRef.current === 0) showVisibility(doc.visibility)
   }, [doc.visibility])
 
-  function commit(values: Partial<PageSettingsValues>): Promise<void> {
+  /** Saves in the line; `true` when the server stored it. */
+  function commit(values: Partial<PageSettingsValues>): Promise<boolean> {
     pendingRef.current += 1
     setOutcome({ kind: 'saving' })
     const turn = lineRef.current.then(() => onSaveRef.current(values))
@@ -226,10 +237,11 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
     return turn.then((refused) => {
       pendingRef.current -= 1
       // One status for the line: it says Saved only when the last save is stored.
-      if (pendingRef.current > 0) return
+      if (pendingRef.current > 0) return refused === undefined
       setOutcome(refused ? { kind: 'failed', detail: refused.detail } : { kind: 'saved' })
       // The boxes go back to what the CMS holds: a refused choice does not stay ticked.
       if (refused) showVisibility(docRef.current.visibility)
+      return refused === undefined
     })
   }
 
@@ -285,21 +297,37 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
         </Tool>
       </Head>
       <Tabs role="tablist" aria-label={t('builder.settings.tabs')}>
-        {(['general', 'template'] as const).map((name) => (
-          <Tab
-            key={name}
-            type="button"
-            role="tab"
-            $isActive={props.tab === name}
-            aria-selected={props.tab === name}
-            id={`${id}-tab-${name}`}
-            aria-controls={`${id}-panel-${name}`}
-            onClick={() => props.onTab(name)}
-          >
-            {t(`builder.settings.tab.${name}`)}
-          </Tab>
-        ))}
+        {(['general', 'seo', 'template'] as const)
+          .filter((name) => name !== 'seo' || doc.hasSeo)
+          .map((name) => (
+            <Tab
+              key={name}
+              type="button"
+              role="tab"
+              $isActive={props.tab === name}
+              aria-selected={props.tab === name}
+              id={`${id}-tab-${name}`}
+              aria-controls={`${id}-panel-${name}`}
+              onClick={() => props.onTab(name)}
+            >
+              {t(`builder.settings.tab.${name}`)}
+            </Tab>
+          ))}
       </Tabs>
+      {props.tab === 'seo' && doc.hasSeo ? (
+        <Body role="tabpanel" id={`${id}-panel-seo`} aria-labelledby={`${id}-tab-seo`}>
+          <SeoTab
+            document={doc}
+            blocks={props.blocks}
+            page={props.page}
+            host={props.host}
+            isNoindex={visibility.noindex}
+            isReadOnly={props.isReadOnly}
+            cardUrl={props.cardUrl}
+            onChange={(change: SeoChange) => commit({ seo: change })}
+          />
+        </Body>
+      ) : null}
       {props.tab === 'template' ? (
         <Body role="tabpanel" id={`${id}-panel-template`} aria-labelledby={`${id}-tab-template`}>
           <TemplateTab
@@ -496,6 +524,9 @@ export function PageSettingsDrawer(props: PageSettingsDrawerProps) {
           >
             {status}
           </span>
+          {props.tab === 'seo' ? (
+            <span style={{ fontSize: 12, color: colors.neutral600 }}>{t('seo.footer')}</span>
+          ) : null}
           {props.onSaveAsTemplate && props.isDirty && props.tab === 'general' ? (
             <span id={`${id}-template-unsaved`} style={{ fontSize: 12, color: colors.neutral600 }}>
               {t('builder.settings.saveTemplate.unsaved')}

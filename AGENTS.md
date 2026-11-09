@@ -74,6 +74,13 @@ npm run preview:generate # contract/preview.schema.json, from contract/preview.t
     page types for the drawer. Details:
     [docs/architecture/structure.md](docs/architecture/structure.md#page-settings-and-redirects);
     the guide is `docs/guide/pages.md`.
+  - `seo/` is the SEO and social fields of a page (#53): `documents.ts` (the document service middleware that
+    fills an empty `seo.metaTitle`, `metaDescription` and `metaImage` from the page at save and refuses
+    structured data that is not JSON-LD), `check.ts` (what `performTransition` runs out of `draft`:
+    `seoInvalid`, and the warning `descriptionRepeatsTitle`), `read.ts` and `index.ts`
+    (`liftSeoLimits`, which takes the host's `maxLength` off the title and description). The pure part
+    is `contract/seo.ts`, shared with the admin. Details:
+    [docs/architecture/structure.md](docs/architecture/structure.md#seo-and-social); the guide is `docs/guide/seo.md`.
   - `budget/` is the page weight budget (ADR-0019): `rules.ts`, `weight-client.ts` and the `budget` service, which `performTransition` calls on every publish of a measured type. Details: [docs/architecture/structure.md](docs/architecture/structure.md#page-weight-budget); how-to: `docs/operate/budgets.md`.
   - `extensions/` is the registry behind the `extensions` service (ADR-0017): the four extension points a sibling plugin registers (`registerAdminPage`, `registerSiteSection`, `registerStatusChecks`, `registerExportSection`), declared in `types/extensions.ts`, a contract (section 6). `validate.ts` checks a registration, `checks.ts` runs a plugin's status checks, `site-sections.ts` gives every site an instance of each section. `controllers/extensions.ts` serves `GET /micelio/admin-pages` and `GET /micelio/sites`; `status/refresh.ts` is the daily cron job; `site-export/sections.ts` writes and reads the archive's `plugins/<id>/` folders. `docs/plugins/extension-points.md` is the how-to.
   - `block-options/` is the validation of a block's presentation options at save (ADR-0018): `rules.ts` (pure: the first option of a dynamic zone that its block does not expose or whose value is outside the block's set), `documents.ts` (the document service middleware, on `create`, `update` and `clone`) and `error.ts` (`BlockOptionError`, which the `site-scope` route middleware answers as the problem detail `blockOptionInvalid`). `docs/blocks.md` describes the options.
@@ -121,7 +128,8 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
     the hooks API and its payloads; `budget.ts`: a measurement; `blocks.ts`:
     a site's settings of a block and a page that holds one) it is the shared folder of section 4 of
     the standard.
-- `contract/` — the block catalogue (ADR-0018): `blocks.ts` (the 19 entries),
+- `contract/` — the block catalogue (ADR-0018): `seo.ts` (the SEO and social limits, derivations and
+  checks the server and the admin share), `blocks.ts` (the 19 entries),
   `islands.ts` (what the catalogue and the admin share about islands: the five kinds, the 1 MB
   rule that decides the trigger, and what counts as a filled field), `options.ts` (the
   presentation options vocabulary: eight names,
@@ -140,7 +148,8 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   the pages (`StatusPage`, `TransferPage` with `ExportPanel` and `ImportPanel`, `AboutPage`,
   `PreviewPage`, `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
   Save as template dialog, `ReviewPage` (the In review page), `TemplatesManagePage` at `templates`
-  and `TemplateBuilderPage` at `templates/:id/edit`),
+  and `TemplateBuilderPage` at `templates/:id/edit`; the SEO and social tab of the page settings is
+  `components/builder/SeoTab.tsx`, with `SeoPreviews.tsx` and `SeoFields.tsx`),
   the cost meter and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them).
   The builder (`pages/BuilderPage.tsx` at `builder/:uid/:documentId`, #49): its panels in
   `components/builder/`, its hooks (`useBuilderDocument`, `useBuilderCatalogue`,

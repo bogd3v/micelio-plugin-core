@@ -10,6 +10,8 @@ import { renameLegacyUids } from './migrations/rename-legacy-uids'
 import { templateFixedDocuments } from './page-templates/documents'
 import { redirectDocuments } from './page-settings/documents'
 import { registerPreviewShortcut } from './preview/shortcut'
+import { liftSeoLimits } from './seo'
+import { seoDocuments } from './seo/documents'
 import { siteCreatedHook } from './sites/hooks'
 import { siteScopeDocuments } from './site-scope/documents'
 import { siteRules } from './sites/rules'
@@ -18,6 +20,7 @@ import { siteRules } from './sites/rules'
 const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   registerComponents(strapi)
   registerPreviewShortcut(strapi)
+  liftSeoLimits(strapi)
   // Before any plugin bootstraps: users-permissions deletes the permissions of an action that no
   // longer exists in its own bootstrap, and the rename has to reach them first (ADR-0017,
   // amendment of 2026-10-23).
@@ -37,6 +40,7 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   strapi.documents.use(blockSettingsDocuments(strapi))
   strapi.documents.use(templateFixedDocuments(strapi))
   strapi.documents.use(redirectDocuments(strapi))
+  strapi.documents.use(seoDocuments(strapi))
   strapi.documents.use(editorialGuard(strapi))
   // `strapi.plugin('micelio').hooks`: the `hooks` service under the name the API documents.
   Object.defineProperty(strapi.plugin('micelio'), 'hooks', {

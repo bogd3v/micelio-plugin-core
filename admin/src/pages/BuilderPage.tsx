@@ -10,7 +10,7 @@ import { BlockPanel } from '../components/builder/BlockPanel'
 import { BuilderHeader } from '../components/builder/BuilderHeader'
 import { Centre, Columns, Shell, StageBox, Toast } from '../components/builder/layout'
 import { Motion } from '../components/builder/Motion'
-import { PageSettingsDrawer } from '../components/builder/PageSettingsDrawer'
+import { PageSettingsDrawer, type SettingsTab } from '../components/builder/PageSettingsDrawer'
 import { ReviewActions } from '../components/builder/ReviewActions'
 import { alternativeName } from '../components/builder/IslandBadge'
 import { Overlay, type Pointed, type RenderedBlock } from '../components/builder/Overlay'
@@ -46,6 +46,7 @@ import {
 import { islandOf } from '../utils/builder/islands'
 import { renderModeMessage } from '../utils/builder/messages'
 import { weightRoute } from '../utils/costMeter'
+import { cardRoute } from '../utils/builder/seo'
 import { lockedKeysOf } from '../utils/templateFixed'
 import { DEVICES, type DeviceId, type PreviewMode } from '../utils/previewPane'
 import { useIntl } from 'react-intl'
@@ -122,7 +123,7 @@ function Builder() {
   const [reviewRequest, setReviewRequest] = useState(0)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const navigate = useNavigate()
-  const [settingsTab, setSettingsTab] = useState<'general' | 'template'>('general')
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('general')
   const { toggleNotification } = useNotification()
   const [recent, setRecent] = useState<string[]>(readRecent)
   // The render mode the editor chose for an island, by block key. It is the frame's state, never
@@ -662,6 +663,12 @@ function Builder() {
             }}
             page={{ uid, documentId, locale: doc.locale, site: doc.site ?? '' }}
             onTemplateChanged={state.loadTheirs}
+            blocks={blocks}
+            cardUrl={
+              source.kind === 'ready' && frameState.protocol === 'ok'
+                ? cardRoute(source.src, uid, documentId)
+                : undefined
+            }
             tab={settingsTab}
             onTab={setSettingsTab}
             onClose={() => setIsSettingsOpen(false)}

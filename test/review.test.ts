@@ -25,6 +25,35 @@ describe('the buttons of each editorial state', () => {
 })
 
 describe('transitionNotice', () => {
+  it('lists the problems of seoInvalid by code, and shows descriptionRepeatsTitle as a warning', () => {
+    const refused = transitionNotice(
+      {
+        code: 'seoInvalid',
+        problems: [{ code: 'metaDescriptionTooLong' }, { code: 'metaImageMissing' }, 'x'],
+      },
+      'en',
+      PAGE
+    )
+    expect(refused).toMatchObject({
+      type: 'danger',
+      code: 'seoInvalid',
+      title: 'review.refusal.seoInvalid.title',
+      message: 'review.refusal.seoInvalid',
+      values: { problems: 'metaDescriptionTooLong,metaImageMissing' },
+    })
+    const warning = transitionNotice({ code: 'descriptionRepeatsTitle' }, 'en')
+    expect(warning).toMatchObject({
+      type: 'warning',
+      message: 'review.refusal.descriptionRepeatsTitle',
+    })
+    for (const messages of [en, es] as Record<string, string>[]) {
+      for (const code of ['seoInvalid', 'descriptionRepeatsTitle']) {
+        expect(messages[`review.refusal.${code}`]).toContain(code)
+        expect(messages[`review.refusal.${code}.title`]).toBeTruthy()
+      }
+    }
+  })
+
   it('points at the block a refusal names, from 0 whichever way the code counts', () => {
     const island = transitionNotice(
       {

@@ -11,6 +11,8 @@ import { hooksOf } from '../hooks'
 import { findMissingAlternativesIn } from '../islands/check'
 import { ISLAND_ALTERNATIVE_MISSING } from '../constants/blocks'
 import { hasPageSettings } from '../page-settings'
+import { DESCRIPTION_REPEATS_TITLE, SEO_INVALID } from '../constants/seo'
+import { checkSeoOf, describeSeoProblem } from '../seo/check'
 import { findSampleTextIn } from '../page-templates/check'
 import { SAMPLE_TEXT_PRESENT } from '../constants/page-templates'
 import { recordSlugChange, type SlugChange } from '../page-settings/record'
@@ -67,13 +69,24 @@ export interface TransitionResult {
  * A warning of a transition, in the shape of a problem detail (section 4 of the standard) with no
  * HTTP status: the transition is not refused.
  */
-export interface TransitionWarning {
+export type TransitionWarning = LinkWarning | DescriptionWarning
+
+/** The warning `linkToDraft`. */
+export interface LinkWarning {
   type: 'about:blank'
   title: string
   code: typeof LINK_TO_DRAFT
   detail: string
-  /** `linkToDraft`: each link, its block and the page it points to. */
+  /** Each link, its block and the page it points to. */
   blocks: LinkToDraft[]
+}
+
+/** The warning `descriptionRepeatsTitle`: the meta description only says again the title. */
+export interface DescriptionWarning {
+  type: 'about:blank'
+  title: string
+  code: typeof DESCRIPTION_REPEATS_TITLE
+  detail: string
 }
 
 /** Why a transition was refused, as the `code` of its problem detail. */
@@ -87,6 +100,7 @@ export type TransitionErrorCode =
   | 'editorialTransitionRefused'
   | 'islandAlternativeMissing'
   | 'sampleTextPresent'
+  | 'seoInvalid'
   | 'pageOverBudget'
   | 'previewUnavailable'
 
@@ -141,6 +155,12 @@ interface EditorialEntry {
  * alternative filled in (`alternative` in `contract/blocks.ts`) and refuses with
  * `islandAlternativeMissing`, naming the blocks, their positions and the empty fields. Moving back
  * to `draft` and the scheduler's `scheduled -> published` are not checked.
+ *
+ * Moving a page type with a `seo` component (`docs/guide/seo.md`) out of `draft` first checks its
+ * meta title (at most 60 characters), its meta description (50 to 160) and its social image (1200
+ * by 630 pixels) and refuses with `seoInvalid`, naming each `problems` entry; a description that
+ * only repeats the title is the warning `descriptionRepeatsTitle`. Moving back to `draft` and the
+ * scheduler's `scheduled -> published` are not checked.
  *
  * Publishing, or scheduling the publish of, a page created from a template (`docs/guide/templates.md`)
  * first checks that none of the sample texts it copied is left in its draft, and refuses with
@@ -268,6 +288,29 @@ export async function performTransition(
     }
   }
   const warnings: TransitionWarning[] = []
+  if (request.to !== 'draft' && transition.from !== 'scheduled') {
+    const seo = await checkSeoOf(strapi, {
+      uid,
+      documentId: entry.documentId,
+      locale: entry.locale,
+    })
+    if (seo && seo.problems.length > 0) {
+      throw new TransitionError(
+        409,
+        SEO_INVALID,
+        `The SEO and social fields are not ready: ${seo.problems.map(describeSeoProblem).join(', ')}`,
+        { problems: seo.problems.map((code) => ({ code })) }
+      )
+    }
+    if (seo?.warnings.includes('descriptionRepeatsTitle')) {
+      warnings.push({
+        type: 'about:blank',
+        title: 'Description repeats the title',
+        code: DESCRIPTION_REPEATS_TITLE,
+        detail: 'The meta description only says again the title; say something more',
+      })
+    }
+  }
   if (request.to !== 'draft' && request.actor.kind === 'user') {
     const links = await findLinksToDraftsIn(strapi, {
       uid,
@@ -364,7 +407,7 @@ export async function performTransition(
   return result
 }
 
-function linkWarning(links: LinkToDraft[]): TransitionWarning {
+function linkWarning(links: LinkToDraft[]): LinkWarning {
   const pages = [...new Set(links.map((link) => link.page.title))].join(', ')
   return {
     type: 'about:blank',

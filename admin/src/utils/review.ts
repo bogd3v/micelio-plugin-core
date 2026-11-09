@@ -81,8 +81,13 @@ const KNOWN = new Set([
   'editorialPublishAtInvalid',
   'islandAlternativeMissing',
   'sampleTextPresent',
+  'seoInvalid',
   'linkToDraft',
+  'descriptionRepeatsTitle',
 ])
+
+/** The codes of warnings: the transition went through. */
+const WARNINGS = new Set(['linkToDraft', 'descriptionRepeatsTitle'])
 
 /**
  * The text of a notice, ending with the code of the problem it reads (`· pageOverBudget`), as every
@@ -119,7 +124,7 @@ export function transitionNotice(
   const blocks = blocksOf(members)
   const first = blocks[0]
   const target = first ? { block: first.block, position: first.position } : undefined
-  const type = code === 'linkToDraft' ? 'warning' : 'danger'
+  const type = WARNINGS.has(code) ? 'warning' : 'danger'
   if (!KNOWN.has(code)) {
     return {
       type,
@@ -153,6 +158,14 @@ export function transitionNotice(
   }
   if (code === 'islandAlternativeMissing' || code === 'sampleTextPresent') {
     values.fields = Array.isArray(first?.fields) ? first.fields.join(', ') : ''
+  }
+  if (code === 'seoInvalid') {
+    // The codes of the problems, which `useTransition` turns into the editor's own words.
+    values.problems = Array.isArray(members.problems)
+      ? members.problems
+          .flatMap((item) => (isRecord(item) && typeof item.code === 'string' ? [item.code] : []))
+          .join(',')
+      : ''
   }
   if (code === 'linkToDraft') {
     const pages = blocks.flatMap((item) =>

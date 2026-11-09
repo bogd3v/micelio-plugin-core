@@ -164,9 +164,9 @@ the window between two saves is a database round trip, not zero.
 A save from the Content Manager's form sends no version and is not refused, so it can still
 replace what the builder saved a moment earlier; the builder then shows the notice.
 
-## What is not here yet
+## Where the rest is
 
-The SEO tab and the Template tab of the page settings each have their own issue.
+The SEO and social tab of the page settings is described in [SEO and social](seo.md), the Template tab in [Page templates](templates.md).
 Sending a page to review, scheduling and publishing it are in
 [Review, schedule and publish](review.md).
 

@@ -6,6 +6,7 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+const zlib = require('node:zlib')
 
 const SITE_SLUG = 'default'
 const SITE_NAME = 'Example Site'
@@ -22,6 +23,46 @@ const POSTER = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAUAAAAC0CAIAAABqhmJGAAABk0lEQVR42u3TQQkAAAwDsZrbY/4FbToKgSg4uOwcUCoSgIEBAwMGBgMDBgYMDBgYDAwYGDAwGBgwMGBgwMBgYMDAgIEBA4OBAQMDBgYDAwYGDAwYGAwMGBgwMGBgMDBgYMDAYGDAwICBAQODgQEDAwYGA6sABgYMDBgYDAwYGDAwYGAwMGBgwMBgYMDAgIEBA4OBAQMDBgYMDAYGDAwYGAwMGBgwMGBgMDBgYMDAgIHBwICBAQODgQEDAwYGDAwGBgwMGBgMDBgYMDBgYDAwYGDAwICBwcCAgQEDg4EBAwMGBgwMBgYMDBgYMDAYGDAwYGAwMGBgwMCAgcHAgIEBAwMGBgMDBgYMDAYGDAwYGDAwGBgwMGBgMDBgYMDAgIHBwICBAQMDBgYDAwYGDAwGBgwMGBgwMBgYMDBgYMDAYGDAwICBwcCAgQEDAwYGAwMGBgwMBlYBDAwYGDAwGBgwMGBgwMBgYMDAgIHBwICBAQMDBgYDAwYGDAwYGAwMGBgwMBgYMDBgYMDAYGDAwICBAQNDtwdgFgF0mOcBewAAAABJRU5ErkJggg==',
   'base64'
 )
+// A 1200x630 PNG of one light grey-green, the social image of the seeded pages: the checks before review ask
+// for one of that size (docs/guide/seo.md), and the rows repeat one pixel, so it is a few kilobytes at most.
+function card() {
+  const crc = (bytes) => {
+    let c = ~0
+    for (const byte of bytes) {
+      c ^= byte
+      for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    }
+    return ~c >>> 0
+  }
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data])
+    const size = Buffer.alloc(4)
+    size.writeUInt32BE(data.length)
+    const sum = Buffer.alloc(4)
+    sum.writeUInt32BE(crc(body))
+    return Buffer.concat([size, body, sum])
+  }
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(1200, 0)
+  header.writeUInt32BE(630, 4)
+  header[8] = 8
+  header[9] = 2
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk(
+      'IDAT',
+      zlib.deflateSync(
+        Buffer.concat(
+          Array.from({ length: 630 }, () =>
+            Buffer.concat([Buffer.from([0]), Buffer.from(Array(1200).fill([222, 232, 226]).flat())])
+          )
+        )
+      )
+    ),
+    chunk('IEND', Buffer.alloc(0)),
+  ])
+}
 const PREVIEW_ACTIONS = ['plugin::micelio.preview.exchange', 'plugin::micelio.preview.draft']
 
 async function seedSite(strapi) {
@@ -182,10 +223,12 @@ async function seedLanding(strapi) {
       title: 'Open source, in plain words',
       slug: LANDING_SLUG,
       site: site.documentId,
+      // The title and the description are derived at save; the image is what a page needs to go to review.
+      seo: { metaImage: await upload(strapi, 'card-landing.png', 'image/png', card()) },
       sections: [
         {
           __component: 'section.rich-text',
-          body: '## Software you can read, run and change\n\nThis page is a draft: only the preview shows it.',
+          body: '## Software you can read, run and change\n\nThis page is a draft: only the preview shows it, and the SEO tab starts its description from this line.',
         },
         {
           __component: 'section.scene',
@@ -215,6 +258,7 @@ async function seedHeavyPage(strapi) {
       title: 'A heavy page',
       slug: HEAVY_SLUG,
       site: site.documentId,
+      seo: { metaImage: await upload(strapi, 'card-heavy.png', 'image/png', card()) },
       sections: [{ __component: 'section.rich-text', body: paragraph.repeat(65) }],
     },
   })
@@ -233,6 +277,7 @@ async function seedIslandsPage(strapi) {
       title: 'Islands without their alternative',
       slug: ISLANDS_SLUG,
       site: site.documentId,
+      seo: { metaImage: await upload(strapi, 'card-islands.png', 'image/png', card()) },
       sections: [
         {
           __component: 'section.rich-text',

@@ -1,3 +1,5 @@
+import type { SeoChange } from './seo'
+
 /** Where a page shows up, as the `visibility` component stores it. */
 export interface Visibility {
   inMenu: boolean
@@ -13,6 +15,8 @@ export interface PageSettingsValues {
   slug: string
   pageType: string
   visibility: Visibility
+  /** The fields of the SEO and social tab that changed. */
+  seo: SeoChange
 }
 
 /** A page type of the site with the budget its published pages are held to, in kB. */
