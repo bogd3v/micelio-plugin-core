@@ -28,8 +28,8 @@ describe('the note of a review and the In review list', () => {
   const roleId = async (code: string): Promise<number> =>
     ((await strapi.db.query('admin::role').findOne({ where: { code } })) as { id: number }).id
 
-  async function login(email: string, roleCode: string): Promise<string> {
-    const role = { id: await roleId(roleCode) }
+  async function login(email: string, roleCode: string | number): Promise<string> {
+    const role = { id: typeof roleCode === 'number' ? roleCode : await roleId(roleCode) }
     await strapi.service('admin::user').create({
       email,
       firstname: 'Note',
@@ -175,6 +175,68 @@ describe('the note of a review and the In review list', () => {
       expect(data.editorial, status).toMatchObject({ state: 'published' })
       expect(data.editorial, status).not.toHaveProperty('note')
     }
+  })
+
+  describe('a role that may read only some fields of an entry', () => {
+    let documentId: string
+
+    // A role of its own with the In review page and a read grant of only these fields of articles.
+    async function readerOf(email: string, fields: string[]): Promise<string> {
+      const roles = strapi.service('admin::role')
+      const role = (await roles.create({ name: email, description: email })) as { id: number }
+      await roles.assignPermissions(role.id, [
+        { action: REVIEW_READ_PERMISSION, subject: null, properties: {}, conditions: [] },
+        {
+          action: 'plugin::content-manager.explorer.read',
+          subject: ARTICLE,
+          properties: { fields },
+          conditions: [],
+        },
+      ])
+      return login(email, role.id)
+    }
+
+    async function listedTo(role: string): Promise<{ body: string; entry: Listed['entries'][0] }> {
+      const response = await request(role, '/micelio/review')
+      expect(response.status, role).toBe(200)
+      const body = await response.text()
+      const entry = (JSON.parse(body) as { data: Listed[] }).data
+        .flatMap((group) => group.entries)
+        .find((candidate) => candidate.documentId === documentId)
+      expect(entry, role).toBeDefined()
+      return { body, entry: entry! }
+    }
+
+    beforeAll(async () => {
+      tokens.untitled = await readerOf('note-untitled@example.com', [
+        'site',
+        'editorial.state',
+        'editorial.note',
+      ])
+      tokens.unnoted = await readerOf('note-unnoted@example.com', ['title', 'site'])
+      documentId = (await articles().create({ data: { title: 'Classified title', site } } as never))
+        .documentId
+      expect((await move('admin', documentId, 'in_review', 'Classified note')).status).toBe(200)
+    })
+
+    it('lists an entry under its document id to a role that may not read its title', async () => {
+      const { body, entry } = await listedTo('untitled')
+      expect(entry.title).toBe(documentId)
+      expect(body).not.toContain('Classified title')
+    })
+
+    it('shows the note to no role that may not read the editorial field', async () => {
+      const { body, entry } = await listedTo('unnoted')
+      expect(entry).toMatchObject({ title: 'Classified title', note: null })
+      expect(body).not.toContain('Classified note')
+    })
+
+    // The Content Manager grants a component's fields by their paths: `editorial.note`, not
+    // `editorial`.
+    it('shows the note to a role whose read permission lists editorial.note', async () => {
+      const { entry } = await listedTo('untitled')
+      expect(entry.note).toBe('Classified note')
+    })
   })
 
   // Runs last: it gives the Author role the permission the test above refuses it.
