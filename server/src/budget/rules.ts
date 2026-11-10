@@ -21,6 +21,7 @@ const reportSchema = z.object({
     imagesKb: kb,
     totalKb: kb,
     onDemandKb: kb,
+    co2Mg: z.number().finite().nonnegative().optional(),
     blocks: z.array(z.object({ id: z.string().min(1), kb, onDemandKb: kb })),
   }),
 })
@@ -29,7 +30,8 @@ const reportSchema = z.object({
 export function parseWeightReport(body: unknown): BudgetReport | null {
   const parsed = reportSchema.safeParse(body)
   if (!parsed.success) return null
-  const { totalKb, onDemandKb, htmlKb, cssKb, jsKb, fontKb, imagesKb, blocks } = parsed.data.data
+  const { totalKb, onDemandKb, htmlKb, cssKb, jsKb, fontKb, imagesKb, co2Mg, blocks } =
+    parsed.data.data
   const blocksKb = Math.round(blocks.reduce((sum, block) => sum + block.kb, 0) * 10) / 10
   return {
     totalKb,
@@ -41,6 +43,7 @@ export function parseWeightReport(body: unknown): BudgetReport | null {
     jsKb,
     fontKb,
     imagesKb,
+    ...(co2Mg === undefined ? {} : { co2Mg }),
     blocks: blocks.map((block, index) => ({ position: index + 1, ...block })),
   }
 }

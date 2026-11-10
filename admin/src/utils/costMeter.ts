@@ -43,6 +43,18 @@ export function formatKb(kb: number, locale: string): string {
   }).format(Math.round(kb * 10) / 10)
 }
 
+/**
+ * A carbon estimate in milligrams of CO2e, with up to one decimal, in the editor's locale.
+ *
+ * @param mg - The estimate, in milligrams of CO2e per page view.
+ * @param locale - The editor's locale (`useIntl().locale`), for the decimal mark.
+ */
+export function formatMg(mg: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
+    Math.round(mg * 10) / 10
+  )
+}
+
 /** The blocks that carry on-demand weight, heaviest first: what the page loads only once used. */
 export function onDemandBlocks(blocks: BudgetBlock[]): BudgetBlock[] {
   return blocks.filter((block) => block.onDemandKb > 0).sort((a, b) => b.onDemandKb - a.onDemandKb)

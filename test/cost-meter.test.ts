@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatKb,
+  formatMg,
   isSameVersion,
   meterLevel,
   meterPercent,
@@ -121,5 +122,17 @@ describe('the version a measurement is compared with', () => {
 
   it.each([undefined, 'not a date'])('is different for %s', (current) => {
     expect(isSameVersion('2026-10-27T10:00:00.000Z', current)).toBe(false)
+  })
+})
+
+describe('the carbon estimate', () => {
+  it.each([
+    [0, 'en', '0'],
+    [123.46, 'en', '123.5'],
+    [80, 'en', '80'],
+    [1234.5, 'en', '1,234.5'],
+    [123.46, 'es', '123,5'],
+  ])('writes %d mg in %s as %s', (mg, locale, expected) => {
+    expect(formatMg(mg, locale)).toBe(expected)
   })
 })
