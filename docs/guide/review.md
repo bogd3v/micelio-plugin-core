@@ -77,5 +77,7 @@ preview page instead. [docs/api.md](../api.md#errors) lists every code.
 **Micelio → Content → In review** lists the pages waiting for review, by site, the oldest first,
 with the editor's note. It needs the permission **Read the In review page**
 (`plugin::micelio.review.read`), which the Super Admin has; it lists only the pages you may read in
-the Content Manager (an Author, its own pages). **Approve** publishes a page and **Send back** asks for a note; both are moves
+the Content Manager (an Author, its own pages), and of each page only the fields you may read: a
+page whose title you may not read is listed under its document id, and its note is left out when you
+may not read the note of the editorial component. **Approve** publishes a page and **Send back** asks for a note; both are moves
 the server decides, as in the builder.

@@ -15,7 +15,7 @@ interface AdminUser {
 }
 
 interface PermissionChecker {
-  cannot: Record<'read' | 'update' | 'publish', (entity: object) => boolean>
+  cannot: Record<'read' | 'update' | 'publish', (entity: object, field?: string) => boolean>
 }
 
 const TITLES: Record<number, string> = {
@@ -59,11 +59,12 @@ export default ({
       return checker
     }
     // The type first, then each entry: the conditions of the permission (an author's own entries,
-    // some locales) decide which entries of a type the caller sees.
-    const mayRead = (uid: string, entry?: object): boolean =>
+    // some locales) decide which entries of a type the caller sees, and its fields which values of
+    // an entry it sees.
+    const mayRead = (uid: string, entry?: object, field?: string): boolean =>
       entry === undefined
         ? ability.can('plugin::content-manager.explorer.read', uid)
-        : !checkerOf(uid).cannot.read(entry)
+        : !checkerOf(uid).cannot.read(entry, field)
     const data = await strapi.plugin('micelio').service('transitions').inReview(mayRead)
     ctx.body = { data }
   },

@@ -16,6 +16,13 @@ interface Row {
   createdBy?: { id: number } | null
 }
 
+// The fields that name an entry, in the order the list tries them.
+const TITLE_FIELDS = ['title', 'name', 'slug'] as const
+
+// The note's path in a read permission: the Content Manager grants a component's fields one by one
+// (`editorial.state`, `editorial.note`), and a field is matched by its exact path.
+const NOTE_FIELD = `${EDITORIAL_ATTRIBUTE}.note`
+
 const text = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined
 
@@ -29,11 +36,14 @@ const text = (value: unknown): string | undefined =>
  *
  * @param mayRead - Whether the caller may read entries of a type in the Content Manager: called with
  * the type alone first, then with each entry (its `locale` and `createdBy` filled in), so that the
- * conditions of a permission, such as an author's own entries or some locales, hold too.
+ * conditions of a permission, such as an author's own entries or some locales, hold too, and then
+ * with the entry and a field, for each field it lists: the title is the first of `title`, `name` and
+ * `slug` the caller may read (none: the document id), and the note is `null` when the caller may not
+ * read the `editorial.note` field.
  */
 export async function listInReview(
   strapi: Core.Strapi,
-  mayRead: (uid: string, entry?: object) => boolean
+  mayRead: (uid: string, entry?: object, field?: string) => boolean
 ): Promise<InReviewSite[]> {
   const sites = new Map<string, InReviewSite>()
   for (const uid of Object.keys(strapi.contentTypes) as UID.ContentType[]) {
@@ -49,6 +59,11 @@ export async function listInReview(
     })) as Row[]
     for (const row of rows) {
       if (!mayRead(uid, row)) continue
+      // An entry the caller may read is listed; a field it may not read is left out of it.
+      const title = TITLE_FIELDS.filter((field) => mayRead(uid, row, field))
+        .map((field) => text(row[field]))
+        .find((value) => value !== undefined)
+      const note = mayRead(uid, row, NOTE_FIELD) ? text(row.editorial?.note) : undefined
       const key = row.site?.documentId ?? ''
       const site = sites.get(key) ?? {
         documentId: row.site?.documentId ?? null,
@@ -61,9 +76,9 @@ export async function listInReview(
         kind: schema.info.displayName,
         documentId: row.documentId,
         locale: row.locale ?? null,
-        title: text(row.title) ?? text(row.name) ?? text(row.slug) ?? row.documentId,
+        title: title ?? row.documentId,
         updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
-        note: text(row.editorial?.note) ?? null,
+        note: note ?? null,
       })
       sites.set(key, site)
     }

@@ -221,7 +221,9 @@ and the oldest entry first: `{ uid, kind, documentId, locale, title, updatedAt, 
 the admin permission `plugin::micelio.review.read` (`403` `reviewForbidden` otherwise) and lists
 only the entries the user may read in the Content Manager, with the conditions of that permission:
 an Author with the review permission sees its own entries, a role limited to some locales those
-locales. It decides nothing: the In review page
+locales. The fields follow that permission too: `title` is the first of `title`, `name` and `slug`
+the user may read, or the `documentId` when it may read none, and `note` is `null` when it may not
+read the `editorial.note` field. It decides nothing: the In review page
 (`docs/guide/review.md`) approves and sends back through `POST /micelio/transitions`.
 
 Entries of a type made with `withEditorial` move through these transitions (ADR-0017, section 5), and no other route publishes or unpublishes them, the Content Manager included:

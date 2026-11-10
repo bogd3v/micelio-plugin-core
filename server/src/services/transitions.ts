@@ -20,8 +20,13 @@ export interface TransitionsService {
   perform(request: TransitionRequest): Promise<TransitionResult>
   /** Publishes the scheduled entries that are due, as the scheduler does; see `publishDueEntries`. */
   publishDue(now?: Date): Promise<number>
-  /** The entries awaiting review, by site, that `mayRead` lets through; see `listInReview`. */
-  inReview(mayRead: (uid: string, entry?: object) => boolean): Promise<InReviewSite[]>
+  /**
+   * The entries awaiting review, by site, and of each the fields, that `mayRead` lets through; see
+   * `listInReview`.
+   */
+  inReview(
+    mayRead: (uid: string, entry?: object, field?: string) => boolean
+  ): Promise<InReviewSite[]>
 }
 
 export default ({ strapi }: { strapi: Core.Strapi }): TransitionsService => ({
