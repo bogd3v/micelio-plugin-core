@@ -28,6 +28,11 @@ export interface BudgetReport {
   jsKb: number
   fontKb: number
   imagesKb: number
+  /**
+   * The frontend's estimate of the carbon of one view of the page, in milligrams of CO2e. Absent
+   * when the frontend's report has none (a frontend before 0.7). Only reported: it never decides a publish.
+   */
+  co2Mg?: number
   /** One entry per block of the page, in order. */
   blocks: BudgetBlock[]
 }

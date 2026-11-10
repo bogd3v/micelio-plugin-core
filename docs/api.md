@@ -344,9 +344,9 @@ alternative as `{ block, position, fields, zone }`, `position` counted from 0 in
 
 An admin API route, for the cost meter of the preview page ([docs/operate/budgets.md](operate/budgets.md)); it is not part of the content API. It mints no grant and calls no frontend: the admin reads the weight report from the frontend with the editor's own preview grant and sends it here to be placed against the budget.
 
-| Method | Path                      | Answers                                                                                                                                                        |
-| ------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/micelio/budget/measure` | `{ "data": { pageType, budgetKb, blocksKb, frameworkKb, totalKb, overByKb, onDemandKb, htmlKb, cssKb, jsKb, fontKb, imagesKb, blocks, measuredAt, version } }` |
+| Method | Path                      | Answers                                                                                                                                                                |
+| ------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/micelio/budget/measure` | `{ "data": { pageType, budgetKb, blocksKb, frameworkKb, totalKb, overByKb, onDemandKb, htmlKb, cssKb, jsKb, fontKb, imagesKb, co2Mg?, blocks, measuredAt, version } }` |
 
 The body is `{ "uid", "documentId", "locale", "report" }`: the first three as for the preview token, and `report` the body of the frontend's weight route (`{ "data": … }`) in the dynamic mode, as the admin got it. The plugin reads the report, finds the page type and budget of the saved draft and answers both together. The report is shown and never trusted: a publish measures the draft itself, so what is sent here cannot let a page through. A page over its budget is a `200` here: the refusal is the publish's. `blocks` is every block as `{ position, id, kb, onDemandKb }` in the page's order; `onDemandKb` is the script its islands load only once used and is never part of `totalKb`; `version` is the `updatedAt` that was measured. The answer is `private, no-store`. It needs the permission to preview drafts and the permission to read the entry.
 

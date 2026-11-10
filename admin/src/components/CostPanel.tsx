@@ -117,7 +117,7 @@ export function Measurement({
  * measurement stays, marked as made before the last save when the draft has changed since.
  */
 export function CostPanelContent({ entry }: { entry: CostPanelEntry }) {
-  const { t, date, kb } = useMessages()
+  const { t, date, kb, mg } = useMessages()
   const { uid, documentId, locale, version } = entry
   const [run, setRun] = useState(0)
   const [isMeasuring, setIsMeasuring] = useState(false)
@@ -139,7 +139,7 @@ export function CostPanelContent({ entry }: { entry: CostPanelEntry }) {
 
   let body: JSX.Element | null = null
   if (last) {
-    const { blocksKb, budgetKb, overByKb, measuredAt } = last
+    const { blocksKb, budgetKb, overByKb, measuredAt, co2Mg } = last
     const level = meterLevel(blocksKb, budgetKb)
     body = (
       <Flex direction="column" alignItems="stretch" gap={1}>
@@ -153,6 +153,11 @@ export function CostPanelContent({ entry }: { entry: CostPanelEntry }) {
               ? t('cost.level.near', { left: kb(budgetKb - blocksKb) })
               : t('cost.level.ok')}
         </Typography>
+        {co2Mg === undefined ? null : (
+          <Typography textColor="neutral700" tag="p" data-testid="cost-co2">
+            {t('cost.co2', { mg: mg(co2Mg) })}
+          </Typography>
+        )}
         <Typography textColor="neutral700" tag="p" data-testid="cost-measured-at">
           {t('cost.measuredAt', { date: date(measuredAt) })}{' '}
           {isSameVersion(last.version, version) ? t('cost.panel.saved') : t('cost.panel.stale')}

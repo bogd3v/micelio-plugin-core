@@ -93,11 +93,18 @@ describe('the weight report of the frontend', () => {
     expect(parsed).not.toHaveProperty('mode')
   })
 
+  it('carries the carbon estimate when the report has it, and has none when it has not', () => {
+    expect(parseWeightReport({ data: { ...report.data, co2Mg: 120.5 } })!.co2Mg).toBe(120.5)
+    expect(parseWeightReport(report)).not.toHaveProperty('co2Mg')
+  })
+
   it.each([
     ['a page of the static mode', { data: { ...report.data, mode: 'static' } }],
     ['a total that is not a number', { data: { ...report.data, totalKb: '82' } }],
     ['a negative total', { data: { ...report.data, totalKb: -1 } }],
     ['a block without an id', { data: { ...report.data, blocks: [{ kb: 1, onDemandKb: 0 }] } }],
+    ['a carbon estimate that is not a number', { data: { ...report.data, co2Mg: '1' } }],
+    ['a negative carbon estimate', { data: { ...report.data, co2Mg: -1 } }],
     ['no data', {}],
     ['no object', 'heavy'],
     ['null', null],

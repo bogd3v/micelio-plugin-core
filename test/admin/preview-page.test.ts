@@ -1119,6 +1119,48 @@ describe('the preview page in the admin', () => {
     })
   })
 
+  describe('CostMeter', () => {
+    const landingPath = () => `${base}/admin/plugins/micelio/preview/${LANDING_UID}/${landingId}`
+
+    afterEach(() => {
+      site.weight.co2Mg = undefined
+    })
+
+    it('shows the carbon estimate when the report carries it', async () => {
+      site.weight.co2Mg = 123.46
+      const page = await open(undefined, { path: landingPath() })
+      await eventually(() => page.getByTestId('cost-co2').textContent()).toBe(
+        text(en, 'cost.co2', { mg: '123.5' })
+      )
+      expect(en['cost.co2']).toContain('Estimate')
+      await expect(violationsOf(page)).resolves.toEqual([])
+      // Reported only: the weight and its standing are what they were.
+      await expect(page.getByTestId('cost-standing').textContent()).resolves.toBe(
+        en['cost.level.ok']
+      )
+      // A third Spanish login would trip the admin's login rate limit; the Spanish text is checked here.
+      expect(es['cost.co2']).toMatch(/^Estimación: \{mg\} mg de CO2e/)
+    })
+
+    it('shows nothing when the report has no co2Mg', async () => {
+      const page = await open(undefined, { path: landingPath() })
+      await page.getByTestId('cost-line').waitFor()
+      await expect(page.getByTestId('cost-co2').count()).resolves.toBe(0)
+      await expect(page.getByText(en['cost.error.unavailable']).count()).resolves.toBe(0)
+    })
+
+    it('shows the estimate in the cost line of the edit view after Measure', async () => {
+      site.weight.co2Mg = 80
+      const page = await open(undefined, {
+        path: `${base}/admin/content-manager/collection-types/${LANDING_UID}/${landingId}?plugins[i18n][locale]=en`,
+      })
+      await page.getByRole('button', { name: en['cost.panel.measure'] }).click()
+      await eventually(() => page.getByTestId('cost-co2').textContent()).toBe(
+        text(en, 'cost.co2', { mg: '80' })
+      )
+    })
+  })
+
   describe('the cost line in the edit view', () => {
     const editPath = () =>
       `${base}/admin/content-manager/collection-types/${LANDING_UID}/${landingId}?plugins[i18n][locale]=en`

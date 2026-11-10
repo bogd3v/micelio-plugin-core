@@ -73,7 +73,8 @@ function standing(
 
 /**
  * The cost meter of the preview pane: the weight of the page's blocks against its budget, the framework's share apart, the on-demand weight
- * apart, and the weight of each block on expand (issues #46 and #106).
+ * apart, and the weight of each block on expand (issues #46 and #106). When the report carries
+ * `co2Mg` it adds the carbon estimate of a view of the page, reported only.
  *
  * @remarks
  * It shows the report the admin read from the frontend with the editor's grant and the plugin placed
@@ -131,9 +132,9 @@ function Measured(props: {
   measurement: Extract<BudgetResource, { kind: 'ready' }>['measurement']
   onMeasureAgain: () => void
 }) {
-  const { t, date, kb } = useMessages()
+  const { t, date, kb, mg } = useMessages()
   const { measurement, onMeasureAgain } = props
-  const { blocksKb, frameworkKb, budgetKb, overByKb, onDemandKb } = measurement
+  const { blocksKb, frameworkKb, budgetKb, overByKb, onDemandKb, co2Mg } = measurement
   const level = meterLevel(blocksKb, budgetKb)
   const text = standing({ t, kb }, level, blocksKb, budgetKb, overByKb)
   const line = t('cost.line', { total: kb(blocksKb), budget: kb(budgetKb) })
@@ -163,6 +164,11 @@ function Measured(props: {
       <Typography textColor="neutral700" tag="p">
         {t('cost.pageType', { type: measurement.pageType })}
       </Typography>
+      {co2Mg === undefined ? null : (
+        <Typography textColor="neutral700" tag="p" data-testid="cost-co2">
+          {t('cost.co2', { mg: mg(co2Mg) })}
+        </Typography>
+      )}
       <Typography textColor="neutral700" tag="p" data-testid="cost-framework">
         {t('cost.framework', { kb: kb(frameworkKb) })}
       </Typography>

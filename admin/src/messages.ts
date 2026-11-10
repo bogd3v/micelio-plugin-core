@@ -1,7 +1,7 @@
 import { useIntl } from 'react-intl'
 
 import en from './translations/en.json'
-import { formatKb } from './utils/costMeter'
+import { formatKb, formatMg } from './utils/costMeter'
 import { getTranslation } from './utils/getTranslation'
 
 /** The translator of the plugin's admin strings, with the English text as the default. */
@@ -12,6 +12,8 @@ export interface Messages {
   date: (iso: string) => string
   /** A weight in kB with one decimal, in the editor's locale (`formatKb`). */
   kb: (value: number) => string
+  /** A carbon estimate in mg of CO2e with up to one decimal, in the editor's locale (`formatMg`). */
+  mg: (value: number) => string
 }
 
 /** Whether `id` is a key of the plugin's translations. */
@@ -31,5 +33,6 @@ export function useMessages(): Messages {
     // Seconds included: a run again within the same minute must read as new.
     date: (iso) => formatDate(iso, { dateStyle: 'medium', timeStyle: 'medium' }),
     kb: (value) => formatKb(value, locale),
+    mg: (value) => formatMg(value, locale),
   }
 }

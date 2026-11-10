@@ -32,6 +32,8 @@ export interface WeightBehaviour {
   blockKb: number | Record<string, number>
   /** The script a block's island loads only once used, in kB, by catalogue id; none by default. */
   onDemandKb?: Record<string, number>
+  /** The carbon estimate of the report, in mg of CO2e per page view; none by default, as a frontend before 0.7. */
+  co2Mg?: number
   /** Where a `'redirect'` answer sends the caller; a port nobody listens on by default. */
   redirectTo?: string
   /** Runs when a request arrives, before the frontend asks the CMS for the draft: a test saves the draft here. */
@@ -90,6 +92,7 @@ function report(site: WeightBehaviour, draft: Draft) {
     imagesKb: 0,
     totalKb,
     onDemandKb: round(blocks.reduce((sum, block) => sum + block.onDemandKb, 0)),
+    ...(site.co2Mg === undefined ? {} : { co2Mg: site.co2Mg }),
     blocks,
   }
 }

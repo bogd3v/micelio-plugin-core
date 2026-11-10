@@ -146,6 +146,7 @@
   "cost.column.block": "Block",
   "cost.column.weight": "kB",
   "cost.column.onDemand": "kB on demand",
+  "cost.co2": "Estimate: {mg} mg of CO2e per page view.",
   "cost.measuredAt": "Measured {date}.",
   "cost.measureAgain": "Measure again",
   "cost.error.unavailable": "The page could not be measured: the frontend did not give its weight to the admin. This does not affect publishing, which measures the page itself.",

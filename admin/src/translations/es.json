@@ -146,6 +146,7 @@
   "cost.column.block": "Bloque",
   "cost.column.weight": "kB",
   "cost.column.onDemand": "kB bajo demanda",
+  "cost.co2": "Estimación: {mg} mg de CO2e por visita a la página.",
   "cost.measuredAt": "Medido {date}.",
   "cost.measureAgain": "Medir de nuevo",
   "cost.error.unavailable": "No se pudo medir la página: el frontend no entregó su peso al admin. Esto no afecta a la publicación, que mide la página por su cuenta.",
