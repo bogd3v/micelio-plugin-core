@@ -11,7 +11,7 @@ The rules shared by every Micelio repository live in [`docs/engineering-standard
 Work moves through the gates of the Micelio factory: [`docs/factory.md`](https://github.com/bogd3v/micelio-engineering/blob/main/docs/factory.md) in `micelio-engineering`. The worker proves each acceptance criterion, and the verifier re-creates the run, on this repository's Docker: `compose.dev.yml` (`npm run dev:docker`, `docs/operate/manual-testing.md`) comes up from the branch, and `npm run check` runs in the `node:22` image (`.nvmrc`) on a clean copy of the worktree:
 
 - `npm run test:admin` runs in the image CI runs it in, `mcr.microsoft.com/playwright:v<playwright-core>-noble` (`scripts/ci/playwright-image.sh` prints the tag the lockfile asks for; run it from the repository root, it reads `./package-lock.json`): Chromium and its libraries come preinstalled, on that image's Node (the one it ships, not the `.nvmrc` 22). Install the copy there with its own `npm ci`: a `node_modules` installed on Node 22 is not reused. The slim `node:22` image lacks them; use it only for `npm run check`, or install them there as the last bullet says.
-- The copy needs no git: `npm run check` calls none. Copy the files without `node_modules`, `dist/` or `.env.docker`; mount the copy with `:z` on SELinux and set `HOME` to a writable folder in a mount of its own, outside the copy: the browser is JavaScript, and `eslint .` lints a browser it finds inside the copy.
+- The copy needs git for one step: `lint:ee` reads `git ls-files`, so run `git init -q && git add -A` in the copy (a bare `git init` tracks nothing, and the step then checks no file) before `npm run check`; nothing else calls git. Copy the files without `node_modules`, `dist/` or `.env.docker`; mount the copy with `:z` on SELinux and set `HOME` to a writable folder in a mount of its own, outside the copy: the browser is JavaScript, and `eslint .` lints a browser it finds inside the copy.
 - Run the container as the host user (`--user "$(id -u):$(id -g)"`), or the copy fills with files owned by root. To run `npm run test:admin` in the slim image instead, install the browser and its libraries as root first (`npx playwright install --with-deps chromium`), then give the copy back to your user. Keep the browser outside the copy (`PLAYWRIGHT_BROWSERS_PATH`) or run `test:admin` after `check`: `eslint .` lints a browser installed under the copy's `HOME`.
   A run that was killed leaves `test/strapi/app/.tmp` in the copy, and the next boot fails on
   SQLite with `disk I/O error`: delete that folder.
@@ -34,7 +34,7 @@ The plan is epic #1 and its milestone. Until its theme and fediverse milestones 
 
 ```bash
 npm ci
-npm run check            # typecheck, lint, format:check, test, lint:licenses, lint:standard and lint:reference
+npm run check            # typecheck, lint, format:check, test, lint:licenses, lint:ee, lint:standard and lint:reference
 npm run dev:docker       # compose.dev.yml: a clean Strapi with the plugin, PostgreSQL and the frontend, seeded (docs/operate/manual-testing.md)
 npm run build            # strapi-plugin build: dist/server and dist/admin
 npm run dev              # strapi-plugin watch
