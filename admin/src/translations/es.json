@@ -618,6 +618,7 @@
   "template.gallery.crumb.create": "Crear",
   "template.gallery.crumbs": "Ruta de navegación",
   "nav.review": "En revisión",
+  "nav.review.count": "En revisión, {count, plural, one {# página} other {# páginas}}",
   "builder.state.in_review": "En revisión",
   "builder.state.scheduled": "Programada",
   "review.action.sendToReview": "Enviar a revisión",

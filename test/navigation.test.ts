@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { CORE_NAV_ITEMS, visibleNavItems, type CoreNavItem } from '../admin/src/navigation'
+import {
+  CORE_NAV_ITEMS,
+  countInReview,
+  visibleNavItems,
+  type CoreNavItem,
+} from '../admin/src/navigation'
 import {
   BLOCKS_READ_PERMISSION,
   STATUS_READ_PERMISSION,
@@ -27,5 +32,16 @@ describe('the items of the core a role sees', () => {
     expect(ids([TRANSFER_PERMISSION])).toEqual(['transfer', 'about'])
     expect(ids([BLOCKS_READ_PERMISSION])).toEqual(['blocks', 'about'])
     expect(ids([TEMPLATES_MANAGE_PERMISSION])).toEqual(['templates', 'about'])
+  })
+})
+
+describe('the count of the pages in review', () => {
+  it('counts the entries in review over every site', () => {
+    const entry = { documentId: 'a' }
+    expect(countInReview([])).toBe(0)
+    expect(countInReview([{ entries: [] }])).toBe(0)
+    expect(
+      countInReview([{ entries: [entry, entry] }, { entries: [] }, { entries: [entry] }])
+    ).toBe(3)
   })
 })

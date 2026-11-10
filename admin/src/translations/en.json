@@ -618,6 +618,7 @@
   "template.gallery.crumb.create": "Create",
   "template.gallery.crumbs": "Breadcrumb",
   "nav.review": "In review",
+  "nav.review.count": "In review, {count, plural, one {# page} other {# pages}}",
   "builder.state.in_review": "In review",
   "builder.state.scheduled": "Scheduled",
   "review.action.sendToReview": "Send to review",

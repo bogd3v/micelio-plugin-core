@@ -1,12 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { AddressInfo } from 'node:net'
 import AxeBuilder from '@axe-core/playwright'
-import type { Core } from '@strapi/strapi'
+import type { Core, UID } from '@strapi/strapi'
 import { chromium, type Browser, type Page } from 'playwright'
+import { SITE_UID } from '../../server/src/constants/site'
 import { cleanupStrapi, setupStrapi } from '../strapi/harness'
 
 const PASSWORD = 'Password1234'
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']
+const BROCHURE = 'api::brochure.brochure'
 const action = (name: string) => ({ action: name, subject: null, properties: {}, conditions: [] })
 
 // The shell of the Micelio section: its entry in the admin's menu and the sub-navigation, with
@@ -34,6 +36,33 @@ describe('the sub-navigation in the admin', () => {
     })
   }
 
+  // A page of the editorial type of the test app, sent to review by a super admin.
+  async function inReview(title: string): Promise<string> {
+    const site = (await strapi.documents(SITE_UID as UID.ContentType).findFirst()) as {
+      documentId: string
+    }
+    const created = await strapi.documents(BROCHURE as UID.ContentType).create({
+      locale: 'en',
+      data: {
+        title,
+        slug: title.toLowerCase().replace(/\W+/g, '-'),
+        site: site.documentId,
+      } as never,
+    })
+    await strapi
+      .plugin('micelio')
+      .service('transitions')
+      .perform({
+        uid: BROCHURE,
+        documentId: created.documentId,
+        locale: 'en',
+        to: 'in_review',
+        note: 'Please look',
+        actor: { kind: 'user', id: 1, roles: ['strapi-super-admin'] },
+      })
+    return created.documentId
+  }
+
   async function open(email: string, path = ''): Promise<Page> {
     const page = await (await browser.newContext()).newPage()
     await page.goto(`${base}/admin/auth/login`)
@@ -51,6 +80,8 @@ describe('the sub-navigation in the admin', () => {
     base = `http://127.0.0.1:${(strapi.server.httpServer.address() as AddressInfo).port}`
     await createUser('admin@example.com', null, 'super')
     await createUser('admin-es@example.com', 'es', 'super')
+    // Its own login: the admin rate-limits the logins of one account.
+    await createUser('admin-review@example.com', null, 'super')
     // Only a sibling plugin's permission: not the status page's.
     await createUser('sibling@example.com', null, ['plugin::extension-fixture.read'])
     // No permission of any plugin.
@@ -161,8 +192,95 @@ describe('the sub-navigation in the admin', () => {
     await page.getByRole('heading', { level: 1, name: 'About Micelio' }).waitFor()
   })
 
+  it('shows the number of pages in review next to In review', async () => {
+    await inReview('Count one')
+    await inReview('Count two')
+    const page = await open('admin-review@example.com')
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    const link = nav.getByRole('link', { name: 'In review, 2 pages' })
+    await link.waitFor()
+    await expect(link.textContent()).resolves.toBe('In review\u00a02')
+    // The other items show no number.
+    await expect(
+      nav.getByRole('link', { name: 'Status', exact: true }).textContent()
+    ).resolves.toBe('Status')
+  })
+
+  it('lowers the number after a page is approved, without a reload', async () => {
+    const approve = await inReview('Approve from the list')
+    const page = await open('admin-review@example.com', '/review')
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    await nav.getByRole('link', { name: /^In review, \d+ pages?$/ }).waitFor()
+    const before = Number(
+      (await nav.getByRole('link', { name: /^In review/ }).getAttribute('aria-label'))!.match(
+        /\d+/
+      )![0]
+    )
+    expect(before).toBeGreaterThanOrEqual(1)
+    // A mark that a reload would wipe.
+    await page.evaluate('window.__noReload = true')
+    await page.getByRole('row', { name: /Approve from the list/ }).waitFor()
+    await page.getByRole('button', { name: 'Approve and publish Approve from the list' }).click()
+    await expect
+      .poll(
+        async () =>
+          (await strapi.documents(BROCHURE as UID.ContentType).findOne({
+            documentId: approve,
+            locale: 'en',
+            status: 'draft',
+            populate: ['editorial'],
+          } as never)) as unknown as { editorial: { state: string } },
+        { timeout: 20_000 }
+      )
+      .toMatchObject({ editorial: { state: 'published' } })
+    // The page reloads its own list after the approval; once the row is gone, count from here.
+    await page.getByRole('row', { name: /Approve from the list/ }).waitFor({ state: 'detached' })
+    // The editor moves to another page of the section: one request, a lower number.
+    const requests: string[] = []
+    page.on('request', (request) => {
+      if (request.url().includes('/micelio/review')) requests.push(request.url())
+    })
+    await nav.getByRole('link', { name: 'About Micelio' }).click()
+    await page.getByRole('heading', { level: 1, name: 'About Micelio' }).waitFor()
+    await expect
+      .poll(
+        async () =>
+          (await nav.getByRole('link', { name: /^In review/ }).getAttribute('aria-label')) ?? '',
+        {
+          timeout: 20_000,
+        }
+      )
+      .toBe(
+        before - 1 === 0
+          ? 'In review'
+          : `In review, ${before - 1} ${before - 1 === 1 ? 'page' : 'pages'}`
+      )
+    expect(requests).toHaveLength(1)
+    await expect(page.evaluate('window.__noReload')).resolves.toBe(true)
+  })
+
+  it('shows no number to a role without the review permission', async () => {
+    await inReview('Hidden count')
+    const page = await open('sibling@example.com')
+    const requests: string[] = []
+    page.on('request', (request) => {
+      if (request.url().includes('/micelio/review')) requests.push(request.url())
+    })
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    await nav.getByRole('link', { name: 'About Micelio' }).waitFor()
+    await nav.getByRole('link', { name: 'Fixture page' }).waitFor()
+    await expect(nav.getByRole('link', { name: /In review/ }).count()).resolves.toBe(0)
+    expect(requests).toEqual([])
+    await expect(nav.getByRole('link').allTextContents()).resolves.not.toContainEqual(
+      expect.stringMatching(/\d/)
+    )
+  })
+
   it('has no WCAG 2.2 A or AA violation in the sub-navigation or the page', async () => {
+    await inReview('Seen by axe')
     const page = await open('admin@example.com')
+    // The number is shown while axe reads the navigation.
+    await page.getByRole('link', { name: /^In review, \d+ pages?$/ }).waitFor()
     await page
       .getByRole('navigation', { name: 'Micelio sections' })
       .getByRole('link', {
@@ -171,6 +289,7 @@ describe('the sub-navigation in the admin', () => {
       .waitFor()
     await page.getByRole('link', { name: 'About Micelio' }).click()
     await page.getByRole('heading', { level: 1, name: 'About Micelio' }).waitFor()
+    await page.getByRole('link', { name: /^In review, \d+ pages?$/ }).waitFor()
     const results = await new AxeBuilder({ page })
       .include('nav[aria-label="Micelio sections"]')
       .include('main')

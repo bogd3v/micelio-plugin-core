@@ -111,8 +111,9 @@ the sample texts of `BuilderDocument.samples` and locks the blocks of `BuilderDo
 
 `admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`), the **Micelio** menu
 entry (no permission of its own; `pages/MicelioLayout.tsx`: the sub-navigation, with the core's
-items from `navigation.ts`, each shown to a role with its permission, and the pages of sibling
-plugins from `GET /micelio/admin-pages` and the components they provide through `pageRegistry.ts`),
+items from `navigation.ts`, each shown to a role with its permission, the number of pages in review next to
+In review (`hooks/useInReviewCount.ts`, `countInReview` in `navigation.ts`: one `GET /micelio/review` per
+move inside the section), and the pages of sibling plugins from `GET /micelio/admin-pages` and the components they provide through `pageRegistry.ts`),
 the status page (`pages/StatusPage.tsx`), Export and import (`pages/TransferPage.tsx` with
 `components/ExportPanel.tsx` and `ImportPanel.tsx`, `utils/transfer.ts`) and About
 (`pages/AboutPage.tsx`, which shows what `GET /micelio/about` gathers), the preview page (ADR-0019;
