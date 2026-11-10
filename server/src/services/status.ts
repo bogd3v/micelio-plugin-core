@@ -6,8 +6,8 @@ import type { StatusReport } from '../types/status'
 
 /** The `status` service: `strapi.plugin('micelio').service('status')`, behind the status page. */
 export interface StatusService {
-  /** What the status page shows; asks each site's frontend for `/_health` on every call. */
-  read(): Promise<StatusReport>
+  /** What the status page shows; asks each site's frontend for `/_health` on every call. `can` limits the ids `siblings` lists to the permissions the caller holds (all when omitted). */
+  read(can?: (permission: string) => boolean): Promise<StatusReport>
   /**
    * Runs the host check and the checks of sibling plugins again and keeps their results as the
    * latest, for the status page. Answers the host check's report.
@@ -36,7 +36,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): StatusService => {
   }
 
   return {
-    read: () => readStatus(strapi),
+    read: (can) => readStatus(strapi, can),
     runHostCheck() {
       running ??= runOnce()
       return running

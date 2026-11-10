@@ -140,4 +140,34 @@ describe('the about route', () => {
       expect(diagnostics, secret).not.toContain(secret)
     }
   })
+
+  it('lists the sibling plugins and the theme the default site pins', async () => {
+    const report = await read('/about')
+    expect(report.siblings).toEqual([
+      { name: '@micelio/extension-fixture', version: '0.0.0' },
+      { name: '@micelio/hook-recorder', version: '0.0.0' },
+    ])
+    // The default site pins no theme until one is set; another site's pin is not the default's.
+    expect(report.theme).toBeNull()
+    const sites = strapi.documents('plugin::micelio.site' as never)
+    const rows = (await sites.findMany({} as never)) as unknown as {
+      documentId: string
+      isDefault: boolean
+    }[]
+    const other = rows.find((row) => !row.isDefault)
+    const main = rows.find((row) => row.isDefault)
+    await sites.update({
+      documentId: other?.documentId,
+      data: { theme: { themeId: 'other-theme', themeVersion: '9.0.0' } } as never,
+    } as never)
+    expect((await read('/about')).theme).toBeNull()
+    await sites.update({
+      documentId: main?.documentId,
+      data: { theme: { themeId: 'fixture-theme', themeVersion: '2.0.0' } } as never,
+    } as never)
+    expect((await read('/about')).theme).toEqual({
+      themeId: 'fixture-theme',
+      themeVersion: '2.0.0',
+    })
+  })
 })

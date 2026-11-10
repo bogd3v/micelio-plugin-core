@@ -12,6 +12,8 @@ export interface AboutReport {
   frontends: AboutFrontend[]
   /** The `@micelio/*` plugins installed next to the core, by package name. */
   siblings: { name: string; version: string }[]
+  /** The theme the default site pins; `null` when it pins none. */
+  theme: { themeId: string; themeVersion: string | null } | null
   update: AboutUpdate
   /** When the frontends and the release feed were last checked; `null` before the first check. */
   checkedAt: string | null

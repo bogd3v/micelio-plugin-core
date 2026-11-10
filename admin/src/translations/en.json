@@ -894,5 +894,21 @@
   "editorial.panel.publishAt": "Publishes on {when}",
   "editorial.panel.note": "Note of the last transition",
   "editorial.panel.unsaved": "Save your changes first: a move acts on the saved draft.",
-  "editorial.panel.builder": "Open in the builder"
+  "editorial.panel.builder": "Open in the builder",
+  "status.siblings.title": "Micelio plugins",
+  "status.siblings.none": "No other Micelio plugin is installed.",
+  "status.siblings.registersNothing": "registers no extension point",
+  "status.siblings.hidden": "some of its extension points need a permission your role does not have",
+  "status.siblings.adminPages": "Admin pages",
+  "status.siblings.siteSections": "Site sections",
+  "status.siblings.statusChecks": "Status checks",
+  "status.siblings.exportSections": "Export sections",
+  "status.contracts.title": "Contracts this core exposes",
+  "status.contracts.editorialStates": "Editorial states",
+  "status.contracts.hooks": "Hooks",
+  "status.contracts.extensionPoints": "Extension points",
+  "about.row.theme": "Theme",
+  "about.row.theme.value": "{theme} {version}",
+  "about.row.theme.noVersion": "{theme} (no version pinned)",
+  "about.row.theme.none": "Not pinned"
 }

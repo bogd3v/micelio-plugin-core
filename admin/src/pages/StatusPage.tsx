@@ -20,6 +20,7 @@ import type { HostCheckReport, HostCheckStatus } from '../../../server/src/types
 import type {
   PluginChecksResult,
   StatusFrontend,
+  StatusSibling,
   StatusReport,
   StatusSite,
 } from '../../../server/src/types/status'
@@ -86,6 +87,14 @@ function StatusContent() {
     <Flex direction="column" alignItems="stretch" gap={6}>
       <PluginSection report={report} />
       <HostCheckSection initial={report.hostCheck} onRan={refresh} />
+      <Flex gap={6} alignItems="stretch" wrap="wrap">
+        <Box flex="1" minWidth="320px" display="flex">
+          <SiblingsSection siblings={report.siblings} />
+        </Box>
+        <Box flex="1" minWidth="320px" display="flex">
+          <ContractsSection report={report} />
+        </Box>
+      </Flex>
       <PluginChecksSections report={report} />
       <FrontendsSection frontends={report.frontends} />
       <SitesSection sites={report.sites} />
@@ -96,7 +105,7 @@ function StatusContent() {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Box tag="section" background="neutral0" hasRadius shadow="filterShadow" padding={6}>
+    <Box tag="section" background="neutral0" hasRadius shadow="filterShadow" padding={6} flex="1">
       <Flex direction="column" alignItems="stretch" gap={4}>
         <Typography variant="delta" tag="h2">
           {title}
@@ -131,6 +140,85 @@ function PluginSection({ report }: { report: StatusReport }) {
         <Fact label={t('status.plugin.coreLine')} value={report.plugin.coreLine} />
         <Fact label={t('status.blocks.count')} value={report.blocks.count} />
         <Fact label={t('status.sites.count')} value={report.sites.length} />
+      </Flex>
+    </Section>
+  )
+}
+
+const REGISTERED = ['adminPages', 'siteSections', 'statusChecks', 'exportSections'] as const
+
+/**
+ * The Micelio plugins next to the core, each with its version and what it registered: "registers no
+ * extension point" only for a plugin that registered nothing, and a line of its own for one with
+ * registrations the role may not see (`hidden`).
+ */
+function SiblingsSection({ siblings }: { siblings: StatusSibling[] }) {
+  const { t } = useMessages()
+  return (
+    <Section title={t('status.siblings.title')}>
+      {siblings.length === 0 ? (
+        <Typography textColor="neutral600">{t('status.siblings.none')}</Typography>
+      ) : (
+        <Flex tag="ul" direction="column" alignItems="stretch" gap={4} margin={0} padding={0}>
+          {siblings.map((sibling) => {
+            const registered = REGISTERED.filter((kind) => sibling[kind].length > 0)
+            return (
+              <li key={sibling.name} style={{ listStyle: 'none' }}>
+                <Typography fontWeight="bold">{`${sibling.name} ${sibling.version}`}</Typography>
+                {registered.length === 0 && !sibling.hidden ? (
+                  <Typography tag="p" textColor="neutral600">
+                    {t('status.siblings.registersNothing')}
+                  </Typography>
+                ) : null}
+                {registered.length > 0 ? (
+                  <Flex tag="dl" direction="column" alignItems="flex-start" gap={1}>
+                    {registered.map((kind) => (
+                      <Flex key={kind} gap={2} wrap="wrap">
+                        <Typography tag="dt" variant="pi" textColor="neutral600">
+                          {t(`status.siblings.${kind}`)}
+                        </Typography>
+                        <Typography tag="dd" variant="pi">
+                          {sibling[kind].join(', ')}
+                        </Typography>
+                      </Flex>
+                    ))}
+                  </Flex>
+                ) : null}
+                {sibling.hidden ? (
+                  <Typography tag="p" textColor="neutral600">
+                    {t('status.siblings.hidden')}
+                  </Typography>
+                ) : null}
+              </li>
+            )
+          })}
+        </Flex>
+      )}
+    </Section>
+  )
+}
+
+/** What this core promises plugins, frontends and themes: the contracts of the standard, section 6. */
+function ContractsSection({ report }: { report: StatusReport }) {
+  const { t } = useMessages()
+  const { contracts } = report
+  return (
+    <Section title={t('status.contracts.title')}>
+      <Flex tag="dl" direction="column" alignItems="stretch" gap={3}>
+        <Fact label={t('status.blocks.count')} value={contracts.blocks} />
+        <Fact
+          label={t('status.contracts.editorialStates')}
+          value={contracts.editorialStates
+            .map((state) =>
+              hasMessage(`builder.state.${state}`) ? t(`builder.state.${state}`) : state
+            )
+            .join(', ')}
+        />
+        <Fact label={t('status.contracts.hooks')} value={contracts.hooks.join(', ')} />
+        <Fact
+          label={t('status.contracts.extensionPoints')}
+          value={contracts.extensionPoints.join(', ')}
+        />
       </Flex>
     </Section>
   )

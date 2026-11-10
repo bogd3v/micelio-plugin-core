@@ -4,6 +4,7 @@ import { BLOCKS } from '../../../contract/blocks'
 import { SITE_UID } from '../constants/site'
 import { extensionsOf } from '../extensions'
 import { readFrontend } from '../host-check/facts'
+import { contractsOf, describeSiblings, siblingPlugins } from './siblings'
 import type { HostCheckReport } from '../types/host-check'
 import type { SiteWithSections, StatusFrontend, StatusReport, StatusSite } from '../types/status'
 
@@ -24,9 +25,14 @@ interface SiteRow {
  * @remarks
  * The host check and the plugins' checks are the latest run (`hostCheck.latest()`), not a new one. The frontends are asked
  * for `/_health` on every call, at most two seconds each and in parallel: at boot they are usually
- * not up yet, so the boot's answer would be stale.
+ * not up yet, so the boot's answer would be stale. `can` tells whether the caller holds a
+ * registration's `permission`: the ids of the ones it does not hold are left out of `siblings`, and
+ * the sibling says that some were (`hidden`).
  */
-export async function readStatus(strapi: Core.Strapi): Promise<StatusReport> {
+export async function readStatus(
+  strapi: Core.Strapi,
+  can: (permission: string) => boolean = () => true
+): Promise<StatusReport> {
   const sites = await readSites(strapi)
   const latest = strapi.plugin('micelio').service('hostCheck').latest() as
     HostCheckReport | undefined
@@ -36,6 +42,17 @@ export async function readStatus(strapi: Core.Strapi): Promise<StatusReport> {
     frontends: await readFrontends(sites),
     hostCheck: latest ?? null,
     blocks: { count: BLOCKS.length },
+    siblings: describeSiblings(
+      siblingPlugins(strapi),
+      {
+        adminPages: extensionsOf(strapi).adminPages(),
+        siteSections: extensionsOf(strapi).siteSections(),
+        statusChecks: extensionsOf(strapi).statusChecks(),
+        exportSections: extensionsOf(strapi).exportSections(),
+      },
+      can
+    ),
+    contracts: contractsOf(),
     plugins: extensionsOf(strapi).statusResults(),
   }
 }

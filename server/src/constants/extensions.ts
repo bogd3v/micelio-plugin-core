@@ -21,3 +21,11 @@ export const STATUS_REFRESH_JOB = 'micelio-refresh-status'
  * register: the core's route answers first. The index (Status) is the empty path.
  */
 export const RESERVED_PAGE_PATHS = ['about'] as const
+
+/** The four extension points a sibling plugin registers on the `extensions` service (a contract). */
+export const EXTENSION_POINTS = [
+  'registerAdminPage',
+  'registerSiteSection',
+  'registerStatusChecks',
+  'registerExportSection',
+] as const

@@ -894,5 +894,21 @@
   "editorial.panel.publishAt": "Se publica el {when}",
   "editorial.panel.note": "Nota de la última transición",
   "editorial.panel.unsaved": "Guarda tus cambios primero: un paso actúa sobre el borrador guardado.",
-  "editorial.panel.builder": "Abrir en el constructor"
+  "editorial.panel.builder": "Abrir en el constructor",
+  "status.siblings.title": "Plugins de Micelio",
+  "status.siblings.none": "No hay otro plugin de Micelio instalado.",
+  "status.siblings.registersNothing": "no registra ningún punto de extensión",
+  "status.siblings.hidden": "algunos de sus puntos de extensión necesitan un permiso que su rol no tiene",
+  "status.siblings.adminPages": "Páginas del admin",
+  "status.siblings.siteSections": "Secciones de sitio",
+  "status.siblings.statusChecks": "Comprobaciones de estado",
+  "status.siblings.exportSections": "Secciones de exportación",
+  "status.contracts.title": "Contratos que expone este núcleo",
+  "status.contracts.editorialStates": "Estados editoriales",
+  "status.contracts.hooks": "Hooks",
+  "status.contracts.extensionPoints": "Puntos de extensión",
+  "about.row.theme": "Tema",
+  "about.row.theme.value": "{theme} {version}",
+  "about.row.theme.noVersion": "{theme} (sin versión fijada)",
+  "about.row.theme.none": "Sin fijar"
 }
