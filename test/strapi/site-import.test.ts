@@ -80,7 +80,12 @@ describe('the site importer', () => {
   })
 
   describe('before it writes anything', () => {
-    it('refuses an archive with a locale the target lacks', async () => {
+    // The target lacks `es` until the end of this test, so the locale is made here, not in the
+    // `beforeAll` (docs/architecture/structure.md, "Tests"). Creating it rewrites the super admin's
+    // permissions on SQLite: in full runs of `npm run test` at a load average of 23 to 25 it took
+    // 2.0 to 2.8 s of this test (the rest, 13 to 18 ms), and 5.4 to 5.6 s in `editorial.test.ts`,
+    // over the default 5 s. 30 s gives it room.
+    it('refuses an archive with a locale the target lacks', { timeout: 30_000 }, async () => {
       const before = await snapshot()
       await expect(importArchive(archive, { into: 'default' })).rejects.toMatchObject({
         code: 'exportLocaleMissing',

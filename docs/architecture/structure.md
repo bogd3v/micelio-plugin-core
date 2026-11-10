@@ -198,3 +198,13 @@ composes the zone `sections` only, as the protocol addresses it.
 
 The review suites (#57) add `app/src/api/brochure/` (editorial, with page settings, never exported,
 whose sections hold `section.cta` and its `section.link`: the `linkToDraft` warning).
+
+A suite creates its i18n locales before its first request, in its top `beforeAll`. On the test app
+`strapi.plugin('i18n').service('locales').create` deletes and recreates the 65 localised permissions
+of the super admin (the i18n `afterCreate` runs `syncSuperAdminPermissionsWithLocales`: about 990
+SQLite queries in 131 transactions), and holds the event loop of the thread until it ends: about
+1 s in a file run alone, 5 to 6 s for each locale in a full run of `npm run test` under load. The
+HTTP server shares that thread: a keep-alive connection opened before is past the server's 5 s
+`keepAliveTimeout` when the thread is free again, the server closes it as the client reuses it, and
+the request fails with `read ECONNRESET` (#155). A test that needs a locale to be missing when it
+starts (`site-import.test.ts`) creates it at its end, with a timeout of its own.
