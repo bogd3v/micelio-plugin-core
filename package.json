@@ -68,6 +68,7 @@
     "lint:preview": "jiti scripts/preview/generate.ts --check",
     "lint:fix": "eslint . --fix",
     "lint:licenses": "node scripts/check-licenses.mjs",
+    "lint:ee": "micelio-lint-ee --allow package-lock.json",
     "lint:standard": "micelio-lint-standard",
     "lint:reference": "node scripts/hooks-reference.mjs --check",
     "reference": "node scripts/hooks-reference.mjs",
@@ -76,7 +77,7 @@
     "test": "vitest run",
     "test:admin": "vitest run -c vitest.admin.config.mts",
     "verify": "strapi-plugin verify",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run lint:licenses && npm run lint:standard && npm run lint:reference"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run lint:licenses && npm run lint:ee && npm run lint:standard && npm run lint:reference"
   },
   "dependencies": {
     "zod": "^4.6.7"

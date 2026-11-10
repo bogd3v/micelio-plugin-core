@@ -69,6 +69,12 @@ describe('the packed package', () => {
     expect(packageJson.strapi).toMatchObject({ kind: 'plugin', name: 'micelio' })
   })
 
+  it('check runs lint:ee', () => {
+    // Strapi Enterprise code is not AGPL-compatible (THIRD-PARTY.md); only the lockfile may name the patterns.
+    expect(packageJson.scripts['lint:ee']).toBe('micelio-lint-ee --allow package-lock.json')
+    expect(packageJson.scripts.check.split(' && ')).toContain('npm run lint:ee')
+  })
+
   it('builds the plugin before npm packs it, because the publish job runs no build', () => {
     expect(packageJson.scripts.prepack).toBe('npm run build')
     expect(packageJson.scripts.build).toBe('strapi-plugin build')
