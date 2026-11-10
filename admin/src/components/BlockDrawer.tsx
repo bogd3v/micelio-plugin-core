@@ -15,7 +15,7 @@ import {
   type BlockUsage,
   type CatalogueBlock,
 } from '../utils/blocks'
-import { problemOf } from '../utils/fetchError'
+import { ANSWER_REFUSALS, outcomeOf } from '../utils/fetchError'
 import { Measurement, type Outcome } from './CostPanel'
 
 interface DrawerProps {
@@ -77,10 +77,17 @@ export function BlockDrawer({ block, site, pageTypes, canManage, onSaved, onClos
     setIsSaving(true)
     setProblem(undefined)
     try {
-      await client.put(`/micelio/block-settings/${block.id}?site=${encodeURIComponent(site)}`, body)
-      onSaved()
-    } catch (error) {
-      setProblem(problemOf(error)?.detail ?? t('blocks.error.save'))
+      const outcome = outcomeOf<unknown>(
+        await client.put(
+          `/micelio/block-settings/${block.id}?site=${encodeURIComponent(site)}`,
+          body,
+          ANSWER_REFUSALS
+        )
+      )
+      if (outcome.ok) onSaved()
+      else setProblem(outcome.detail ?? t('blocks.error.save'))
+    } catch {
+      setProblem(t('blocks.error.save'))
     } finally {
       setIsSaving(false)
     }

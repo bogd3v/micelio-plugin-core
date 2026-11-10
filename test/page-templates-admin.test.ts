@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { outcomeOf } from '../admin/src/utils/fetchError'
+import { ANSWER_REFUSALS, outcomeOf } from '../admin/src/utils/fetchError'
 import { galleryPagePath, hasTemplates } from '../admin/src/utils/templateAction'
 import { blockNamesLine, optionsLine, templateFileName } from '../admin/src/utils/templates'
 import en from '../admin/src/translations/en.json'
 import es from '../admin/src/translations/es.json'
 
 describe('the answer of a route that refuses with a problem detail', () => {
+  it('lets a 401 throw, so that the client refreshes an expired token, and answers the other refusals', () => {
+    expect(ANSWER_REFUSALS.validateStatus(401)).toBe(false)
+    for (const status of [200, 403, 404, 409, 422, 502]) {
+      expect(ANSWER_REFUSALS.validateStatus(status)).toBe(true)
+    }
+  })
+
   it('is the data of a good answer', () => {
     expect(outcomeOf<{ id: string }>({ data: { data: { id: 'a' } } })).toEqual({
       ok: true,
