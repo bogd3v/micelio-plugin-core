@@ -438,10 +438,16 @@ version, kb, site, blocks, thumbnail }`. Both need the permission to create `<ty
   as any save of that site (`blockNotAllowed`). It needs the same permission as the two above, and
   the grant must cover the fields the page writes (the zone, `title`, `slug` and `pageType`): what
   the Content Manager would strip for the role is refused with `templatesForbidden`, not dropped.
-  It answers `templateNotFound` for a template the site may not use.
+  The create grant is checked against the page's `locale` (the default locale when the body names
+  none), so a role limited to some locales is refused `templatesForbidden` in another, before
+  anything is written. It answers `templateNotFound` for a template the site may not use.
 - `POST /micelio/templates/inspect?site=<slug>`: the checks of a template, run and never refused:
   the body of the next route, without `name` if the dialog has none yet, answers the page's
-  blocks, their weight in kB and each check as `{ id, ok, detail }`.
+  blocks, their weight in kB and each check as `{ id, ok, detail }`. It answers only what the role
+  may read: the page's `title` is the first of `title`, `name` and `slug` it may read, or the
+  `documentId` when it may read none, and its `pageType` is `standard` when it may not read that
+  field. Saving takes the page's type by the same rule when `pageTypes` is empty, and the history
+  names the page by that title.
 - `POST /micelio/templates?site=<slug>` with `{ uid, documentId, locale?, name, description?,
 pageTypes?, scope, blocks? }`, `blocks` being `[{ content: "sample" | "clear", fixed }]` for the
   blocks of the catalogue the saved draft holds, in order: stores the template at version 1 and
@@ -479,8 +485,11 @@ pageTypes?, scope, blocks? }`, `blocks` being `[{ content: "sample" | "clear", f
 
 Inspecting, saving, exporting, importing, listing for the manage page, editing, retiring,
 duplicating and detaching need `plugin::micelio.templates.manage`; inspecting
-and saving also need the permission to read the page's type in the Content Manager. A refusal is a
-problem detail with one of these codes:
+and saving also need the permission to read the page's type in the Content Manager, and to read
+each dynamic zone of the page that holds a block of the catalogue, as the Content Manager checks a
+field: a grant whose `fields` leave the zone out is refused with `templatesForbidden`. A page of
+another site is `templateNotFound` before that. A refusal is a problem detail with one of these
+codes:
 
 - `templateInvalid` (400) with `field`: a malformed body or document, an unknown page type or an
   `origin` other than `site`.

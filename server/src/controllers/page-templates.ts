@@ -62,8 +62,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * The routes of the page templates (`docs/api.md`): saving a page as a template, exporting and
- * importing one need `plugin::micelio.templates.manage`; reading the templates of a site and
- * creating a page from one need the permission to create that page type in the Content Manager.
+ * importing one need `plugin::micelio.templates.manage`, and saving or inspecting a page also the
+ * permission to read its zones of blocks in the Content Manager; reading the templates of a site
+ * needs the permission to create that page type, and creating a page from one the permission to
+ * create it in the request's locale.
  */
 export default ({ strapi }: { strapi: Core.Strapi }): Record<Action, Handler> => {
   const templates = () => strapi.plugin('micelio').service('pageTemplates') as PageTemplatesService
@@ -124,6 +126,32 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<Action, Handler> =>
       403,
       TEMPLATE_CODES.forbidden,
       `This needs the permission ${CREATE_PERMISSION} on ${uid}.`
+    )
+    return false
+  }
+
+  /**
+   * Whether the caller may create a page of `uid` in `locale` (the default locale when none is
+   * named), as the Content Manager's checker reads a grant limited to some locales.
+   */
+  async function mayCreateIn(ctx: Context, uid: string, locale: string | undefined) {
+    const checker = checkerOf(ctx, uid)
+    const i18n = strapi.plugin('i18n')
+    const resolved =
+      locale ??
+      (i18n
+        ? ((await i18n.service('locales').getDefaultLocale()) as string | undefined)
+        : undefined)
+    if (
+      checker &&
+      !checker.cannot.create(resolved === undefined ? undefined : { locale: resolved })
+    )
+      return true
+    refuse(
+      ctx,
+      403,
+      TEMPLATE_CODES.forbidden,
+      `This needs the permission ${CREATE_PERMISSION} on ${uid} in the locale ${resolved ?? '(none)'}.`
     )
     return false
   }
@@ -379,7 +407,8 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<Action, Handler> =>
       const checker = checkerOf(ctx, read.uid)
       const request: TemplateRequest = {
         ...read,
-        mayRead: (draft) => checker !== undefined && !checker.cannot.read(draft),
+        // A field is checked as the Content Manager checks it: the zone the template copies, the title.
+        mayRead: (draft, field) => checker !== undefined && !checker.cannot.read(draft, field),
       }
       await failing(ctx, async () => {
         ctx.set('Cache-Control', 'private, no-store')
@@ -395,7 +424,8 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<Action, Handler> =>
       const checker = checkerOf(ctx, read.uid)
       const request: TemplateRequest = {
         ...read,
-        mayRead: (draft) => checker !== undefined && !checker.cannot.read(draft),
+        // A field is checked as the Content Manager checks it: the zone the template copies, the title.
+        mayRead: (draft, field) => checker !== undefined && !checker.cannot.read(draft, field),
       }
       await failing(ctx, async () => {
         ctx.status = 201
@@ -446,6 +476,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<Action, Handler> =>
         refuse(ctx, 400, TEMPLATE_CODES.invalid, 'locale and title are texts', { field: 'body' })
         return
       }
+      if (!(await mayCreateIn(ctx, uid, locale))) return
       const checker = checkerOf(ctx, uid)
       const request: PageRequest = {
         uid,

@@ -77,8 +77,11 @@ export interface TemplateRequest {
   scope: 'site' | 'cms'
   /** What is kept of each block of the catalogue the page holds, by position; every block as sample text, not fixed, when absent. */
   blocks?: BlockChoice[]
-  /** Whether the caller may read the page's draft in the Content Manager; the route sets it. */
-  mayRead?: (draft: Record<string, unknown>) => boolean
+  /**
+   * Whether the caller may read the page's draft in the Content Manager, or one `field` of it; the
+   * route sets it.
+   */
+  mayRead?: (draft: Record<string, unknown>, field?: string) => boolean
   /** The name of the admin user who saves, for the template's history. */
   by?: string
 }
@@ -305,11 +308,41 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
         `This needs the permission to read ${request.uid} in the Content Manager.`
       )
     }
-    const entries = Object.entries(model.attributes as Record<string, { type?: string }>)
+    const zones = Object.entries(model.attributes as Record<string, { type?: string }>)
       .filter(([, attribute]) => attribute.type === 'dynamiczone')
-      .flatMap(([name]) => (Array.isArray(draft[name]) ? (draft[name] as Row[]) : []))
-      .filter((entry) => blockOfComponent(String(entry.__component)) !== undefined)
-    return { draft, entries }
+      .map(([name]) => ({
+        name,
+        entries: (Array.isArray(draft[name]) ? (draft[name] as Row[]) : []).filter(
+          (entry) => blockOfComponent(String(entry.__component)) !== undefined
+        ),
+      }))
+    // A zone the template takes blocks from is copied whole (options and text): the role must read it.
+    const unread = zones.find(
+      ({ name, entries }) => entries.length > 0 && request.mayRead && !request.mayRead(draft, name)
+    )
+    if (unread) {
+      throw new TemplateError(
+        403,
+        TEMPLATE_CODES.forbidden,
+        `This needs the permission to read ${unread.name} of ${request.uid} in the Content Manager.`
+      )
+    }
+    return { draft, entries: zones.flatMap(({ entries }) => entries) }
+  }
+
+  /** The page's title as the caller may read it: the first of `title`, `name` and `slug`, else the document id. */
+  function titleOf(draft: Row, request: Pick<TemplateRequest, 'documentId' | 'mayRead'>): string {
+    const title = (['title', 'name', 'slug'] as const)
+      .filter((field) => !request.mayRead || request.mayRead(draft, field))
+      .map((field) => draft[field])
+      .find((value): value is string => typeof value === 'string' && value !== '')
+    return title ?? request.documentId
+  }
+
+  /** The page's type as the caller may read it; `standard` when it is unset or the caller may not read it. */
+  function pageTypeOf(draft: Row, request: Pick<TemplateRequest, 'mayRead'>): string {
+    const readable = !request.mayRead || request.mayRead(draft, 'pageType')
+    return readable && typeof draft.pageType === 'string' ? draft.pageType : 'standard'
   }
 
   function structureOf(entries: Row[], choices: BlockChoice[] | undefined): TemplateBlock[] {
@@ -741,7 +774,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
     async inspect(request) {
       const { draft, entries } = await source(request)
       const blocks = structureOf(entries, request.blocks)
-      const pageType = typeof draft.pageType === 'string' ? draft.pageType : 'standard'
+      const pageType = pageTypeOf(draft, request)
       const known = knownPageTypes(budgets(), request.site.slug)
       const pageTypes = request.pageTypes ?? [known.includes(pageType) ? pageType : 'standard']
       const { checks, kb } = await evaluate(request.site, {
@@ -751,7 +784,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
         blocks,
       })
       return {
-        title: String(draft.title ?? draft.slug ?? request.documentId),
+        title: titleOf(draft, request),
         siteName: request.site.name ?? request.site.slug,
         pageType,
         blocks: blocks.map((block, index) => ({
@@ -772,10 +805,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
       const { name, description, pageTypes } = validated(request)
       const { draft, entries } = await source(request)
       const blocks = structureOf(entries, request.blocks)
-      const types =
-        pageTypes.length > 0
-          ? pageTypes
-          : [typeof draft.pageType === 'string' ? draft.pageType : 'standard']
+      const types = pageTypes.length > 0 ? pageTypes : [pageTypeOf(draft, request)]
       const template: TemplateDocument = {
         format: TEMPLATE_FORMAT,
         name,
@@ -790,7 +820,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
       if (failure) throw failure
       return store(request.site, template, {
         cause: 'save',
-        source: String(draft.title ?? draft.slug ?? ''),
+        source: titleOf(draft, request),
         by: request.by,
       })
     },

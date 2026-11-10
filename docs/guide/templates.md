@@ -52,8 +52,12 @@ opens in the builder, and the new page records `templateId` and `templateVersion
   refused with `sampleTextPresent`, naming the blocks and fields
   ([Errors](../api.md#errors)). Moving it to review is allowed.
 - A role needs the permission to create the page type in the Content Manager, with the fields a
-  page writes (the blocks, title, slug and page type). It does not need `templates.manage`. To save
-  a page as a template, a role needs `templates.manage` and the permission to read that page type.
+  page writes (the blocks, title, slug and page type), in the page's locale (the default one when
+  none is chosen). It does not need `templates.manage`. To save a page as a template, a role needs
+  `templates.manage` and the permission to read that page type, including the field of its blocks:
+  a grant that leaves that field out cannot save or inspect the page. The dialog shows only what
+  the role may read: a page whose title it may not read appears under its id, and a page type it
+  may not read as `standard`.
 
 ## Move a template between sites and CMSs
 
