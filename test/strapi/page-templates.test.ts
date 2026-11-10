@@ -168,6 +168,14 @@ describe('page templates', () => {
     const siteService = strapi.documents(SITE_UID as UID.ContentType)
     site = (await siteService.findFirst({ filters: { slug: 'default' } }))!.documentId
     await siteService.create({ data: { name: 'Other', slug: 'other', modules: {} } as never })
+    // A second locale (#153), made before any request: creating one resets the connections already
+    // open. The default site gets a Spanish version, so a page may be made there in Spanish.
+    await strapi.plugin('i18n').service('locales').create({ code: 'es', name: 'Spanish (es)' })
+    await siteService.update({
+      documentId: site,
+      locale: 'es',
+      data: { name: 'Predeterminado' },
+    } as never)
     await createUser(root, 'super')
     const create = { action: 'plugin::content-manager.explorer.create', subject: GUIDE }
     const read = { action: 'plugin::content-manager.explorer.read', subject: GUIDE, properties: {} }
@@ -180,11 +188,33 @@ describe('page templates', () => {
       'plugin::micelio.templates.manage',
       { ...create, properties: {} },
     ])
-    await createUser('creator@example.com', [{ ...create, properties: { fields: ['title'] } }])
+    // A create grant names its locales, as the admin saves a role (#153).
+    await createUser('creator@example.com', [
+      { ...create, properties: { fields: ['title'], locales: ['en'] } },
+    ])
     await createUser('writer@example.com', [
-      { ...create, properties: { fields: ['title', 'slug', 'sections', 'pageType'] } },
+      {
+        ...create,
+        properties: { fields: ['title', 'slug', 'sections', 'pageType'], locales: ['en'] },
+      },
     ])
     await createUser('plain@example.com', [])
+    // #153: grants limited to some fields or some locales, as the Content Manager reads them.
+    const manage = 'plugin::micelio.templates.manage'
+    await createUser('zoneless@example.com', [
+      manage,
+      { ...read, properties: { fields: ['title', 'slug', 'pageType'], locales: ['en'] } },
+    ])
+    await createUser('untitled@example.com', [
+      manage,
+      { ...read, properties: { fields: ['sections'], locales: ['en'] } },
+    ])
+    await createUser('english@example.com', [
+      {
+        ...create,
+        properties: { fields: ['title', 'slug', 'sections', 'pageType'], locales: ['en'] },
+      },
+    ])
   })
 
   afterAll(async () => {
@@ -546,6 +576,115 @@ describe('page templates', () => {
           403
         )
         expect(refused.code).toBe('templatesForbidden')
+      }
+    })
+
+    it('refuses to save a page whose dynamic zone its manager may not read', async () => {
+      const source = await pageWith()
+      const name = 'Zone unread'
+      const body = { uid: GUIDE, documentId: source, locale: 'en', name, scope: 'site' }
+      const refused = await problem(
+        await micelio(
+          '/templates?site=default',
+          { method: 'POST', json: body },
+          'zoneless@example.com'
+        ),
+        403
+      )
+      expect(refused.code).toBe('templatesForbidden')
+      expect(await strapi.documents(TEMPLATE).findMany({ filters: { name } })).toHaveLength(0)
+      // The site comes first: a page of another site is not found, whatever the role may read.
+      const elsewhere = await problem(
+        await micelio(
+          '/templates?site=other',
+          { method: 'POST', json: body },
+          'zoneless@example.com'
+        ),
+        404
+      )
+      expect(elsewhere.code).toBe('templateNotFound')
+    })
+
+    it('refuses to inspect a page whose dynamic zone its manager may not read', async () => {
+      const source = await pageWith()
+      const body = { uid: GUIDE, documentId: source, locale: 'en', scope: 'site' }
+      const refused = await problem(
+        await micelio(
+          '/templates/inspect?site=default',
+          { method: 'POST', json: body },
+          'zoneless@example.com'
+        ),
+        403
+      )
+      expect(refused.code).toBe('templatesForbidden')
+    })
+
+    it('inspects a page under its document id for a manager that may not read its title', async () => {
+      const source = await pageWith()
+      const body = { uid: GUIDE, documentId: source, locale: 'en', scope: 'site' }
+      const response = await micelio(
+        '/templates/inspect?site=default',
+        { method: 'POST', json: body },
+        'untitled@example.com'
+      )
+      const text = await response.text()
+      expect(response.status, text).toBe(200)
+      expect(text).not.toContain('Open source')
+      const { data } = JSON.parse(text) as { data: { title: string; pageType: string } }
+      // The page is a landing; a role that may not read pageType is told standard.
+      expect(data).toMatchObject({ title: source, pageType: 'standard' })
+      const full = (await (
+        await micelio('/templates/inspect?site=default', { method: 'POST', json: body })
+      ).json()) as { data: { title: string; pageType: string } }
+      expect(full.data).toMatchObject({ title: 'Open source', pageType: 'landing' })
+    })
+
+    it('saves a template for a manager that may not read the title or type, without either', async () => {
+      const source = await pageWith()
+      const json = { uid: GUIDE, documentId: source, locale: 'en', name: 'Untitled', scope: 'site' }
+      const response = await micelio(
+        '/templates?site=default',
+        { method: 'POST', json },
+        'untitled@example.com'
+      )
+      expect(response.status).toBe(201)
+      const { data } = (await response.json()) as { data: Summary & { pageTypes: string[] } }
+      expect(data.pageTypes).toEqual(['standard'])
+      const [stored] = (await strapi
+        .documents(TEMPLATE)
+        .findMany({ filters: { name: 'Untitled' } })) as unknown as {
+        history: { cause: string; source?: string }[]
+      }[]
+      // The history names the page by what the manager may read: its document id, not its title.
+      expect(stored.history).toEqual([expect.objectContaining({ cause: 'save', source })])
+    })
+
+    it('refuses to create a page from a template in a locale its role may not create', async () => {
+      const template = await saved({ name: 'English only' })
+      const title = 'Una página en español'
+      const refused = await problem(
+        await micelio(
+          `/templates/${template.id}/pages`,
+          { method: 'POST', json: { uid: GUIDE, site: 'default', locale: 'es', title } },
+          'english@example.com'
+        ),
+        403
+      )
+      expect(refused.code).toBe('templatesForbidden')
+      expect(await guides().findMany({ locale: 'es', filters: { title } } as never)).toHaveLength(0)
+    })
+
+    it('creates a page from a template in the locale its role may create', async () => {
+      const template = await saved({ name: 'English allowed' })
+      for (const locale of ['en', undefined]) {
+        const response = await micelio(
+          `/templates/${template.id}/pages`,
+          { method: 'POST', json: { uid: GUIDE, site: 'default', locale, title: 'In English' } },
+          'english@example.com'
+        )
+        const text = await response.text()
+        expect(response.status, text).toBe(201)
+        expect((JSON.parse(text) as { data: { locale: string } }).data.locale).toBe('en')
       }
     })
 

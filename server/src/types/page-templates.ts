@@ -113,7 +113,7 @@ export interface TemplateRevision {
   /** The name of the admin user who made it, when known. */
   by: string | null
   cause: TemplateCause
-  /** `save`: the title of the page it was made from; `duplicate`: the name of the original. */
+  /** `save`: the title of the page it was made from, as the saver may read it (its document id when none); `duplicate`: the name of the original. */
   source?: string
   /** What changed since the version before; empty for the first. */
   changes: TemplateChange[]
