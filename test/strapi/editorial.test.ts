@@ -102,6 +102,10 @@ describe('editorial transitions', () => {
 
   beforeAll(async () => {
     strapi = await setupStrapi()
+    // Before the first request: creating a locale rewrites the super admin's permissions and holds
+    // the event loop, and under load a keep-alive connection opened before it is reset
+    // (docs/architecture/structure.md, "Tests").
+    await strapi.plugin('i18n').service('locales').create({ code: 'es', name: 'Spanish (es)' })
     const { port } = strapi.server.httpServer.address() as AddressInfo
     base = `http://127.0.0.1:${port}`
     site = (await strapi.documents(SITE_UID as UID.ContentType).findFirst({}))!.documentId
@@ -478,8 +482,8 @@ describe('editorial transitions', () => {
   })
 
   it('keeps a state per locale, as Strapi keeps a published version per locale', async () => {
+    // `es` exists since the top `beforeAll`.
     const essays = strapi.documents(ESSAY_UID)
-    await strapi.plugin('i18n').service('locales').create({ code: 'es', name: 'Spanish (es)' })
     const { documentId } = await essays.create({
       locale: 'en',
       data: { title: 'Essay', site },

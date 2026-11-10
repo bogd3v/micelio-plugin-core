@@ -149,6 +149,12 @@ describe('the draft read with the populate of the frontend', () => {
 
   beforeAll(async () => {
     strapi = await setupStrapi()
+    // The locales of "serves the localizations the frontend asks for", before the first request:
+    // creating a locale rewrites the super admin's permissions and holds the event loop, and under
+    // load a keep-alive connection opened before it is reset (docs/architecture/structure.md,
+    // "Tests").
+    await strapi.plugin('i18n').service('locales').create({ code: 'es', name: 'Spanish (es)' })
+    await strapi.plugin('i18n').service('locales').create({ code: 'fr', name: 'French (fr)' })
     const { port } = strapi.server.httpServer.address() as AddressInfo
     base = `http://127.0.0.1:${port}`
     const sites = documents(SITE_UID)
@@ -415,8 +421,7 @@ describe('the draft read with the populate of the frontend', () => {
     let pageToken: string
 
     beforeAll(async () => {
-      await strapi.plugin('i18n').service('locales').create({ code: 'es', name: 'Spanish (es)' })
-      await strapi.plugin('i18n').service('locales').create({ code: 'fr', name: 'French (fr)' })
+      // `es` and `fr` exist since the top `beforeAll`.
       const pages = documents(PAGE_UID)
       const created = await pages.create({
         locale: 'en',
