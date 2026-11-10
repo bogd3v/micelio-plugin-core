@@ -127,8 +127,11 @@ meter (`components/CostMeter.tsx`, `hooks/useBudget.ts`, which reads the weight 
 once the frame holds the grant, the pure thresholds of `utils/costMeter.ts`), the cost line in the
 edit view's side panel (`components/CostPanelAction.tsx`, registered in `bootstrap` with
 `addEditViewSidePanel`, and `CostPanel.tsx`, which measures on demand, `docs/operate/budgets.md`),
-and the review flow (#57: `components/builder/ReviewActions.tsx`, the builder's editorial buttons
-and their dialogs; `pages/ReviewPage.tsx`, the In review page; `hooks/useTransition.ts`, which asks
+and the review flow (#57: `components/builder/ReviewActions.tsx`, the builder's editorial buttons;
+`components/builder/ReviewDialogs.tsx`, their dialogs, which the In review page and the edit view's
+editorial panel (#164: `components/EditorialPanel.tsx`, registered in `bootstrap` with
+`addEditViewSidePanel` before `CostPanel`, with the pure helpers of `utils/editorialPanel.ts`) use
+too; `pages/ReviewPage.tsx`, the In review page; `hooks/useTransition.ts`, which asks
 `POST /micelio/transitions` and shows a refusal or a warning as a notification with a link to the
 block; the pure helpers of `utils/review.ts`, which read a budget refusal with `utils/refusal.ts`;
 `docs/guide/review.md`), and its translations (`translations/en.json`, `es.json`; `messages.ts`

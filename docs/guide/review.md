@@ -51,6 +51,27 @@ every edit, through the builder, the Content Manager or the content API.
 dialog for a note to the editor and moves the page back to Draft; the editor finds the note at the
 top of the builder until the next move. A move without a note clears the previous one.
 
+## The editorial panel in the Content Manager
+
+A type made with `withEditorial` has the same moves in the side of the Content Manager's edit view,
+whether or not it has a builder: the **Editorial** panel, the first panel of the core in the side
+(a plugin's panel registered later, such as the fediverse one, comes below it). It shows for a saved
+entry on its draft, and for no type that lacks the editorial component.
+
+- The steps **Draft**, **In review** and **Published** (**Scheduled** in place of **Published** while
+  the entry is scheduled), with the current one marked, the time of a scheduled publish and the note
+  of the last move.
+- The buttons of the state, the primary one first, as in the table above. They open the same dialogs
+  as the builder's: send to review with a note, schedule, send back with a note. The panel cannot
+  read the blocks of the form, so the send to review dialog lists the server's checks and leaves out
+  the line about required fields.
+- **Open in the builder**, only for a type the builder opens: one with a site and a dynamic zone.
+
+The buttons wait, and the panel says why, while the form holds changes that are not saved: a move acts
+on the saved draft. The server decides every move: a refusal is a notification, as in the builder.
+After a move the edit view reads the entry again, so the form and the panel show the new state with
+no reload.
+
 ## Refusals and warnings
 
 A refused move is a notification of the admin, from the problem detail the server answered (its

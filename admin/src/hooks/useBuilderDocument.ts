@@ -82,8 +82,12 @@ export interface EditorialFacts {
 
 const EDITORIAL_STATES = new Set(['draft', 'in_review', 'scheduled', 'published'])
 
-/** The editorial component of an answer of the Content Manager, when the type has one. */
-function editorialOf(data: Record<string, unknown>): EditorialFacts | undefined {
+/**
+ * The editorial component of an answer of the Content Manager, when the type has one: `undefined`
+ * for a type made without `withEditorial`. A component that is empty counts as a draft. The edit
+ * view's editorial panel reads an entry the same way.
+ */
+export function editorialOf(data: Record<string, unknown>): EditorialFacts | undefined {
   const component = data.editorial as Record<string, unknown> | null | undefined
   if (!('editorial' in data)) return undefined
   const state = component?.state

@@ -16,7 +16,7 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 
 import type { InReviewEntry, InReviewSite } from '../../../server/src/types/editorial'
-import { SendBackDialog } from '../components/builder/ReviewActions'
+import { SendBackDialog } from '../components/builder/ReviewDialogs'
 import { useLoaded } from '../hooks/useAsync'
 import { useTransition } from '../hooks/useTransition'
 import { useMessages } from '../messages'
