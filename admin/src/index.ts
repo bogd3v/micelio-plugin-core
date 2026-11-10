@@ -43,8 +43,11 @@ const plugin: StrapiApp['appPlugins'][string] = {
     add([PreviewHeaderAction, NewFromTemplateAction])
     const addPanel = apis.addEditViewSidePanel
     if (typeof addPanel !== 'function') return
+    // The editorial panel goes first: it is the first panel of the core in the side, and a sibling
+    // plugin's panel, registered later, comes below it.
+    const { EditorialPanel } = await import('./components/EditorialPanel')
     const { CostPanel } = await import('./components/CostPanelAction')
-    addPanel([CostPanel])
+    addPanel([EditorialPanel, CostPanel])
   },
 
   async registerTrads({ locales }) {

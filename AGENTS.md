@@ -150,11 +150,13 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   Save as template dialog, `ReviewPage` (the In review page), `TemplatesManagePage` at `templates`
   and `TemplateBuilderPage` at `templates/:id/edit`; the SEO and social tab of the page settings is
   `components/builder/SeoTab.tsx`, with `SeoPreviews.tsx` and `SeoFields.tsx`),
+  the editorial panel in the side of the Content Manager's edit view (`components/EditorialPanel.tsx`,
+  #164, registered in `bootstrap` before `CostPanel`; its dialogs are `components/builder/ReviewDialogs.tsx`),
   the cost meter and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them).
   The builder (`pages/BuilderPage.tsx` at `builder/:uid/:documentId`, #49): its panels in
   `components/builder/`, its hooks (`useBuilderDocument`, `useBuilderCatalogue`,
   `useBuilderFrame`, `useBuilderEdits`, `useBlockLookup`, `usePageSettings`, `useTransition`) and
-  pure helpers in `utils/builder/`; the editorial buttons and dialogs (`ReviewActions`, #57,
+  pure helpers in `utils/builder/`; the editorial buttons (`ReviewActions`, #57, their dialogs in `ReviewDialogs`,
   `docs/guide/review.md`) follow Save; the gear next to the title opens `PageSettingsDrawer` (#52,
   `docs/guide/pages.md`); it talks to the
   frame with the phase 2 messages of `contract/preview.ts`. The keyboard (#50) is the table of

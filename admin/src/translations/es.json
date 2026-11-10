@@ -888,5 +888,11 @@
   "review.refusal.seoInvalid": "Abre Ajustes de la página, SEO y redes: {problems} · seoInvalid",
   "review.refusal.descriptionRepeatsTitle.title": "La descripción repite el título",
   "review.refusal.descriptionRepeatsTitle": "La descripción meta solo repite el título; di algo más en Ajustes de la página, SEO y redes. · descriptionRepeatsTitle",
-  "seo.footer": "Campos de shared.seo, rellenados desde la página"
+  "seo.footer": "Campos de shared.seo, rellenados desde la página",
+  "editorial.panel.title": "Editorial",
+  "editorial.panel.steps": "Pasos editoriales",
+  "editorial.panel.publishAt": "Se publica el {when}",
+  "editorial.panel.note": "Nota de la última transición",
+  "editorial.panel.unsaved": "Guarda tus cambios primero: un paso actúa sobre el borrador guardado.",
+  "editorial.panel.builder": "Abrir en el constructor"
 }

@@ -27,7 +27,7 @@ import { Input } from './fieldStyle'
 import { Area, Field, Help, Section } from './SeoFields'
 import { SeoPreviews } from './SeoPreviews'
 import { srcOf } from './MediaInputs'
-import { Check } from './ReviewActions'
+import { Check } from './ReviewDialogs'
 
 /** What the Media Library dialog of the Strapi admin takes: the dialog the Content Manager opens. */
 interface DialogProps {
