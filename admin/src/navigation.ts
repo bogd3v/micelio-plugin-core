@@ -49,3 +49,12 @@ export function visibleNavItems(
       !item.permission || permissions.some(({ action }) => action === item.permission?.action)
   )
 }
+
+/**
+ * The number of entries an answer of `GET /micelio/review` lists, summed over its sites.
+ *
+ * @param sites - The `data` of the answer: one item per site, each with its `entries`.
+ */
+export function countInReview(sites: { entries: readonly unknown[] }[]): number {
+  return sites.reduce((sum, site) => sum + site.entries.length, 0)
+}

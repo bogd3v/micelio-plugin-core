@@ -1,14 +1,15 @@
-import { Typography } from '@strapi/design-system'
+import { Box, Typography } from '@strapi/design-system'
 import { Layouts, Page, SubNav, useAuth } from '@strapi/strapi/admin'
 import { Suspense, lazy, useMemo, type ComponentType } from 'react'
 import { useIntl } from 'react-intl'
-import { Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 
 import { useAdminPages, type AdminPageItem } from '../hooks/useAdminPages'
+import { useInReviewCount } from '../hooks/useInReviewCount'
 import { useMessages } from '../messages'
 import { CORE_NAV_ITEMS, NAV_GROUPS, visibleNavItems, type NavGroup } from '../navigation'
 import { pageLoaderOf } from '../pageRegistry'
-import { STATUS_READ_PERMISSION } from '../permissions'
+import { REVIEW_READ_PERMISSION, STATUS_READ_PERMISSION } from '../permissions'
 import { PLUGIN_ID } from '../pluginId'
 import { localised } from '../utils/localised'
 import AboutPage from './AboutPage'
@@ -42,6 +43,10 @@ export default function MicelioLayout() {
   const permissions = useAuth('MicelioLayout', (state) => state.permissions)
   const canReadStatus = permissions.some(({ action }) => action === STATUS_READ_PERMISSION.action)
   const coreItems = visibleNavItems(CORE_NAV_ITEMS, permissions)
+  // The count is read for a role that sees the item, and again at each move inside the section.
+  const { pathname } = useLocation()
+  const canReadReview = permissions.some(({ action }) => action === REVIEW_READ_PERMISSION.action)
+  const inReview = useInReviewCount(!isLoadingPermissions && canReadReview, pathname)
   const linksOf = (group: NavGroup) => [
     ...coreItems
       .filter((item) => item.group === group)
@@ -50,7 +55,29 @@ export default function MicelioLayout() {
           key={item.id}
           to={item.to ? `/plugins/${PLUGIN_ID}/${item.to}` : `/plugins/${PLUGIN_ID}`}
           end={!item.to}
-          label={t(`nav.${item.id}`)}
+          // A no-break space after the label keeps it apart from the number in the text a tool
+          // reads ("In review 3"), which the accessible name, "In review, 3 pages", contains.
+          label={
+            item.id === 'review' && inReview ? `${t('nav.review')}\u00a0` : t(`nav.${item.id}`)
+          }
+          {...(item.id === 'review' && inReview
+            ? {
+                'aria-label': t('nav.review.count', { count: inReview }),
+                endAction: (
+                  <Box
+                    aria-hidden
+                    background="warning100"
+                    hasRadius
+                    paddingLeft={2}
+                    paddingRight={2}
+                  >
+                    <Typography variant="pi" fontWeight="bold" textColor="warning700">
+                      {inReview}
+                    </Typography>
+                  </Box>
+                ),
+              }
+            : {})}
         />
       )),
     ...pages
