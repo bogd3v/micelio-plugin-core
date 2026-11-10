@@ -649,6 +649,8 @@
   "review.schedule.date": "Date",
   "review.schedule.time": "Time",
   "review.schedule.zone": "Your time zone: {zone}. The scheduler publishes the page within a minute of this time; it must pass the publish checks then.",
+  "review.schedule.zone.site": "Site time zone: {zone}. The scheduler publishes the page within a minute of this time; it must pass the publish checks then.",
+  "review.schedule.zone.own": "{when} in your time zone, {zone}",
   "review.schedule.after": "State after scheduling:",
   "review.schedule.editable": "editable until it publishes",
   "review.schedule.reset": "Editing a scheduled page moves it back to Draft and asks you to schedule again.",
@@ -891,7 +893,7 @@
   "seo.footer": "Fields of shared.seo, filled from the page",
   "editorial.panel.title": "Editorial",
   "editorial.panel.steps": "Editorial steps",
-  "editorial.panel.publishAt": "Publishes on {when}",
+  "editorial.panel.publishAt": "Publishes on {when} ({zone})",
   "editorial.panel.note": "Note of the last transition",
   "editorial.panel.unsaved": "Save your changes first: a move acts on the saved draft.",
   "editorial.panel.builder": "Open in the builder"

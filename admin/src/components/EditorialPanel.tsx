@@ -10,11 +10,12 @@ import { NavLink } from 'react-router-dom'
 import styled, { useTheme } from 'styled-components'
 
 import { editorialOf } from '../hooks/useBuilderDocument'
+import { useSiteTimeZone } from '../hooks/useSiteTimeZone'
 import { useTransition, type TransitionOptions } from '../hooks/useTransition'
 import { useMessages } from '../messages'
 import { panelActions, stepsFor } from '../utils/editorialPanel'
 import { hasPreview, type ActionSchema } from '../utils/previewAction'
-import { builderPath, type EditorialState, type ReviewAction } from '../utils/review'
+import { browserZone, builderPath, type EditorialState, type ReviewAction } from '../utils/review'
 import { ScheduleDialog, SendBackDialog, SendToReviewDialog } from './builder/ReviewDialogs'
 
 /** What Strapi hands a side panel of the edit view; the fields this panel reads. */
@@ -129,9 +130,11 @@ interface ContentProps {
 
 /** The panel's body: see {@link EditorialPanel}. */
 export function EditorialPanelContent(props: ContentProps) {
-  const { t, date } = useMessages()
+  const { t, dateIn } = useMessages()
   const { page, state } = props
   const { perform, notify } = useTransition(page)
+  const siteZone = useSiteTimeZone(page)
+  const zone = siteZone.zone ?? browserZone()
   const isModified = useForm('EditorialPanel', (form) => form.modified)
   const [open, setOpen] = useState<ReviewAction['dialog']>()
   const [isWorking, setIsWorking] = useState(false)
@@ -190,7 +193,7 @@ export function EditorialPanelContent(props: ContentProps) {
       </Steps>
       {state === 'scheduled' && props.publishAt ? (
         <Typography variant="pi" textColor="neutral600" tag="p">
-          {t('editorial.panel.publishAt', { when: date(props.publishAt) })}
+          {t('editorial.panel.publishAt', { when: dateIn(props.publishAt, zone), zone })}
         </Typography>
       ) : null}
       {props.note ? (
@@ -240,8 +243,9 @@ export function EditorialPanelContent(props: ContentProps) {
           onSend={(note) => run(action('review')!, { note })}
         />
       ) : null}
-      {open === 'schedule' && action('schedule') ? (
+      {open === 'schedule' && action('schedule') && !siteZone.isLoading ? (
         <ScheduleDialog
+          zone={siteZone.zone}
           onClose={() => setOpen(undefined)}
           onSchedule={(publishAt) => run(action('schedule')!, { publishAt })}
         />

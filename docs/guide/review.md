@@ -37,7 +37,16 @@ optional, at most 1000 characters; the reviewer reads it on the In review page.
 
 ### Schedule
 
-The dialog takes a date and a time in your time zone. The scheduler publishes the page within a
+The dialog takes a date and a time in the **site's time zone** (the `timezone` of the site, which
+the frontend uses for its dates), and says it: "Site time zone: America/Bogota". When your browser
+is in another zone, the dialog adds the same moment in yours ("09:00 in your time zone, …"). A
+time that does not exist in the zone (the clocks go forward) schedules the first minute after the
+missing hour, and a time that occurs twice (the clocks go back) the earlier of the two. The same
+dialog opens from the builder and from the editorial panel of the Content Manager, and the panel
+shows the scheduled date ("Publishes on …") in the site's zone, with the zone named.
+
+A site with no time zone, or a role that may not read the Site, schedules in the browser's time
+zone, and the dialog says "Your time zone". The scheduler publishes the page within a
 minute of that time (`scheduledPublishRule`), and the page must pass the publish checks then: its
 budget, and its sample text if it was made from a template.
 

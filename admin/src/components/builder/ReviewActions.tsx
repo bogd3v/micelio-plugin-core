@@ -3,11 +3,14 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { BudgetResource } from '../../hooks/useBudget'
 import type { TransitionOptions, TransitionOutcome } from '../../hooks/useTransition'
+import { useSiteTimeZone } from '../../hooks/useSiteTimeZone'
 import { useMessages } from '../../messages'
 import { actionsFor, type EditorialState, type ReviewAction } from '../../utils/review'
 import { ScheduleDialog, SendBackDialog, SendToReviewDialog } from './ReviewDialogs'
 
 interface ReviewActionsProps {
+  /** The page, for the time zone of its site. */
+  page: { uid: string; documentId: string; locale: string | null }
   state: EditorialState
   /** Whether the page holds changes that are not saved yet: the server checks the saved draft. */
   isBusy: boolean
@@ -44,6 +47,7 @@ export function ReviewActions(props: ReviewActionsProps) {
   const { t } = useMessages()
   const [open, setOpen] = useState<ReviewAction['dialog']>()
   const [isWorking, setIsWorking] = useState(false)
+  const siteZone = useSiteTimeZone(props.page)
 
   useEffect(() => {
     if (props.scheduleRequest > 0) setOpen('schedule')
@@ -91,8 +95,9 @@ export function ReviewActions(props: ReviewActionsProps) {
           onSend={(note) => run(action('review')!, { note })}
         />
       ) : null}
-      {open === 'schedule' && action('schedule') ? (
+      {open === 'schedule' && action('schedule') && !siteZone.isLoading ? (
         <ScheduleDialog
+          zone={siteZone.zone}
           onClose={() => setOpen(undefined)}
           onSchedule={(publishAt) => run(action('schedule')!, { publishAt })}
         />

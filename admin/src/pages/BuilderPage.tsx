@@ -423,6 +423,7 @@ function Builder() {
           >
             {doc?.editorial ? (
               <ReviewActions
+                page={{ uid, documentId, locale: doc.locale }}
                 state={doc.editorial.state}
                 isBusy={state.isDirty || state.status === 'saving' || state.status === 'conflict'}
                 isIncomplete={state.status === 'incomplete'}

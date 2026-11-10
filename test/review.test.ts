@@ -5,7 +5,7 @@ import {
   actionsFor,
   builderPath,
   instantOf,
-  toLocalInput,
+  toZonedInput,
   transitionNotice,
   warningsOf,
   withCode,
@@ -185,12 +185,51 @@ describe('the helpers of the dialogs', () => {
     )
   })
 
-  it('turns the date and time of the schedule into an instant, and back', () => {
-    const at = new Date(2026, 10, 3, 8, 5)
-    expect(toLocalInput(at)).toBe('2026-11-03T08:05')
-    expect(instantOf('2026-11-03', '08:05')).toBe(at.toISOString())
-    expect(instantOf('2026-11-03', '')).toBeUndefined()
-    expect(instantOf('3/11/2026', '08:05')).toBeUndefined()
-    expect(instantOf('2026-13-45', '08:05')).toBeUndefined()
+  it("reads a date and a time in the site's time zone", () => {
+    // The browser is in UTC: the zone is the site's, whatever the machine says.
+    const utc = 'UTC'
+    // Bogota is UTC-5 all year: 08:00 there is 13:00 UTC.
+    const bogota = instantOf('2026-11-03', '08:00', 'America/Bogota')
+    expect(bogota).toBe('2026-11-03T13:00:00.000Z')
+    expect(toZonedInput(new Date(bogota!), 'America/Bogota')).toBe('2026-11-03T08:00')
+    // Madrid is UTC+1 in winter and UTC+2 in summer.
+    expect(instantOf('2026-11-03', '08:00', 'Europe/Madrid')).toBe('2026-11-03T07:00:00.000Z')
+    expect(instantOf('2026-07-03', '08:00', 'Europe/Madrid')).toBe('2026-07-03T06:00:00.000Z')
+    expect(toZonedInput(new Date('2026-11-03T07:00:00.000Z'), 'Europe/Madrid')).toBe(
+      '2026-11-03T08:00'
+    )
+    // The same instant reads differently in the editor's zone, which is what the dialog shows beside.
+    expect(toZonedInput(new Date(bogota!), utc)).toBe('2026-11-03T13:00')
+    expect(toZonedInput(new Date('2026-11-03T23:30:00.000Z'), 'Europe/Madrid')).toBe(
+      '2026-11-04T00:30'
+    )
+    // An input that is not a date and a time names no instant.
+    expect(instantOf('2026-11-03', '', 'America/Bogota')).toBeUndefined()
+    expect(instantOf('3/11/2026', '08:05', 'America/Bogota')).toBeUndefined()
+    expect(instantOf('2026-13-45', '08:05', 'America/Bogota')).toBeUndefined()
+    expect(instantOf('2026-02-30', '08:05', 'America/Bogota')).toBeUndefined()
+  })
+
+  it('resolves a time across a daylight saving change to one instant', () => {
+    const zone = 'America/New_York'
+    // 2026-03-08: the clocks go from 02:00 EST to 03:00 EDT (07:00 UTC).
+    // A time before and one after the change are as they read.
+    expect(instantOf('2026-03-08', '01:59', zone)).toBe('2026-03-08T06:59:00.000Z')
+    expect(instantOf('2026-03-08', '03:00', zone)).toBe('2026-03-08T07:00:00.000Z')
+    // A time in the missing hour is the first minute after it: 03:00 EDT.
+    expect(instantOf('2026-03-08', '02:00', zone)).toBe('2026-03-08T07:00:00.000Z')
+    expect(instantOf('2026-03-08', '02:30', zone)).toBe('2026-03-08T07:00:00.000Z')
+    expect(instantOf('2026-03-08', '02:59', zone)).toBe('2026-03-08T07:00:00.000Z')
+    // 2026-11-01: the clocks go from 02:00 EDT back to 01:00 EST (06:00 UTC), so 01:00 to 01:59 occur twice.
+    // A time that occurs twice is the earlier one: EDT, not EST.
+    expect(instantOf('2026-11-01', '01:30', zone)).toBe('2026-11-01T05:30:00.000Z')
+    expect(instantOf('2026-11-01', '01:00', zone)).toBe('2026-11-01T05:00:00.000Z')
+    expect(instantOf('2026-11-01', '00:59', zone)).toBe('2026-11-01T04:59:00.000Z')
+    expect(instantOf('2026-11-01', '02:00', zone)).toBe('2026-11-01T07:00:00.000Z')
+    // The day before and after each change is not affected.
+    expect(instantOf('2026-03-09', '08:00', zone)).toBe('2026-03-09T12:00:00.000Z')
+    expect(instantOf('2026-11-02', '08:00', zone)).toBe('2026-11-02T13:00:00.000Z')
+    // A half-hour change (Lord Howe, +10:30 to +11, 2026-10-04 02:00) resolves too.
+    expect(instantOf('2026-10-04', '02:15', 'Australia/Lord_Howe')).toBe('2026-10-03T15:30:00.000Z')
   })
 })

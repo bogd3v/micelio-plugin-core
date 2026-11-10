@@ -6,7 +6,13 @@ import styled, { useTheme } from 'styled-components'
 import type { BudgetResource } from '../../hooks/useBudget'
 import type { TransitionOptions, TransitionOutcome } from '../../hooks/useTransition'
 import { useMessages } from '../../messages'
-import { instantOf, toLocalInput, transitionNotice, type EditorialState } from '../../utils/review'
+import {
+  browserZone,
+  instantOf,
+  toZonedInput,
+  transitionNotice,
+  type EditorialState,
+} from '../../utils/review'
 import { Input } from './fieldStyle'
 
 // The dialogs of the editorial buttons, shared by the builder's toolbar (`ReviewActions`), the In
@@ -202,18 +208,27 @@ export function SendToReviewDialog(
   )
 }
 
-/** Schedule publication: a date and time in the editor's time zone, and what scheduling means. */
+/**
+ * Schedule publication: a date and time in the site's time zone, and what scheduling means.
+ *
+ * @remarks
+ * `zone` is the site's IANA time zone (`useSiteTimeZone`); without one (the site has none, or the
+ * role may not read it) the dialog uses the browser's and says so. When the browser's zone is not
+ * the one in use, the same instant is shown in it.
+ */
 export function ScheduleDialog(props: {
+  zone: string | undefined
   onClose: () => void
   onSchedule: (publishAt: string) => Promise<boolean>
 }) {
-  const { t } = useMessages()
-  const tomorrow = toLocalInput(new Date(Date.now() + 24 * 3_600_000))
+  const { t, dateIn } = useMessages()
+  const own = browserZone()
+  const zone = props.zone ?? own
+  const tomorrow = toZonedInput(new Date(Date.now() + 24 * 3_600_000), zone)
   const [date, setDate] = useState(tomorrow.slice(0, 10))
   const [time, setTime] = useState('08:00')
   const [isSending, setIsSending] = useState(false)
-  const publishAt = instantOf(date, time)
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const publishAt = instantOf(date, time, zone)
   return (
     <Dialog
       title={t('review.schedule.title')}
@@ -256,8 +271,13 @@ export function ScheduleDialog(props: {
           </div>
         </Pair>
         <Typography variant="pi" textColor="neutral600" tag="p">
-          {t('review.schedule.zone', { zone })}
+          {t(props.zone ? 'review.schedule.zone.site' : 'review.schedule.zone', { zone })}
         </Typography>
+        {props.zone && publishAt && props.zone !== own ? (
+          <Typography variant="pi" textColor="neutral600" tag="p" data-testid="schedule-own-time">
+            {t('review.schedule.zone.own', { when: dateIn(publishAt, own), zone: own })}
+          </Typography>
+        ) : null}
         <Box background="neutral100" padding={3} hasRadius>
           <Flex gap={2} alignItems="center" wrap="wrap">
             <Typography fontWeight="bold">{t('review.schedule.after')}</Typography>

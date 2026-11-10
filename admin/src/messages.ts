@@ -10,6 +10,8 @@ export interface Messages {
   t: (id: string, values?: Record<string, string | number>) => string
   /** A date and time, in the admin's language. */
   date: (iso: string) => string
+  /** A date and time as they read in the IANA time zone `zone`, in the admin's language. */
+  dateIn: (iso: string, zone: string) => string
   /** A weight in kB with one decimal, in the editor's locale (`formatKb`). */
   kb: (value: number) => string
   /** A carbon estimate in mg of CO2e with up to one decimal, in the editor's locale (`formatMg`). */
@@ -32,6 +34,8 @@ export function useMessages(): Messages {
       ),
     // Seconds included: a run again within the same minute must read as new.
     date: (iso) => formatDate(iso, { dateStyle: 'medium', timeStyle: 'medium' }),
+    dateIn: (iso, zone) =>
+      formatDate(iso, { dateStyle: 'medium', timeStyle: 'short', timeZone: zone }),
     kb: (value) => formatKb(value, locale),
     mg: (value) => formatMg(value, locale),
   }
