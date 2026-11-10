@@ -15,14 +15,15 @@ export interface HookRegistry extends MicelioHooks {
 
 type AnyHandler = (payload: unknown) => unknown
 
-const HOOK_NAMES: ReadonlySet<string> = new Set<HookName>([
+/** The names of the hooks the core runs. */
+export const HOOK_NAMES: readonly HookName[] = [
   'beforeTransition',
   'afterTransition',
   'afterPublish',
   'afterUnpublish',
   'siteCreated',
   'blockCatalogueChanged',
-])
+]
 
 /**
  * A new, empty hooks registry; the `hooks` service holds the one of a Strapi instance.
@@ -35,7 +36,8 @@ export function createHookRegistry(log: Pick<Core.Strapi['log'], 'error'>): Hook
 
   return {
     on<K extends HookName>(name: K, handler: HookHandler<K>): () => void {
-      if (!HOOK_NAMES.has(name)) throw new TypeError(`micelio: "${String(name)}" is not a hook`)
+      if (!(HOOK_NAMES as readonly string[]).includes(name))
+        throw new TypeError(`micelio: "${String(name)}" is not a hook`)
       if (typeof handler !== 'function') {
         throw new TypeError(`micelio: the handler of ${name} must be a function`)
       }

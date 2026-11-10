@@ -185,6 +185,19 @@ function Checks(props: {
               value={`${sibling.name} ${sibling.version}`}
             />
           ))}
+          <Row
+            label={t('about.row.theme')}
+            value={
+              report.theme === null
+                ? t('about.row.theme.none')
+                : report.theme.themeVersion
+                  ? t('about.row.theme.value', {
+                      theme: report.theme.themeId,
+                      version: report.theme.themeVersion,
+                    })
+                  : t('about.row.theme.noVersion', { theme: report.theme.themeId })
+            }
+          />
           <Row label={t('about.row.update')} value={<UpdateText report={report} />} />
         </dl>
         <Typography variant="pi" textColor="neutral600">

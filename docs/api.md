@@ -611,16 +611,18 @@ the blocks a save adds are. The page type is the page's `pageType` when the budg
 
 Admin API routes, behind the status page of the admin ([docs/operate/status-page.md](operate/status-page.md)). It needs the admin permission `plugin::micelio.status.read` (Settings → Roles → Plugins → Micelio); the super admin has it.
 
-| Method | Path                         | Answers                                                                |
-| ------ | ---------------------------- | ---------------------------------------------------------------------- |
-| `GET`  | `/micelio/status`            | `{ "data": { plugin, sites, frontends, hostCheck, blocks, plugins } }` |
-| `POST` | `/micelio/status/host-check` | `{ "data": HostCheckReport }`                                          |
+| Method | Path                         | Answers                                                                                     |
+| ------ | ---------------------------- | ------------------------------------------------------------------------------------------- |
+| `GET`  | `/micelio/status`            | `{ "data": { plugin, sites, frontends, hostCheck, blocks, siblings, contracts, plugins } }` |
+| `POST` | `/micelio/status/host-check` | `{ "data": HostCheckReport }`                                                               |
 
 - `plugin`: `version` (the package's) and `coreLine` (`micelio` in its `package.json`).
 - `sites`: `documentId`, `name` (in the default locale when the site has it), `slug`, `hosts`, `isDefault` and `origin`, the origin of the site's `url` or `null`. The default site comes first.
 - `frontends`: one per distinct `origin`, with the `sites` (slugs) behind it, `health` and `version`. The route asks each one for `GET <origin>/_health` on every call, at most two seconds each: `reachable` with the `version` of its answer when it gave one, `unavailable` when it answered outside `2xx` or not at all. `unavailable` is not an error: a frontend may not serve the endpoint yet.
 - `hostCheck`: the latest run of the host check (`HostCheckReport`, [docs/operate/host-check.md](operate/host-check.md)), `null` if it has not run since the boot. `GET` does not run it again.
 - `blocks`: `count`, the number of blocks in the catalogue.
+- `siblings`: the `@micelio/*` plugins the host enabled next to the core, by package `name`, each with its `version` and the ids of what it registered: `adminPages`, `siteSections`, `statusChecks` and `exportSections` (empty lists for a plugin that registered nothing). A registration belongs to the plugin its `permission` (`plugin::<plugin>.<action>`) names. Only the ids whose `permission` the caller holds are listed, and `hidden` is `true` when at least one was left out (`false` for a plugin that registered nothing). Nothing is requested: it reads Strapi's list of enabled plugins (`enabledPlugins`, dependency plugins included, with the version of each) and the extension registry; no file is read.
+- `contracts`: what this core exposes, read from the code that defines it: `blocks` (the number of blocks in the catalogue), `editorialStates`, `hooks` (the hook names) and `extensionPoints` (the four `register…` methods of the `extensions` service).
 - `plugins`: by plugin `id`, the latest checks of each sibling plugin that registered some (`registerStatusChecks`, [extension points](plugins/extension-points.md)) and whose `permission` the caller has: `label`, `ranAt` (ISO 8601, `null` until the checks first run) and `checks`, each a `Check` with the `site` (`documentId`) it ran for. `GET` never runs them.
 
 `POST /micelio/status/host-check` runs the host check again and the checks of sibling plugins for every site, keeps their results as the latest (what `GET` answers afterwards) and answers the host check's report. The checks also run every day (`statusRefreshRule`, README). It takes no body. It runs the check as `micelio doctor` reports it: a failed required check is in the report, and nothing is logged or stopped. A request made while a run is in progress gets that run's report instead of starting another.

@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import type { Core, UID } from '@strapi/strapi'
 import packageJson from '../../../package.json'
 import { BLOCKS } from '../../../contract/blocks'
@@ -8,6 +6,7 @@ import { SITE_UID } from '../constants/site'
 import { readFrontend } from '../host-check/facts'
 import { isEditorial } from '../editorial'
 import { readSites } from '../status/read'
+import { siblingPlugins } from '../status/siblings'
 import type { AboutFrontend, AboutReport, AboutUpdate } from '../types/about'
 import type { StatusSite } from '../types/status'
 import { checkForUpdate } from './update-check'
@@ -90,38 +89,23 @@ export async function readAbout(
     uploads: strapi.config.get<string>('plugin::upload.provider', 'local'),
     isSmtpConfigured: isSmtpConfigured(strapi),
     frontends: checks?.frontends ?? [],
-    siblings: siblingPlugins(strapi),
+    siblings: siblingPlugins(strapi).map(({ name, version }) => ({ name, version })),
+    theme: await defaultTheme(strapi),
     update,
     checkedAt: checks?.checkedAt ?? null,
   }
   return { ...report, diagnostics: await diagnosticsOf(strapi, report) }
 }
 
-/** The `@micelio/*` packages the host enabled next to the core, from their `package.json`. */
-function siblingPlugins(strapi: Core.Strapi): AboutReport['siblings'] {
-  const plugins = strapi.config.get<Record<string, { enabled?: boolean; resolve?: string }>>(
-    'plugins',
-    {}
-  )
-  const found: AboutReport['siblings'] = []
-  for (const [id, plugin] of Object.entries(plugins)) {
-    if (id === 'micelio' || plugin.enabled === false || !plugin.resolve) continue
-    try {
-      const root = path.isAbsolute(plugin.resolve)
-        ? plugin.resolve
-        : path.resolve(strapi.dirs.app.root, plugin.resolve)
-      const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')) as {
-        name?: string
-        version?: string
-      }
-      if (manifest.name?.startsWith('@micelio/') && manifest.version) {
-        found.push({ name: manifest.name, version: manifest.version })
-      }
-    } catch {
-      // A plugin without a readable package.json is not listed; the page says what it can read.
-    }
-  }
-  return found.sort((a, b) => (a.name < b.name ? -1 : 1))
+/** The default site's theme pin; `null` when the site has none. */
+async function defaultTheme(strapi: Core.Strapi): Promise<AboutReport['theme']> {
+  const rows = (await strapi.db.query(SITE_UID as UID.ContentType).findMany({
+    select: ['documentId', 'slug', 'isDefault'],
+    where: { isDefault: true },
+    populate: { theme: true },
+  })) as SiteRow[]
+  const pin = rows.find((row) => row.theme?.themeId)?.theme
+  return pin?.themeId ? { themeId: pin.themeId, themeVersion: pin.themeVersion ?? null } : null
 }
 
 async function diagnosticsOf(

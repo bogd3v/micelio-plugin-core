@@ -22,7 +22,8 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<'find' | 'runHostCh
   return {
     async find(ctx) {
       if (!isAllowed(ctx)) return
-      const report = await status().read()
+      const ability = ctx.state.userAbility as UserAbility | undefined
+      const report = await status().read((permission: string) => ability?.can(permission) === true)
       ctx.body = { data: { ...report, plugins: visiblePlugins(strapi, ctx, report.plugins) } }
     },
     async runHostCheck(ctx) {

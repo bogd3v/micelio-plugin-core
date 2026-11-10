@@ -113,6 +113,34 @@ describe('the status route', () => {
     expect(data.hostCheck?.results.map(({ id }) => id)).toContain('frontend-release-line')
   })
 
+  it('lists the sibling plugins with what each registered, next to the fields it had', async () => {
+    const { data } = (await (await readStatus('strapi-super-admin')).json()) as {
+      data: StatusReport
+    }
+    expect(data.siblings).toEqual([
+      {
+        name: '@micelio/extension-fixture',
+        version: '0.0.0',
+        adminPages: ['fixture-page'],
+        siteSections: ['fixture-profile'],
+        statusChecks: ['fixture-checks'],
+        exportSections: ['fixture-members'],
+        hidden: false,
+      },
+      {
+        name: '@micelio/hook-recorder',
+        version: '0.0.0',
+        adminPages: [],
+        siteSections: [],
+        statusChecks: [],
+        exportSections: [],
+        hidden: false,
+      },
+    ])
+    expect(data.contracts.blocks).toBe(BLOCKS.length)
+    expect(data.contracts.extensionPoints).toHaveLength(4)
+  })
+
   it('refuses an admin user whose role lacks the status permission', async () => {
     const response = await readStatus('strapi-editor')
     expect(response.status).toBe(403)

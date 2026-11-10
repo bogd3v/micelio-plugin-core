@@ -329,6 +329,33 @@ describe('the extension points', () => {
       ])
     })
 
+    it('lists the ids a sibling registered only to a role that has their permission', async () => {
+      const fixture = (report: StatusReport) =>
+        report.siblings.find(({ name }) => name === '@micelio/extension-fixture')!
+      expect(fixture(await status('super')).statusChecks).toEqual(['fixture-checks'])
+      expect(fixture(await status('status-only'))).toMatchObject({
+        adminPages: [],
+        siteSections: [],
+        statusChecks: [],
+        exportSections: [],
+      })
+      expect(fixture(await status('fixture-reader')).statusChecks).toEqual(['fixture-checks'])
+    })
+
+    it('says which sibling has registrations the role may not see', async () => {
+      const hidden = async (role: Role) =>
+        Object.fromEntries((await status(role)).siblings.map(({ name, hidden }) => [name, hidden]))
+      // The hook recorder registered nothing: nothing is hidden from anyone.
+      expect(await hidden('super')).toEqual({
+        '@micelio/extension-fixture': false,
+        '@micelio/hook-recorder': false,
+      })
+      expect(await hidden('status-only')).toEqual({
+        '@micelio/extension-fixture': true,
+        '@micelio/hook-recorder': false,
+      })
+    })
+
     it("shows a plugin's checks only to a role that has its permission", async () => {
       expect(Object.keys((await status('status-only')).plugins)).toEqual([])
       expect(Object.keys((await status('super')).plugins)).toEqual(['fixture-checks'])

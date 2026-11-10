@@ -8,6 +8,7 @@ import en from '../../admin/src/translations/en.json'
 import es from '../../admin/src/translations/es.json'
 import packageJson from '../../package.json'
 import { SITE_UID } from '../../server/src/constants/site'
+import { STATUS_READ_PERMISSION } from '../../server/src/constants/status'
 import { startFrontend, type FrontendStub } from '../strapi/frontend'
 import { cleanupStrapi, setupStrapi } from '../strapi/harness'
 
@@ -15,6 +16,8 @@ const EMAIL = 'admin@example.com'
 // A second super admin whose interface language is Spanish: Strapi 5.59 switches the admin to the
 // user's `preferedLanguage` once they log in (`features/Auth` of `@strapi/admin`).
 const SPANISH_EMAIL = 'admin-es@example.com'
+// A role with the status permission and none of the extension fixture's.
+const STATUS_ONLY_EMAIL = 'status-only@example.com'
 const PASSWORD = 'Password1234'
 
 // What the standard requires of the admin page: WCAG 2.0, 2.1 and 2.2, levels A and AA (section 9).
@@ -124,6 +127,25 @@ describe('the status page in the admin', () => {
       })
     }
 
+    const roles = strapi.service('admin::role')
+    const statusOnly = (await roles.create({
+      name: 'Status only',
+      description: 'Status only',
+    })) as {
+      id: number
+    }
+    await roles.assignPermissions(statusOnly.id, [
+      { action: STATUS_READ_PERMISSION, subject: null, properties: {}, conditions: [] },
+    ])
+    await strapi.service('admin::user').create({
+      email: STATUS_ONLY_EMAIL,
+      firstname: 'Status',
+      lastname: 'Only',
+      password: PASSWORD,
+      roles: [statusOnly.id],
+      isActive: true,
+    })
+
     browser = await chromium.launch()
     page = await openStatusPage(browser, base, EMAIL)
     await page.getByRole('heading', { name: 'Host check' }).waitFor()
@@ -155,6 +177,60 @@ describe('the status page in the admin', () => {
     // The sites and their host names.
     expect(text).toContain('blog.example.com')
     expect(text).toContain('docs.example.com')
+  })
+
+  it('shows the Micelio plugins and the contracts', async () => {
+    const main = page.getByRole('main')
+    const siblings = main.locator('section').filter({
+      has: page.getByRole('heading', { name: 'Micelio plugins' }),
+    })
+    const siblingsText = (await siblings.textContent()) ?? ''
+    // A plugin with what it registered, and one that registered nothing.
+    expect(siblingsText).toContain('@micelio/extension-fixture 0.0.0')
+    expect(siblingsText).toContain('fixture-page')
+    expect(siblingsText).toContain('fixture-profile')
+    expect(siblingsText).toContain('fixture-checks')
+    expect(siblingsText).toContain('fixture-members')
+    expect(siblingsText).toContain('@micelio/hook-recorder 0.0.0')
+    expect(siblingsText).toContain('registers no extension point')
+    expect(siblingsText).not.toContain(en['status.siblings.hidden'])
+    const contracts = main.locator('section').filter({
+      has: page.getByRole('heading', { name: 'Contracts this core exposes' }),
+    })
+    const contractsText = (await contracts.textContent()) ?? ''
+    // The two cards side by side are as tall as each other.
+    const heights = [await siblings.boundingBox(), await contracts.boundingBox()].map(
+      (box) => box?.height ?? 0
+    )
+    expect(heights[0]).toBeGreaterThan(0)
+    expect(heights[0]).toBe(heights[1])
+    expect(contractsText).toContain(`Blocks in the catalogue${BLOCKS.length}`)
+    expect(contractsText).toContain('Draft, In review, Scheduled, Published')
+    expect(contractsText).toContain('beforeTransition')
+    expect(contractsText).toContain('blockCatalogueChanged')
+    expect(contractsText).toContain('registerExportSection')
+  })
+
+  it('tells a plugin whose registrations the role may not see from one that registered none', async () => {
+    const restricted = await openStatusPage(browser, base, STATUS_ONLY_EMAIL)
+    const heading = restricted.getByRole('heading', { name: 'Micelio plugins' })
+    await heading.waitFor()
+    const item = (name: string) =>
+      restricted
+        .getByRole('main')
+        .locator('section')
+        .filter({ has: heading })
+        .getByRole('listitem')
+        .filter({ hasText: name })
+        .textContent()
+    const fixture = (await item('@micelio/extension-fixture')) ?? ''
+    expect(fixture).toContain(en['status.siblings.hidden'])
+    expect(fixture).not.toContain('registers no extension point')
+    expect(fixture).not.toContain('fixture-page')
+    const recorder = (await item('@micelio/hook-recorder')) ?? ''
+    expect(recorder).toContain('registers no extension point')
+    expect(recorder).not.toContain(en['status.siblings.hidden'])
+    await restricted.context().close()
   })
 
   it('runs the host check again and shows the new report without a reload', async () => {
@@ -194,6 +270,13 @@ describe('the status page in the admin', () => {
       )
       expect(titles).toHaveLength(8)
       for (const [id, title] of titles) expect(text, id).toContain(title)
+    })
+
+    it('shows the plugins and the contracts in Spanish', () => {
+      expect(text).toContain('Plugins de Micelio')
+      expect(text).toContain('no registra ningún punto de extensión')
+      expect(text).toContain('Contratos que expone este núcleo')
+      expect(text).toContain('Estados editoriales')
     })
 
     it('shows each result of the host check in Spanish', async () => {

@@ -10,6 +10,10 @@ export interface StatusReport {
   /** The latest run of the host check; `null` when it has not run since the boot. */
   hostCheck: HostCheckReport | null
   blocks: StatusBlocks
+  /** The `@micelio/*` plugins installed next to the core, by package name, with what each registered. */
+  siblings: StatusSibling[]
+  /** The contracts this core exposes to plugins, frontends and themes. */
+  contracts: StatusContracts
   /**
    * The latest checks of each sibling plugin that registered some, by plugin `id`, and only the
    * plugins the caller's admin permissions allow (`registerStatusChecks`).
@@ -80,4 +84,37 @@ export interface StatusFrontend {
 export interface StatusBlocks {
   /** Number of blocks in the catalogue. */
   count: number
+}
+
+/** A Micelio plugin installed next to the core and the extension points it registered. */
+export interface StatusSibling {
+  /** The package name, such as `@micelio/strapi-plugin-fediverse`. */
+  name: string
+  version: string
+  /**
+   * The ids of what it registered, told by the plugin that owns the registration's `permission`
+   * (`plugin::<plugin>.<action>`), and only those the caller holds the permission of. Each list
+   * is in registration order.
+   */
+  adminPages: string[]
+  siteSections: string[]
+  statusChecks: string[]
+  exportSections: string[]
+  /**
+   * Whether the caller lacks the `permission` of at least one of its registrations: their ids are
+   * left out of the lists above. False for a plugin that registered nothing.
+   */
+  hidden: boolean
+}
+
+/** The contracts of this core (standard, section 6) as a plugin or a frontend sees them. */
+export interface StatusContracts {
+  /** Number of blocks in the catalogue. */
+  blocks: number
+  /** The editorial states, in the order of the workflow. */
+  editorialStates: string[]
+  /** The hook names. */
+  hooks: string[]
+  /** The extension points a sibling plugin registers. */
+  extensionPoints: string[]
 }
