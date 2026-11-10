@@ -204,18 +204,95 @@ export function builderPath(
   return `/plugins/micelio/builder/${page.uid}/${page.documentId}${query ? `?${query}` : ''}`
 }
 
-/**
- * The value of a `datetime-local` input for a date in the browser's time zone, `YYYY-MM-DDTHH:mm`,
- * and back: the schedule dialog shows the editor's time and sends an ISO 8601 instant.
- */
-export function toLocalInput(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+const MINUTE = 60_000
+
+/** The time zone of the browser, an IANA name. */
+export function browserZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone
 }
 
-/** The instant a `date` and `time` input pair names in the browser's time zone, or `undefined`. */
-export function instantOf(date: string, time: string): string | undefined {
+/** Whether `zone` is an IANA time zone this browser knows. */
+export function isZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: zone })
+    return true
+  } catch {
+    return false
+  }
+}
+
+const formatters = new Map<string, Intl.DateTimeFormat>()
+
+/** The wall-clock fields of an instant in `zone`, read as if they were UTC (ms since the epoch). */
+function wallOf(ms: number, zone: string): number {
+  let format = formatters.get(zone)
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+    formatters.set(zone, format)
+  }
+  const fields: Record<string, number> = {}
+  for (const part of format.formatToParts(ms)) fields[part.type] = Number(part.value)
+  return Date.UTC(
+    fields.year,
+    fields.month - 1,
+    fields.day,
+    fields.hour,
+    fields.minute,
+    fields.second
+  )
+}
+
+/** The offset of `zone` from UTC at an instant, in ms. */
+const offsetAt = (ms: number, zone: string): number => wallOf(ms, zone) - ms
+
+/**
+ * The value of a `datetime-local` input, `YYYY-MM-DDTHH:mm`, for an instant read in the IANA
+ * `zone`: the schedule dialog shows the time of the site's readers, not the editor's.
+ */
+export function toZonedInput(date: Date, zone: string): string {
+  return new Date(wallOf(date.getTime(), zone)).toISOString().slice(0, 16)
+}
+
+/**
+ * The instant a `date` and `time` input pair names in the IANA `zone`, as an ISO 8601 string, or
+ * `undefined` for an input that is not a date and a time.
+ *
+ * @remarks
+ * A daylight saving change makes some wall times ambiguous or absent, and each resolves to one
+ * instant: a time that occurs twice (the clocks go back) is the earlier of the two, and a time that
+ * does not occur (the clocks go forward) is the first minute after the missing hour, the moment the
+ * change takes place.
+ */
+export function instantOf(date: string, time: string, zone: string): string | undefined {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return undefined
-  const at = new Date(`${date}T${time}`)
-  return Number.isNaN(at.getTime()) ? undefined : at.toISOString()
+  const wall = new Date(`${date}T${time}:00Z`).getTime()
+  if (Number.isNaN(wall) || new Date(wall).toISOString().slice(0, 16) !== `${date}T${time}`) {
+    return undefined
+  }
+  // The offsets a day before and after the wall time bracket any change of that day.
+  const before = offsetAt(wall - 24 * 3_600_000, zone)
+  const after = offsetAt(wall + 24 * 3_600_000, zone)
+  const matches = [...new Set([before, after])]
+    .map((offset) => wall - offset)
+    .filter((ms) => wallOf(ms, zone) === wall)
+  if (matches.length > 0) return new Date(Math.min(...matches)).toISOString()
+  // Missing: the clocks went forward over this time. The change is the first minute that has the
+  // later offset, between the instant read with the earlier offset and with the later one.
+  let low = wall - after
+  let high = wall - before
+  while (high - low > MINUTE) {
+    const middle = low + Math.floor((high - low) / 2 / MINUTE) * MINUTE
+    if (offsetAt(middle, zone) === before) low = middle
+    else high = middle
+  }
+  return new Date(high).toISOString()
 }

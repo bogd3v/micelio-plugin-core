@@ -22,6 +22,7 @@ const eventually = <T>(read: () => Promise<T> | T) => expect.poll(read, { timeou
 
 interface Editorial {
   state: string
+  publishAt: string | null
   note: string | null
 }
 
@@ -58,7 +59,12 @@ describe('the editorial panel in the edit view', () => {
   }
 
   /** A logged-in page of a context of its own, at the edit view of the entry. */
-  async function open(uid: string, documentId: string, locale?: string): Promise<Page> {
+  async function open(
+    uid: string,
+    documentId: string,
+    locale?: string,
+    options: { timezoneId?: string } = {}
+  ): Promise<Page> {
     admins += 1
     const email = `editorial-${admins}@example.com`
     const user = (await strapi.service('admin::user').create({
@@ -70,7 +76,10 @@ describe('the editorial panel in the edit view', () => {
       isActive: true,
     })) as { id: number }
     adminId = user.id
-    const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
+    const context = await browser.newContext({
+      viewport: { width: 1600, height: 1000 },
+      ...(options.timezoneId ? { timezoneId: options.timezoneId } : {}),
+    })
     contexts.push(context)
     const page = await context.newPage()
     await page.goto(`${base}/admin/auth/login`)
@@ -291,6 +300,92 @@ describe('the editorial panel in the edit view', () => {
     await eventually(async () => (await editorialOf(documentId)).state).toBe('draft')
     await panel.getByRole('button', { name: 'Send to review' }).waitFor()
     await expect(panel.getByText(/^Publishes on /).count()).resolves.toBe(0)
+  })
+
+  /** Runs `work` with the site's `timezone` set, and puts the old one back. */
+  async function withSiteZone(timezone: string | null, work: () => Promise<void>): Promise<void> {
+    const sites = strapi.documents(SITE_UID as UID.ContentType)
+    const before = (
+      (await sites.findOne({ documentId: siteDocumentId })) as unknown as {
+        timezone: string | null
+      }
+    ).timezone
+    await sites.update({ documentId: siteDocumentId, data: { timezone } as never })
+    try {
+      await work()
+    } finally {
+      await sites.update({ documentId: siteDocumentId, data: { timezone: before } as never })
+    }
+  }
+
+  it("schedules from the panel in the site's time zone and shows the date in it", async () => {
+    await withSiteZone('America/Bogota', async () => {
+      const documentId = await seeded('Bogota memo')
+      // The editor's browser is in Madrid: 08:00 in Bogota (UTC-5) is 14:00 there in January.
+      const page = await open(MEMO_UID, documentId, undefined, { timezoneId: 'Europe/Madrid' })
+      const panel = panelOf(page)
+      await panel.getByRole('button', { name: 'Schedule', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Schedule publication' })
+      await dialog.getByText(/^Site time zone: America\/Bogota\./).waitFor()
+      await dialog.getByLabel('Date').fill('2099-01-15')
+      await dialog.getByLabel('Time').fill('08:00')
+      await dialog.getByText(/^Jan 15, 2099, 2:00 PM in your time zone, Europe\/Madrid$/).waitFor()
+      await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
+      await eventually(async () => (await editorialOf(documentId)).state).toBe('scheduled')
+      expect((await editorialOf(documentId)).publishAt).toBe('2099-01-15T13:00:00.000Z')
+      // The panel says the date as the site's readers read it, with the zone named.
+      await panel.getByText('Publishes on Jan 15, 2099, 8:00 AM (America/Bogota)').waitFor()
+    })
+  })
+
+  it("schedules in the browser's time zone, and says so, for a role that may not read the Site", async () => {
+    const code = 'panel-without-site'
+    const role = (await strapi.service('admin::role').create({ name: code, code })) as {
+      id: number
+    }
+    const fields = Object.keys(strapi.contentType(MEMO_UID as UID.ContentType).attributes)
+    await strapi.service('admin::role').addPermissions(
+      role.id,
+      ['read', 'update'].map((action) => ({
+        action: `plugin::content-manager.explorer.${action}`,
+        subject: MEMO_UID,
+        conditions: [],
+        properties: { fields },
+      }))
+    )
+    const sites = strapi.documents(SITE_UID as UID.ContentType)
+    // The site has a zone, and the role is on the policy for scheduling, but it cannot read the Site.
+    await sites.update({
+      documentId: siteDocumentId,
+      data: {
+        timezone: 'America/Bogota',
+        editorialPolicy: { 'draft->scheduled': [code] },
+      } as never,
+    })
+    const previous = superAdminId
+    superAdminId = role.id
+    try {
+      const documentId = await seeded('Blind memo')
+      const page = await open(MEMO_UID, documentId, undefined, { timezoneId: 'Asia/Tokyo' })
+      const panel = panelOf(page)
+      await panel.getByRole('button', { name: 'Schedule', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Schedule publication' })
+      await dialog.getByText(/^Your time zone: Asia\/Tokyo\./).waitFor()
+      await dialog.getByLabel('Date').fill('2099-01-15')
+      await dialog.getByLabel('Time').fill('08:00')
+      expect(await dialog.getByText(/^Site time zone/).count()).toBe(0)
+      await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
+      await eventually(async () => (await editorialOf(documentId)).state).toBe('scheduled')
+      // 08:00 in Tokyo (UTC+9) is 23:00 UTC of the day before.
+      expect((await editorialOf(documentId)).publishAt).toBe('2099-01-14T23:00:00.000Z')
+      await panel.getByText('Publishes on Jan 15, 2099, 8:00 AM (Asia/Tokyo)').waitFor()
+    } finally {
+      superAdminId = previous
+      await sites.update({
+        documentId: siteDocumentId,
+        data: { timezone: null, editorialPolicy: null } as never,
+      })
+    }
   })
 
   it('has no WCAG 2.2 A or AA violation in the panel', async () => {

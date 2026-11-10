@@ -67,7 +67,7 @@ describe('the review flow in the builder', () => {
     return draft.editorial
   }
 
-  async function open(documentId: string): Promise<Page> {
+  async function open(documentId: string, options: { timezoneId?: string } = {}): Promise<Page> {
     admins += 1
     const email = `review-${admins}@example.com`
     await strapi.service('admin::user').create({
@@ -81,6 +81,7 @@ describe('the review flow in the builder', () => {
     const context = await browser.newContext({
       viewport: { width: 1280, height: 900 },
       bypassCSP: true,
+      ...(options.timezoneId ? { timezoneId: options.timezoneId } : {}),
     })
     contexts.push(context)
     const page = await context.newPage()
@@ -212,6 +213,57 @@ describe('the review flow in the builder', () => {
     // "Schedule again" opens the dialog.
     await page.getByRole('button', { name: 'Schedule again' }).click()
     await page.getByRole('dialog', { name: 'Schedule publication' }).waitFor()
+  })
+
+  /** Runs `work` with the site's `timezone` set, and puts the old one back. */
+  async function withSiteZone(timezone: string | null, work: () => Promise<void>): Promise<void> {
+    const sites = strapi.documents(SITE_UID as UID.ContentType)
+    const before = (
+      (await sites.findOne({ documentId: siteDocumentId })) as unknown as {
+        timezone: string | null
+      }
+    ).timezone
+    await sites.update({ documentId: siteDocumentId, data: { timezone } as never })
+    try {
+      await work()
+    } finally {
+      await sites.update({ documentId: siteDocumentId, data: { timezone: before } as never })
+    }
+  }
+
+  it("schedules in the site's time zone and shows the editor's time beside it", async () => {
+    await withSiteZone('America/Bogota', async () => {
+      const documentId = await seeded('Bogota schedule')
+      // The editor's browser is in Madrid: 08:00 in Bogota (UTC-5) is 14:00 there in January.
+      const page = await open(documentId, { timezoneId: 'Europe/Madrid' })
+      await page.getByRole('button', { name: 'Schedule', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Schedule publication' })
+      await dialog.getByText(/^Site time zone: America\/Bogota\./).waitFor()
+      await dialog.getByLabel('Date').fill('2099-01-15')
+      await dialog.getByLabel('Time').fill('08:00')
+      await dialog.getByText(/^Jan 15, 2099, 2:00 PM in your time zone, Europe\/Madrid$/).waitFor()
+      await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
+      await eventually(() => stateBadge(page)).toBe('Scheduled')
+      expect((await editorialOf(documentId)).publishAt).toBe('2099-01-15T13:00:00.000Z')
+    })
+  })
+
+  it("uses the browser's time zone when the site has none", async () => {
+    await withSiteZone(null, async () => {
+      const documentId = await seeded('No zone schedule')
+      const page = await open(documentId, { timezoneId: 'Asia/Tokyo' })
+      await page.getByRole('button', { name: 'Schedule', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Schedule publication' })
+      await dialog.getByText(/^Your time zone: Asia\/Tokyo\./).waitFor()
+      await dialog.getByLabel('Date').fill('2099-01-15')
+      await dialog.getByLabel('Time').fill('08:00')
+      expect(await dialog.getByText(/in your time zone/).count()).toBe(0)
+      expect(await dialog.getByText(/^Site time zone/).count()).toBe(0)
+      await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
+      await eventually(() => stateBadge(page)).toBe('Scheduled')
+      // 08:00 in Tokyo (UTC+9) is 23:00 UTC of the day before.
+      expect((await editorialOf(documentId)).publishAt).toBe('2099-01-14T23:00:00.000Z')
+    })
   })
 
   it('shows a refusal as a notification with a link to the block', async () => {
