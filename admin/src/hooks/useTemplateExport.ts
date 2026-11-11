@@ -3,7 +3,7 @@ import { useRef } from 'react'
 
 import type { TemplateSummary } from '../../../server/src/types/page-templates'
 import { useMessages } from '../messages'
-import { problemOf } from '../utils/fetchError'
+import { ANSWER_REFUSALS, outcomeOf } from '../utils/fetchError'
 import { templateFileName } from '../utils/templates'
 
 /**
@@ -20,10 +20,17 @@ export function useTemplateExport(): (
   const { toggleNotification } = useNotification()
   return async (template) => {
     try {
-      const answer = await clientRef.current.get<{ data: unknown }>(
-        `/micelio/templates/${template.id}/export`
+      const outcome = outcomeOf<unknown>(
+        await clientRef.current.get(`/micelio/templates/${template.id}/export`, ANSWER_REFUSALS)
       )
-      const blob = new Blob([`${JSON.stringify(answer.data.data, null, 2)}\n`], {
+      if (!outcome.ok) {
+        toggleNotification({
+          type: 'danger',
+          message: outcome.detail ?? t('template.gallery.export.failed'),
+        })
+        return
+      }
+      const blob = new Blob([`${JSON.stringify(outcome.data, null, 2)}\n`], {
         type: 'application/json',
       })
       const link = document.createElement('a')
@@ -31,10 +38,10 @@ export function useTemplateExport(): (
       link.download = templateFileName(template.name)
       link.click()
       URL.revokeObjectURL(link.href)
-    } catch (error) {
+    } catch {
       toggleNotification({
         type: 'danger',
-        message: problemOf(error)?.detail ?? t('template.gallery.export.failed'),
+        message: t('template.gallery.export.failed'),
       })
     }
   }

@@ -292,6 +292,37 @@ describe('page templates in the admin', () => {
     await page.getByText('That file is not JSON.').first().waitFor()
   })
 
+  it('shows the detail of a refused template export in the gallery', async () => {
+    const detail = 'Your role may not export templates of this site.'
+    const source = await newGuide()
+    await service().save({
+      site: { documentId: siteDocumentId, slug: 'default' },
+      uid: GUIDE_UID,
+      documentId: source,
+      locale: 'en',
+      name: 'Refused export',
+      scope: 'site',
+    })
+    const page = await open(`${base}/admin/plugins/micelio/new/${encodeURIComponent(GUIDE_UID)}`)
+    await page.getByRole('button', { name: 'Export JSON: Refused export' }).waitFor()
+    await page.route('**/micelio/templates/*/export', (route) =>
+      route.fulfill({
+        status: 403,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({
+          type: 'https://micelio.dev/problems/templatesForbidden',
+          title: 'Forbidden',
+          status: 403,
+          code: 'templatesForbidden',
+          detail,
+        }),
+      })
+    )
+    await page.getByRole('button', { name: 'Export JSON: Refused export' }).click()
+    await page.getByText(detail).waitFor()
+    await expect(page.getByText('The template was not exported.').count()).resolves.toBe(0)
+  })
+
   it('shows a role that may create pages but not manage templates no export, no import and no Save as template', async () => {
     const source = await newGuide()
     await service().save({

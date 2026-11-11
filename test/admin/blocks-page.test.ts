@@ -123,6 +123,8 @@ describe('the Block catalogue page in the admin', () => {
       .findOne({ where: { code: 'strapi-super-admin' } })) as { id: number }
     await createUser('admin@example.com', superAdmin.id, null)
     await createUser('admin-es@example.com', superAdmin.id, 'es')
+    // The admin login is rate limited by e-mail: the refusals have an account of their own.
+    await createUser('admin-refusals@example.com', superAdmin.id, null)
     const reader = (await roles.create({ name: 'Blocks reader', code: 'blocks-reader' })) as {
       id: number
     }
@@ -260,6 +262,78 @@ describe('the Block catalogue page in the admin', () => {
       .click()
     await that(page.getByTestId('block-row-feature-grid')).not.toContainText('Grid of features')
     await that(page.getByTestId('block-row-feature-grid')).toContainText('Standard')
+  })
+
+  // `route.fulfill` serves what the route does: a problem detail, with no `error` key, which the
+  // admin's client throws as a bare "Unknown Server Error" unless the request asks to have it answered.
+  const refuseSaves = (
+    page: Page,
+    body: string,
+    status = 422,
+    contentType = 'application/problem+json'
+  ) =>
+    page.route('**/micelio/block-settings/*', (route) =>
+      route.request().method() === 'PUT'
+        ? route.fulfill({ status, contentType, body })
+        : route.continue()
+    )
+
+  it('shows the detail of a refused save on the page and in the drawer', async () => {
+    const detail = 'The default of "columns" is not one of its values.'
+    const page = await open('admin-refusals@example.com')
+    await that(page.locator('tbody tr')).toHaveCount(19)
+    await refuseSaves(
+      page,
+      JSON.stringify({
+        type: 'https://micelio.dev/problems/blockSettingInvalid',
+        title: 'Block setting invalid',
+        status: 422,
+        code: 'blockSettingInvalid',
+        detail,
+      })
+    )
+    await switchOf(page, 'hero').click()
+    await that(page.getByText(detail)).toBeVisible()
+    await that(page.getByText('The setting could not be saved.')).toHaveCount(0)
+
+    await page
+      .getByTestId('block-row-feature-grid')
+      .getByRole('button', { name: 'Feature grid' })
+      .click()
+    const drawer = page.getByTestId('block-drawer')
+    await drawer.getByLabel('English').fill('Grid of features')
+    await drawer.getByRole('button', { name: 'Save' }).click()
+    await that(drawer.getByText(detail)).toBeVisible()
+    await that(drawer.getByText('The setting could not be saved.')).toHaveCount(0)
+  })
+
+  it('keeps the generic text when a refused save carries no detail', async () => {
+    const generic = 'The setting could not be saved.'
+    const page = await open('admin-refusals@example.com')
+    await that(page.locator('tbody tr')).toHaveCount(19)
+    // A body that is not a problem detail, then a problem detail with no `detail`.
+    await refuseSaves(page, 'Bad gateway', 502, 'text/plain')
+    await switchOf(page, 'hero').click()
+    await that(page.getByText(generic)).toBeVisible()
+
+    await page.unroute('**/micelio/block-settings/*')
+    await refuseSaves(page, JSON.stringify({ status: 422, code: 'blockSettingInvalid' }))
+    await page
+      .getByTestId('block-row-feature-grid')
+      .getByRole('button', { name: 'Feature grid' })
+      .click()
+    const drawer = page.getByTestId('block-drawer')
+    await drawer.getByLabel('English').fill('Grid of features')
+    await drawer.getByRole('button', { name: 'Save' }).click()
+    await that(drawer.getByText(generic)).toBeVisible()
+
+    // A network error is the generic text too.
+    await page.unroute('**/micelio/block-settings/*')
+    await page.route('**/micelio/block-settings/*', (route) =>
+      route.request().method() === 'PUT' ? route.abort() : route.continue()
+    )
+    await drawer.getByRole('button', { name: 'Save' }).click()
+    await that(drawer.getByText(generic)).toBeVisible()
   })
 
   it('shows a reader the settings and lets it change nothing', async () => {

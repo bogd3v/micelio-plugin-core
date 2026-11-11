@@ -6,19 +6,15 @@ export function statusOf(error: unknown): number | undefined {
   return typeof response?.status === 'number' ? response.status : undefined
 }
 
-/** The `code` and `detail` of the problem detail a failed request of the admin's client carries, if any. */
-export function problemOf(error: unknown): { code?: string; detail?: string } | undefined {
-  const data = (error as { response?: { data?: unknown } } | null)?.response?.data
-  if (typeof data !== 'object' || data === null) return undefined
-  const { code, detail } = data as Record<string, unknown>
-  return {
-    code: typeof code === 'string' ? code : undefined,
-    detail: typeof detail === 'string' ? detail : undefined,
-  }
-}
-
-/** The option that makes the admin's client answer a refusal instead of throwing it: see {@link outcomeOf}. */
-export const ANSWER_REFUSALS = { validateStatus: () => true } as const
+/**
+ * The option that makes the admin's client answer a refusal instead of throwing it: see
+ * {@link outcomeOf}.
+ *
+ * @remarks
+ * A 401 is still thrown: the client refreshes an expired access token on it and sends the request
+ * again, and a request that answers it never refreshes.
+ */
+export const ANSWER_REFUSALS = { validateStatus: (status: number) => status !== 401 } as const
 
 /** What a request to a route that answers problem details came to. */
 export type Outcome<T> = { ok: true; data: T } | { ok: false; code?: string; detail?: string }

@@ -216,6 +216,30 @@ describe('page templates page and Template tab', () => {
     }).toBe(false)
   })
 
+  it('shows the detail of a refused template export on the Page templates page', async () => {
+    const detail = 'Your role may not export templates of this site.'
+    await newTemplate('Refused keeper')
+    const page = await open(`${base}/admin/plugins/micelio/templates`)
+    const panel = page.getByRole('complementary', { name: 'Template Refused keeper' })
+    await panel.waitFor()
+    await page.route('**/micelio/templates/*/export', (route) =>
+      route.fulfill({
+        status: 403,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({
+          type: 'https://micelio.dev/problems/templatesForbidden',
+          title: 'Forbidden',
+          status: 403,
+          code: 'templatesForbidden',
+          detail,
+        }),
+      })
+    )
+    await panel.getByRole('button', { name: 'Export JSON' }).click()
+    await page.getByText(detail).waitFor()
+    await expect(page.getByText('The template was not exported.').count()).resolves.toBe(0)
+  })
+
   it('editing a template opens the builder with no frame and the notice', async () => {
     const template = await newTemplate('Editable')
     const page = await open(`${base}/admin/plugins/micelio/templates`)

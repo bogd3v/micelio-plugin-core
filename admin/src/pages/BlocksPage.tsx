@@ -29,7 +29,7 @@ import {
   type CatalogueView,
   type Family,
 } from '../utils/blocks'
-import { problemOf } from '../utils/fetchError'
+import { ANSWER_REFUSALS, outcomeOf } from '../utils/fetchError'
 
 interface SiteOption {
   slug: string
@@ -179,21 +179,28 @@ function Catalogue({ site }: { site: string }) {
   const toggle = async (id: string, isEnabled: boolean) => {
     setProblem(undefined)
     try {
-      const { data: saved } = await client.put<{ data: { enabled: boolean } }>(
-        `/micelio/block-settings/${id}?site=${encodeURIComponent(site)}`,
-        { enabled: isEnabled }
+      const outcome = outcomeOf<{ enabled: boolean }>(
+        await client.put(
+          `/micelio/block-settings/${id}?site=${encodeURIComponent(site)}`,
+          { enabled: isEnabled },
+          ANSWER_REFUSALS
+        )
       )
+      if (!outcome.ok) {
+        setProblem(outcome.detail ?? t('blocks.error.save'))
+        return
+      }
       setData(
         (current) =>
           current && {
             ...current,
             blocks: current.blocks.map((block) =>
-              block.id === id ? { ...block, enabled: saved.data.enabled } : block
+              block.id === id ? { ...block, enabled: outcome.data.enabled } : block
             ),
           }
       )
-    } catch (error) {
-      setProblem(problemOf(error)?.detail ?? t('blocks.error.save'))
+    } catch {
+      setProblem(t('blocks.error.save'))
     }
   }
 
