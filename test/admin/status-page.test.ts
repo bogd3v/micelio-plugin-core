@@ -167,7 +167,8 @@ describe('the status page in the admin', () => {
     expect(text).toContain(packageJson.micelio)
     expect(text).toContain(`Blocks in the catalogue${BLOCKS.length}`)
     // Host check results, translated by their id.
-    expect(text).toContain('Every required check passes.')
+    expect(text).toContain('Also available as')
+    expect(text).toContain('npx micelio doctor')
     expect(text).toContain('Sanitiser for HTML from content')
     expect(text).toContain('Frontend release line')
     // One frontend answers its health endpoint, the other is not available, not an error.
@@ -238,13 +239,167 @@ describe('the status page in the admin', () => {
     await expect(releaseLine.textContent()).resolves.toContain(
       `${frontend.origin} is not reachable`
     )
-    await page.getByRole('button', { name: 'Run again' }).click()
+    await page.getByRole('button', { name: 'Run host check' }).click()
     await releaseLine.getByText(`${frontend.origin} runs 0.6.3`).waitFor()
-    await page.getByRole('button', { name: 'Run again' }).waitFor()
+    await page.getByRole('button', { name: 'Run host check' }).waitFor()
     // The verdict is announced, since the table changes where the focus is not.
     await expect(page.getByRole('status').allTextContents()).resolves.toContainEqual(
       expect.stringContaining('Every required check passes.')
     )
+  })
+
+  it('shows the plugin core, frontend, sites and block catalogue cards from the status report', async () => {
+    const cards = page.getByRole('list', { name: 'Summary' })
+    const sites = (await strapi.documents(SITE_UID as UID.ContentType).findMany()) as unknown as {
+      name: string
+      hosts: string[] | null
+      isDefault: boolean
+    }[]
+    const hosts = sites.reduce((sum, site) => sum + (site.hosts?.length ?? 0), 0)
+    const defaultSite = sites.find((site) => site.isDefault)!
+    const card = (label: string) => cards.getByRole('listitem').filter({ hasText: label })
+    await expect(card('Plugin core').textContent()).resolves.toBe(
+      `Plugin core${packageJson.version}supports core line ${packageJson.micelio}`
+    )
+    await expect(card('Sites').textContent()).resolves.toBe(
+      `Sites${sites.length}Default: ${defaultSite.name} · ${hosts} hosts`
+    )
+    await expect(card('Block catalogue').textContent()).resolves.toBe(
+      `Block catalogue${BLOCKS.length}blocks`
+    )
+    // The default site has no URL yet: no frontend is connected.
+    await expect(card('Frontend').textContent()).resolves.toBe(
+      'FrontendNoneThe default site has no URL, so no frontend is connected.'
+    )
+    // Give it the URL of the frontend that answers, and read the page again.
+    const sitesService = strapi.documents(SITE_UID as UID.ContentType)
+    const [defaultDocument] = await sitesService.findMany({ filters: { isDefault: true } })
+    await sitesService.update({
+      documentId: defaultDocument.documentId,
+      data: { url: frontend.origin } as never,
+    })
+    try {
+      const again = await openStatusPage(browser, base, EMAIL)
+      const frontendCard = again
+        .getByRole('list', { name: 'Summary' })
+        .getByRole('listitem')
+        .filter({ hasText: 'Frontend' })
+      await expect(frontendCard.textContent()).resolves.toBe('Frontend0.6.3healthy')
+      await again.context().close()
+    } finally {
+      await sitesService.update({
+        documentId: defaultDocument.documentId,
+        data: { url: null } as never,
+      })
+    }
+  })
+
+  it('shows Pass, Warning, Fail and Skipped pills, the count badge and a banner with the fix of each warning', async () => {
+    /** Opens the page with the host check report changed by `change`. */
+    async function openWith(
+      change: (results: { id: string; status: string; required: boolean; fix?: string }[]) => void
+    ): Promise<Page> {
+      const context = await browser.newContext()
+      const own = await context.newPage()
+      await own.route('**/micelio/status', async (route) => {
+        const response = await route.fetch()
+        const body = await response.json()
+        change(body.data.hostCheck.results)
+        await route.fulfill({ response, json: body })
+      })
+      await own.goto(`${base}/admin/auth/login`)
+      await own.locator('input[name="email"]').fill(EMAIL)
+      await own.locator('input[name="password"]').fill(PASSWORD)
+      await own.getByRole('button', { name: 'Login' }).click()
+      await own.waitForURL(/\/admin(?!\/auth)/)
+      await own.goto(`${base}/admin/plugins/micelio`)
+      await own.getByRole('heading', { name: 'Host check' }).waitFor()
+      return own
+    }
+    const resultOf = (own: Page, title: string) =>
+      own.getByRole('row').filter({ hasText: title }).textContent()
+
+    // A required check fails, two that are not required fail, one is skipped, the rest pass.
+    const mixed = await openWith((results) => {
+      for (const result of results) {
+        if (result.id === 'node') Object.assign(result, { status: 'fail', required: true })
+        if (['frontend-release-line', 'preview-frame-src'].includes(result.id)) {
+          Object.assign(result, { status: 'fail', required: false })
+        }
+        if (result.status === 'fail') result.fix = 'Fix it.'
+      }
+    })
+    await expect(resultOf(mixed, 'Node version')).resolves.toContain('Fail')
+    await expect(resultOf(mixed, 'Frontend release line')).resolves.toContain('Warning')
+    await expect(resultOf(mixed, 'PostgreSQL in production')).resolves.toContain('Skipped')
+    await expect(resultOf(mixed, 'Security middlewares')).resolves.toContain('Pass')
+    // Sentence case: the pills are not turned to upper case.
+    await expect(
+      mixed
+        .getByRole('row')
+        .filter({ hasText: 'Node version' })
+        .getByText('Fail', { exact: true })
+        .evaluate(
+          (element) => element.ownerDocument.defaultView!.getComputedStyle(element).textTransform
+        )
+    ).resolves.toBe('none')
+    const section = mixed.locator('section').filter({
+      has: mixed.getByRole('heading', { name: 'Host check' }),
+    })
+    await expect(section.textContent()).resolves.toContain('1 failure · 2 warnings')
+    // One banner for each of the three, with the translated fix.
+    const banners = section.getByRole('note')
+    await expect(banners.count()).resolves.toBe(3)
+    const bannerText = (await banners.allTextContents()).join('\n')
+    expect(bannerText).toContain(`Node version. ${en['status.hostCheck.check.node.fix']}`)
+    expect(bannerText).toContain(en['status.hostCheck.check.frontend-release-line.fix'])
+    expect(bannerText).toContain(en['status.hostCheck.check.preview-frame-src.fix'])
+    await mixed.context().close()
+
+    // Every check passes: no count badge and no banner.
+    const clean = await openWith((results) => {
+      for (const result of results) {
+        if (result.status === 'fail') {
+          Object.assign(result, { status: 'pass' })
+          delete result.fix
+        }
+      }
+    })
+    const cleanSection = clean.locator('section').filter({
+      has: clean.getByRole('heading', { name: 'Host check' }),
+    })
+    await expect(cleanSection.getByRole('note').count()).resolves.toBe(0)
+    await expect(cleanSection.textContent()).resolves.not.toMatch(/warning|failure/)
+    await clean.context().close()
+  })
+
+  it('runs the host check from Run host check in the header, one run at a time', async () => {
+    const own = await openStatusPage(browser, base, EMAIL)
+    await own.getByRole('heading', { name: 'Host check' }).waitFor()
+    const header = own.locator('[data-strapi-header]')
+    // The button is in the page header, not in the card, and nothing else says Run again.
+    await expect(header.getByRole('button', { name: 'Run host check' }).count()).resolves.toBe(1)
+    await expect(own.getByRole('button', { name: 'Run again' }).count()).resolves.toBe(0)
+    const posts: string[] = []
+    own.on('request', (request) => {
+      if (request.method() === 'POST' && request.url().endsWith('/micelio/status/host-check')) {
+        posts.push(request.url())
+      }
+    })
+    // Slow answer: the second press comes while the first run is still going.
+    await own.route('**/micelio/status/host-check', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      await route.continue()
+    })
+    const button = header.getByRole('button', { name: 'Run host check' })
+    await button.click()
+    const running = header.getByRole('button', { name: 'Running the host check' })
+    await running.waitFor()
+    await expect(running.getAttribute('aria-disabled')).resolves.toBe('true')
+    await running.dispatchEvent('click')
+    await header.getByRole('button', { name: 'Run host check' }).waitFor()
+    expect(posts).toHaveLength(1)
+    await own.context().close()
   })
 
   // After the run: the button and the replaced report are checked too.
@@ -284,9 +439,10 @@ describe('the status page in the admin', () => {
       const resultOf = (title: string) =>
         spanish.getByRole('row').filter({ hasText: title }).textContent()
       await expect(resultOf('Versión de Node')).resolves.toContain('Pasa')
-      // SQLite outside production: skipped. The stub frontends are not in frame-src: failed.
+      // SQLite outside production: skipped. The stub frontends are not in frame-src: a warning,
+      // as that check is not required.
       await expect(resultOf('PostgreSQL en producción')).resolves.toContain('Omitida')
-      await expect(resultOf('frame-src para la vista previa')).resolves.toContain('Falla')
+      await expect(resultOf('frame-src para la vista previa')).resolves.toContain('Aviso')
     })
 
     it('shows no English string that has a Spanish one', () => {

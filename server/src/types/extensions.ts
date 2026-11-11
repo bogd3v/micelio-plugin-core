@@ -95,7 +95,7 @@ export interface StatusChecksRegistration {
    * Runs the plugin's checks for one site.
    *
    * @remarks
-   * Called for every site, on "Run again" and on the daily refresh, never when the page loads. A
+   * Called for every site, on "Run host check" and on the daily refresh, never when the page loads. A
    * call that throws or takes more than 10 seconds is reported as a failed check of the plugin
    * and logged. It runs outside any request: it must not assume an admin user.
    */
@@ -225,7 +225,7 @@ export interface MicelioExtensions {
    * Adds checks of your plugin to the Status page.
    *
    * @remarks
-   * The core runs them for every site on "Run again" and on the daily refresh
+   * The core runs them for every site on "Run host check" and on the daily refresh
    * (`statusRefreshRule`), keeps the latest results, and answers them under
    * `plugins[<id>].checks` of `GET /micelio/status` for callers who have `permission`. They are
    * part of "Copy diagnostics" as one line per plugin.

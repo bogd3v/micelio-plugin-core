@@ -48,7 +48,7 @@ module.exports = {
       // `false` turns it off: scheduled entries then wait for `transitions.publishDue()`.
       scheduledPublishRule: '* * * * *', // the default: every minute
       // When the host check and the checks of other plugins run again on their own, as a cron rule.
-      // `false` turns it off: they then run only with "Run again" in the status page.
+      // `false` turns it off: they then run only with "Run host check" in the status page.
       statusRefreshRule: '0 4 * * *', // the default: every day at 04:00 server time
       // The weight, in kB, above which publishing a page with blocks is refused (docs/operate/budgets.md).
       // A key replaces the default of that page type; `sites` sets a site's own, by its slug.

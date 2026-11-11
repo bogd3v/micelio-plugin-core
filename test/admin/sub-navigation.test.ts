@@ -82,6 +82,8 @@ describe('the sub-navigation in the admin', () => {
     await createUser('admin-es@example.com', 'es', 'super')
     // Its own login: the admin rate-limits the logins of one account.
     await createUser('admin-review@example.com', null, 'super')
+    // And one for the look of the items.
+    await createUser('admin-look@example.com', null, 'super')
     // Only a sibling plugin's permission: not the status page's.
     await createUser('sibling@example.com', null, ['plugin::extension-fixture.read'])
     // No permission of any plugin.
@@ -110,7 +112,7 @@ describe('the sub-navigation in the admin', () => {
       'Fixture page',
       'About Micelio',
     ])
-    for (const heading of ['Overview', 'Content', 'Site', 'About']) {
+    for (const heading of ['Installation', 'Content', 'Site']) {
       await expect(nav.getByText(heading, { exact: true }).count(), heading).resolves.toBe(1)
     }
     expect(page.url()).toMatch(/\/admin\/plugins\/micelio$/)
@@ -118,6 +120,66 @@ describe('the sub-navigation in the admin', () => {
       nav.getByRole('link', { name: 'Status' }).getAttribute('aria-current')
     ).resolves.toBe('page')
     await expect(nav.locator('[aria-current="page"]').count()).resolves.toBe(1)
+  })
+
+  it('shows the groups Installation, Content and Site, and About Micelio under a divider with no heading', async () => {
+    const page = await open('admin-look@example.com')
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    await nav.getByRole('link', { name: 'Fixture page' }).waitFor()
+    for (const heading of ['Installation', 'Content', 'Site']) {
+      await expect(nav.getByText(heading, { exact: true }).count(), heading).resolves.toBe(1)
+    }
+    // Neither the old names of the groups nor a heading for About.
+    for (const heading of ['Overview', 'About']) {
+      await expect(nav.getByText(heading, { exact: true }).count(), heading).resolves.toBe(0)
+    }
+    // The About item sits under a rule that no other item has.
+    const about = nav.getByRole('link', { name: 'About Micelio' })
+    const ruleAbove = (name: string) =>
+      nav.getByRole('link', { name }).evaluate((link) => {
+        const view = link.ownerDocument.defaultView!
+        for (
+          let node = link.parentElement;
+          node && node.tagName !== 'NAV';
+          node = node.parentElement
+        ) {
+          if (view.getComputedStyle(node).borderTopWidth === '1px') return true
+        }
+        return false
+      })
+    await expect(about.count()).resolves.toBe(1)
+    await expect(ruleAbove('About Micelio')).resolves.toBe(true)
+    await expect(ruleAbove('Sites')).resolves.toBe(false)
+    // The item comes after the last group, whose links are the other seven.
+    await expect(nav.getByRole('link').last().textContent()).resolves.toBe('About Micelio')
+  })
+
+  it('marks the active item with a bar on its right edge', async () => {
+    const page = await open('admin-look@example.com')
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    // The bar is drawn after the link's content: 3px wide, on its right edge, in the primary colour.
+    const barOf = (name: string) =>
+      nav.getByRole('link', { name }).evaluate((link) => {
+        const style = link.ownerDocument.defaultView!.getComputedStyle(link, '::after')
+        return style.content === 'none'
+          ? null
+          : { width: style.width, right: style.right, position: style.position }
+      })
+    await nav.getByRole('link', { name: 'Status' }).waitFor()
+    await expect(barOf('Status')).resolves.toEqual({
+      width: '3px',
+      right: '0px',
+      position: 'absolute',
+    })
+    await expect(barOf('Sites')).resolves.toBeNull()
+    await nav.getByRole('link', { name: 'About Micelio' }).click()
+    await page.getByRole('heading', { level: 1, name: 'About Micelio' }).waitFor()
+    await expect(barOf('About Micelio')).resolves.toEqual({
+      width: '3px',
+      right: '0px',
+      position: 'absolute',
+    })
+    await expect(barOf('Status')).resolves.toBeNull()
   })
 
   it('has the entry with the Micelio mark in the admin menu', async () => {
@@ -155,7 +217,7 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'About Micelio' }).waitFor()
     await expect(nav.getByRole('link').allTextContents()).resolves.toEqual(['About Micelio'])
     // A group with no item is not listed.
-    for (const heading of ['Overview', 'Content', 'Site']) {
+    for (const heading of ['Installation', 'Content', 'Site']) {
       await expect(nav.getByText(heading, { exact: true }).count(), heading).resolves.toBe(0)
     }
   })
@@ -311,9 +373,11 @@ describe('the sub-navigation in the admin', () => {
     // The sibling plugin's item arrives with its own request after the core's.
     await nav.getByRole('link', { name: 'Página de prueba' }).waitFor()
     await expect(nav.getByRole('link', { name: 'Exportar e importar' }).count()).resolves.toBe(1)
-    for (const heading of ['Resumen', 'Sitio', 'Acerca de']) {
+    for (const heading of ['Instalación', 'Sitio']) {
       await expect(nav.getByText(heading, { exact: true }).count(), heading).resolves.toBe(1)
     }
+    // About has no heading of its own.
+    await expect(nav.getByText('Acerca de', { exact: true }).count()).resolves.toBe(0)
     await nav.getByRole('link', { name: 'Acerca de Micelio' }).click()
     await page.getByRole('heading', { level: 1, name: 'Acerca de Micelio' }).waitFor()
   })

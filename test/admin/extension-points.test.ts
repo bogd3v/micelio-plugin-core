@@ -90,13 +90,13 @@ describe('the extension points in the admin', () => {
     await page.getByRole('heading', { name: 'This page is not available' }).waitFor()
   })
 
-  it('shows the plugin card after Run again, and Copy diagnostics holds its summary line', async () => {
+  it('shows the plugin card after Run host check, and Copy diagnostics holds its summary line', async () => {
     const page = await open('reader@example.com')
     await page.getByRole('heading', { name: 'Fixture checks' }).waitFor()
     await expect(
       page.getByText('These checks have not run since Strapi started.').count()
     ).resolves.toBe(1)
-    await page.getByRole('button', { name: 'Run again' }).click()
+    await page.getByRole('button', { name: 'Run host check' }).click()
     await page.getByRole('row').filter({ hasText: 'The fixture has a handle' }).waitFor()
     const card = page.getByRole('row').filter({ hasText: 'The fixture answers' })
     await expect(card.textContent()).resolves.toContain('default')

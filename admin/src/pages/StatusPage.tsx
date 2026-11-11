@@ -15,8 +15,9 @@ import {
 import { Layouts, Page } from '@strapi/strapi/admin'
 import type { ReactNode } from 'react'
 import { useIntl } from 'react-intl'
+import { styled } from 'styled-components'
 
-import type { HostCheckReport, HostCheckStatus } from '../../../server/src/types/host-check'
+import type { HostCheckResult } from '../../../server/src/types/host-check'
 import type {
   PluginChecksResult,
   StatusFrontend,
@@ -26,7 +27,7 @@ import type {
 } from '../../../server/src/types/status'
 import { hasMessage, useMessages } from '../messages'
 import { STATUS_READ_PERMISSION } from '../permissions'
-import { useHostCheckRun } from '../hooks/useHostCheckRun'
+import { useHostCheckRun, type HostCheckRun } from '../hooks/useHostCheckRun'
 import { useStatus } from '../hooks/useStatus'
 import { checkText, type Text } from '../utils/checkText'
 import { diagnosticsText } from '../utils/diagnostics'
@@ -44,10 +45,19 @@ const TONES: Record<Tone, { backgroundColor: string; textColor: string }> = {
   neutral: { backgroundColor: 'neutral150', textColor: 'neutral700' },
 }
 
-const CHECK_TONES: Record<HostCheckStatus, Tone> = {
+/** What a host check result shows as: a failed check that is not required is a warning. */
+type CheckResult = 'pass' | 'warn' | 'fail' | 'skip'
+
+const CHECK_TONES: Record<CheckResult, Tone> = {
   pass: 'success',
+  warn: 'warning',
   fail: 'danger',
   skip: 'neutral',
+}
+
+function resultOf(check: HostCheckResult): CheckResult {
+  if (check.status === 'fail') return check.required ? 'fail' : 'warn'
+  return check.status
 }
 
 /** The Micelio page of the admin: what runs, what is reachable and what failed (issue #8). */
@@ -57,10 +67,7 @@ export default function StatusPage() {
     <Page.Protect permissions={[STATUS_READ_PERMISSION]}>
       <Page.Main>
         <Page.Title>{t('status.title')}</Page.Title>
-        <Layouts.Header title={t('status.title')} subtitle={t('status.subtitle')} />
-        <Layouts.Content>
-          <StatusContent />
-        </Layouts.Content>
+        <StatusContent />
       </Page.Main>
     </Page.Protect>
   )
@@ -69,37 +76,96 @@ export default function StatusPage() {
 function StatusContent() {
   const { t } = useMessages()
   const { resource, reload, refresh } = useStatus()
-  if (resource.kind === 'loading') return <Page.Loading>{t('status.loading')}</Page.Loading>
-  if (resource.kind === 'error') {
+  const header = (action?: ReactNode) => (
+    <Layouts.Header
+      title={t('status.title')}
+      subtitle={t('status.subtitle')}
+      primaryAction={action}
+    />
+  )
+  if (resource.kind === 'loading') {
     return (
-      <Section title={t('status.error.title')}>
-        <Flex direction="column" alignItems="flex-start" gap={2}>
-          <Typography textColor="neutral600">{t('status.error')}</Typography>
-          <Button variant="secondary" size="S" onClick={reload}>
-            {t('status.retry')}
-          </Button>
-        </Flex>
-      </Section>
+      <>
+        {header()}
+        <Layouts.Content>
+          <Page.Loading>{t('status.loading')}</Page.Loading>
+        </Layouts.Content>
+      </>
     )
   }
-  const report: StatusReport = resource.data
+  if (resource.kind === 'error') {
+    return (
+      <>
+        {header()}
+        <Layouts.Content>
+          <Section title={t('status.error.title')}>
+            <Flex direction="column" alignItems="flex-start" gap={2}>
+              <Typography textColor="neutral600">{t('status.error')}</Typography>
+              <Button variant="secondary" size="S" onClick={reload}>
+                {t('status.retry')}
+              </Button>
+            </Flex>
+          </Section>
+        </Layouts.Content>
+      </>
+    )
+  }
+  return <LoadedStatus report={resource.data} refresh={refresh} header={header} />
+}
+
+function LoadedStatus({
+  report,
+  refresh,
+  header,
+}: {
+  report: StatusReport
+  refresh: () => Promise<void>
+  header: (action?: ReactNode) => ReactNode
+}) {
+  const { t, date } = useMessages()
+  const { notifyStatus, notifyAlert } = useNotifyAT()
+  // The run lives here, not in the card: its button is in the page header.
+  const hostCheck = useHostCheckRun(report.hostCheck)
+  const runHostCheck = async () => {
+    const answer = await hostCheck.run()
+    // The table changes without a focus move: say what the run found.
+    // The plugins' checks ran with it: load their results.
+    if (answer) await refresh()
+    if (answer) {
+      notifyStatus(
+        `${t(answer.ok ? 'status.hostCheck.ok' : 'status.hostCheck.failed')} ${t(
+          'status.hostCheck.checkedAt',
+          { date: date(answer.checkedAt), environment: answer.environment }
+        )}`
+      )
+    } else notifyAlert(t('status.hostCheck.runFailed'))
+  }
   return (
-    <Flex direction="column" alignItems="stretch" gap={6}>
-      <PluginSection report={report} />
-      <HostCheckSection initial={report.hostCheck} onRan={refresh} />
-      <Flex gap={6} alignItems="stretch" wrap="wrap">
-        <Box flex="1" minWidth="320px" display="flex">
-          <SiblingsSection siblings={report.siblings} />
-        </Box>
-        <Box flex="1" minWidth="320px" display="flex">
-          <ContractsSection report={report} />
-        </Box>
-      </Flex>
-      <PluginChecksSections report={report} />
-      <FrontendsSection frontends={report.frontends} />
-      <SitesSection sites={report.sites} />
-      <DiagnosticsButton report={report} />
-    </Flex>
+    <>
+      {header(
+        <Button variant="tertiary" loading={hostCheck.isRunning} onClick={runHostCheck}>
+          {t(hostCheck.isRunning ? 'status.hostCheck.running' : 'status.hostCheck.run')}
+        </Button>
+      )}
+      <Layouts.Content>
+        <Flex direction="column" alignItems="stretch" gap={6}>
+          <StatCards report={report} />
+          <HostCheckSection run={hostCheck} />
+          <Flex gap={6} alignItems="stretch" wrap="wrap">
+            <Box flex="1" minWidth="320px" display="flex">
+              <SiblingsSection siblings={report.siblings} />
+            </Box>
+            <Box flex="1" minWidth="320px" display="flex">
+              <ContractsSection report={report} />
+            </Box>
+          </Flex>
+          <PluginChecksSections report={report} />
+          <FrontendsSection frontends={report.frontends} />
+          <SitesSection sites={report.sites} />
+          <DiagnosticsButton report={report} />
+        </Flex>
+      </Layouts.Content>
+    </>
   )
 }
 
@@ -120,6 +186,37 @@ function StatusBadge({ tone, children }: { tone: Tone; children: ReactNode }) {
   return <Badge {...TONES[tone]}>{children}</Badge>
 }
 
+/** A result of a check: a dot and the word in sentence case, on the tone's background. */
+function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
+  return (
+    <Flex
+      tag="span"
+      display="inline-flex"
+      width="fit-content"
+      gap={2}
+      alignItems="center"
+      hasRadius
+      paddingLeft={2}
+      paddingRight={2}
+      paddingTop={1}
+      paddingBottom={1}
+      background={TONES[tone].backgroundColor}
+    >
+      <Box
+        tag="span"
+        aria-hidden
+        width="0.6rem"
+        height="0.6rem"
+        background={TONES[tone].textColor}
+        style={{ borderRadius: '50%' }}
+      />
+      <Typography variant="pi" fontWeight="semiBold" textColor={TONES[tone].textColor}>
+        {children}
+      </Typography>
+    </Flex>
+  )
+}
+
 function Fact({ label, value }: { label: string; value: string | number }) {
   return (
     <Flex direction="column" alignItems="flex-start" gap={1}>
@@ -131,17 +228,84 @@ function Fact({ label, value }: { label: string; value: string | number }) {
   )
 }
 
-function PluginSection({ report }: { report: StatusReport }) {
-  const { t } = useMessages()
+/** One of the four cards on top: a label, a figure and a line under it. */
+function StatCard({ label, value, note }: { label: string; value: ReactNode; note: ReactNode }) {
   return (
-    <Section title={t('status.plugin.title')}>
-      <Flex tag="dl" gap={8} wrap="wrap" alignItems="flex-start">
-        <Fact label={t('status.plugin.version')} value={report.plugin.version} />
-        <Fact label={t('status.plugin.coreLine')} value={report.plugin.coreLine} />
-        <Fact label={t('status.blocks.count')} value={report.blocks.count} />
-        <Fact label={t('status.sites.count')} value={report.sites.length} />
+    <Box
+      tag="li"
+      flex="1"
+      minWidth="200px"
+      background="neutral0"
+      hasRadius
+      shadow="filterShadow"
+      padding={6}
+      style={{ listStyle: 'none' }}
+    >
+      <Flex tag="dl" direction="column" alignItems="flex-start" gap={2} margin={0}>
+        <Typography variant="sigma" textColor="neutral600" tag="dt">
+          {label}
+        </Typography>
+        <Typography variant="alpha" fontWeight="bold" tag="dd">
+          {value}
+        </Typography>
+        <Typography variant="omega" textColor="neutral600" tag="dd">
+          {note}
+        </Typography>
       </Flex>
-    </Section>
+    </Box>
+  )
+}
+
+/** The plugin core, the default site's frontend, the sites and the block catalogue, from the report. */
+function StatCards({ report }: { report: StatusReport }) {
+  const { t } = useMessages()
+  const defaultSite = report.sites.find((site) => site.isDefault)
+  const frontend = report.frontends.find((candidate) => candidate.origin === defaultSite?.origin)
+  const hosts = report.sites.reduce((sum, site) => sum + site.hosts.length, 0)
+  return (
+    <Flex
+      tag="ul"
+      aria-label={t('status.cards.label')}
+      gap={4}
+      wrap="wrap"
+      alignItems="stretch"
+      margin={0}
+      padding={0}
+    >
+      <StatCard
+        label={t('status.card.plugin')}
+        value={report.plugin.version}
+        note={t('status.card.plugin.line', { line: report.plugin.coreLine })}
+      />
+      <StatCard
+        label={t('status.card.frontend')}
+        value={
+          frontend ? (frontend.version ?? t('status.frontends.noVersion')) : t('status.card.none')
+        }
+        note={
+          frontend ? (
+            <Typography
+              variant="omega"
+              textColor={frontend.health === 'reachable' ? 'success700' : 'neutral600'}
+            >
+              {t(`status.card.frontend.${frontend.health}`)}
+            </Typography>
+          ) : (
+            t('status.card.frontend.none')
+          )
+        }
+      />
+      <StatCard
+        label={t('status.card.sites')}
+        value={report.sites.length}
+        note={t('status.card.sites.note', { name: defaultSite?.name ?? '-', hosts })}
+      />
+      <StatCard
+        label={t('status.card.blocks')}
+        value={report.blocks.count}
+        note={t('status.card.blocks.note')}
+      />
+    </Flex>
   )
 }
 
@@ -224,112 +388,174 @@ function ContractsSection({ report }: { report: StatusReport }) {
   )
 }
 
-function HostCheckSection({
-  initial,
-  onRan,
-}: {
-  initial: HostCheckReport | null
-  onRan: () => Promise<void>
-}) {
-  const { t, date } = useMessages()
-  const { notifyStatus, notifyAlert } = useNotifyAT()
-  const { report, isRunning, hasFailed, run } = useHostCheckRun(initial)
-  const say = (text: Text) => ('messageId' in text ? t(text.messageId) : text.text)
-  const verdict = (current: HostCheckReport) =>
-    `${t(current.ok ? 'status.hostCheck.ok' : 'status.hostCheck.failed')} ${t(
-      'status.hostCheck.checkedAt',
-      { date: date(current.checkedAt), environment: current.environment }
-    )}`
+/** An outline triangle with an exclamation mark, as the artboard's banner shows. */
+const WarningMark = () => (
+  <svg
+    width="1.6rem"
+    height="1.6rem"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+    style={{ flexShrink: 0 }}
+  >
+    <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+    <path d="M12 9v4M12 17h.01" />
+  </svg>
+)
 
-  const runAgain = async () => {
-    const answer = await run()
-    // The table changes without a focus move: say what the run found.
-    // The plugins' checks ran with it: load their results.
-    if (answer) await onRan()
-    if (answer) notifyStatus(verdict(answer))
-    else notifyAlert(t('status.hostCheck.runFailed'))
+/** The table of a card: the card is its frame, so the table's own shadow and corners are taken off. */
+const FlatTable = styled.div`
+  & > div {
+    box-shadow: none;
+    border-radius: 0;
   }
+  thead {
+    background: ${({ theme }) => theme.colors.neutral100};
+  }
+`
+
+function HostCheckSection({ run }: { run: HostCheckRun }) {
+  const { t, date } = useMessages()
+  const { report, hasFailed } = run
+  const say = (text: Text) => ('messageId' in text ? t(text.messageId) : text.text)
+  const results = report ? report.results.map((check) => ({ check, result: resultOf(check) })) : []
+  const warnings = results.filter(({ result }) => result === 'warn')
+  const failures = results.filter(({ result }) => result === 'fail')
+  const flagged = results.filter(({ result }) => result === 'warn' || result === 'fail')
+  const counts = [
+    failures.length > 0 ? t('status.hostCheck.badge.failures', { count: failures.length }) : null,
+    warnings.length > 0 ? t('status.hostCheck.badge.warnings', { count: warnings.length }) : null,
+  ].filter(Boolean)
 
   const header = (
-    <Flex gap={4} wrap="wrap" justifyContent="space-between" alignItems="center">
-      <Typography textColor={report ? undefined : 'neutral600'}>
-        {report ? verdict(report) : t('status.hostCheck.notRun')}
-      </Typography>
-      <Button variant="secondary" size="S" loading={isRunning} onClick={runAgain}>
-        {t(isRunning ? 'status.hostCheck.running' : 'status.hostCheck.runAgain')}
-      </Button>
+    <Flex gap={4} wrap="wrap" justifyContent="space-between" alignItems="flex-start">
+      <Flex direction="column" alignItems="flex-start" gap={1}>
+        <Typography variant="delta" fontWeight="bold" tag="h2">
+          {t('status.hostCheck.title')}
+        </Typography>
+        <Typography textColor="neutral600" variant="pi">
+          {report
+            ? t('status.hostCheck.checkedAt', {
+                date: date(report.checkedAt),
+                environment: report.environment,
+              })
+            : t('status.hostCheck.notRun')}{' '}
+          {t('status.hostCheck.alsoAs')}{' '}
+          <Box
+            tag="code"
+            background="neutral150"
+            hasRadius
+            paddingLeft={1}
+            paddingRight={1}
+            style={{ fontFamily: 'monospace' }}
+          >
+            npx micelio doctor
+          </Box>
+        </Typography>
+      </Flex>
+      {counts.length > 0 ? (
+        <Pill tone={failures.length > 0 ? 'danger' : 'warning'}>{counts.join(' · ')}</Pill>
+      ) : null}
     </Flex>
   )
   const failure = hasFailed ? (
     <Typography textColor="danger700">{t('status.hostCheck.runFailed')}</Typography>
   ) : null
 
-  if (!report) {
-    return (
-      <Section title={t('status.hostCheck.title')}>
-        {header}
-        {failure}
-      </Section>
-    )
-  }
   return (
-    <Section title={t('status.hostCheck.title')}>
-      {header}
-      {failure}
-      <Table colCount={3} rowCount={report.results.length + 1}>
-        <Thead>
-          <Tr>
-            <Th>
-              <Typography variant="sigma">{t('status.hostCheck.column.check')}</Typography>
-            </Th>
-            <Th>
-              <Typography variant="sigma">{t('status.hostCheck.column.status')}</Typography>
-            </Th>
-            <Th>
-              <Typography variant="sigma">{t('status.hostCheck.column.found')}</Typography>
-            </Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {report.results.map((result) => {
-            const title = checkText(result, 'title', hasMessage)
-            const fix = result.status === 'fail' ? checkText(result, 'fix', hasMessage) : null
-            return (
-              <Tr key={result.id}>
-                <Td>
-                  <Flex direction="column" alignItems="flex-start" gap={1}>
-                    <Typography fontWeight="bold">{title ? say(title) : result.id}</Typography>
-                    <Typography variant="pi" textColor="neutral600">
-                      {t(
-                        result.required ? 'status.hostCheck.required' : 'status.hostCheck.optional'
-                      )}
-                    </Typography>
-                  </Flex>
-                </Td>
-                <Td>
-                  <StatusBadge tone={CHECK_TONES[result.status]}>
-                    {t(`status.hostCheck.status.${result.status}`)}
-                  </StatusBadge>
-                </Td>
-                <Td>
-                  <Flex direction="column" alignItems="flex-start" gap={1}>
-                    <Typography textColor="neutral800">{result.detail}</Typography>
-                    {fix ? (
-                      <Typography variant="pi" textColor="neutral800">
-                        <strong>{t('status.hostCheck.fix')}:</strong> {say(fix)}
-                      </Typography>
-                    ) : null}
-                  </Flex>
-                </Td>
-              </Tr>
-            )
-          })}
-        </Tbody>
-      </Table>
-      <Typography variant="pi" textColor="neutral600">
-        {t('status.hostCheck.rerun')}
-      </Typography>
-    </Section>
+    <Box
+      tag="section"
+      background="neutral0"
+      hasRadius
+      shadow="filterShadow"
+      style={{ overflow: 'hidden' }}
+    >
+      <Flex direction="column" alignItems="stretch" gap={4}>
+        <Box padding={6} paddingBottom={0}>
+          <Flex direction="column" alignItems="stretch" gap={4}>
+            {header}
+            {failure}
+          </Flex>
+        </Box>
+        {report ? (
+          <FlatTable>
+            <Table colCount={3} rowCount={results.length + 1}>
+              <Thead>
+                <Tr>
+                  <Th>
+                    <Typography variant="sigma">{t('status.hostCheck.column.check')}</Typography>
+                  </Th>
+                  <Th>
+                    <Typography variant="sigma">{t('status.hostCheck.column.found')}</Typography>
+                  </Th>
+                  <Th>
+                    <Typography variant="sigma">{t('status.hostCheck.column.status')}</Typography>
+                  </Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {results.map(({ check, result }) => {
+                  const title = checkText(check, 'title', hasMessage)
+                  return (
+                    <Tr key={check.id}>
+                      <Td>
+                        <Flex direction="column" alignItems="flex-start" gap={1}>
+                          <Typography fontWeight="bold">{title ? say(title) : check.id}</Typography>
+                          <Typography variant="pi" textColor="neutral600">
+                            {t(
+                              check.required
+                                ? 'status.hostCheck.required'
+                                : 'status.hostCheck.optional'
+                            )}
+                          </Typography>
+                        </Flex>
+                      </Td>
+                      <Td>
+                        <Typography textColor="neutral800">{check.detail}</Typography>
+                      </Td>
+                      <Td>
+                        <Pill tone={CHECK_TONES[result]}>
+                          {t(`status.hostCheck.status.${result}`)}
+                        </Pill>
+                      </Td>
+                    </Tr>
+                  )
+                })}
+              </Tbody>
+            </Table>
+          </FlatTable>
+        ) : null}
+        {flagged.map(({ check, result }) => {
+          const title = checkText(check, 'title', hasMessage)
+          const fix = checkText(check, 'fix', hasMessage)
+          return (
+            <Flex
+              key={check.id}
+              tag="div"
+              role="note"
+              gap={3}
+              alignItems="flex-start"
+              padding={4}
+              paddingLeft={6}
+              paddingRight={6}
+              background={TONES[CHECK_TONES[result]].backgroundColor}
+            >
+              <Box color="neutral800">
+                <WarningMark />
+              </Box>
+              <Typography textColor="neutral800">
+                <strong>{`${title ? say(title) : check.id}.`}</strong> {fix ? say(fix) : ''}
+              </Typography>
+            </Flex>
+          )
+        })}
+      </Flex>
+    </Box>
   )
 }
 
