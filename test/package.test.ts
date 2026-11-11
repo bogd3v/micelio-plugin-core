@@ -113,6 +113,13 @@ describe('the packed package', () => {
     }
   })
 
+  it('exports the schema helpers a distribution makes its types with', () => {
+    const entry = requireFromHost(`${packageJson.name}/strapi-server`) as Record<string, unknown>
+    expect(entry.withSiteScope).toBeTypeOf('function')
+    expect(entry.withEditorial).toBeTypeOf('function')
+    expect(entry.withPageSettings).toBeTypeOf('function')
+  })
+
   it('publishes the JSON Schema of the block catalogue', () => {
     const schema = requireFromHost(`${packageJson.name}/blocks.schema.json`) as {
       $defs: Record<string, unknown>
