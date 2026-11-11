@@ -114,7 +114,7 @@ entry (no permission of its own; `pages/MicelioLayout.tsx`: the sub-navigation, 
 items from `navigation.ts`, each shown to a role with its permission, the number of pages in review next to
 In review (`hooks/useInReviewCount.ts`, `countInReview` in `navigation.ts`: one `GET /micelio/review` per
 move inside the section), and the pages of sibling plugins from `GET /micelio/admin-pages` and the components they provide through `pageRegistry.ts`),
-the Sites page (`pages/SitesPage.tsx`, `hooks/useSites.ts`: the core fields of the selected site and the panel of each section the caller may read, which sibling plugins provide through `registerSitePanel` in `pageRegistry.ts`; `GET /micelio/sites` answers the sections and their `panel` names), the status page (`pages/StatusPage.tsx`), Export and import (`pages/TransferPage.tsx` with
+the Sites page (`pages/SitesPage.tsx`, `hooks/useSites.ts`, `hooks/useSiteEntry.ts`, `utils/sitesPage.ts`: a searchable table of the sites and, for the selected one, a card with the form of its five core fields (read and saved through the Content Manager's admin API, in Strapi's default locale) and the panel of each section the caller may read, which sibling plugins provide through `registerSitePanel` in `pageRegistry.ts`; `GET /micelio/sites` answers the sections and their `panel` names), the status page (`pages/StatusPage.tsx`), Export and import (`pages/TransferPage.tsx` with
 `components/ExportPanel.tsx` and `ImportPanel.tsx`, `utils/transfer.ts`) and About
 (`pages/AboutPage.tsx`, which shows what `GET /micelio/about` gathers), the preview page (ADR-0019;
 `pages/PreviewPage.tsx` at `preview/:uid/:documentId`, which no menu item opens: the **Preview**

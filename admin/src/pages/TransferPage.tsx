@@ -1,6 +1,7 @@
 import { Box, Button, Flex, Typography } from '@strapi/design-system'
 import { Layouts, Page } from '@strapi/strapi/admin'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { ExportPanel } from '../components/ExportPanel'
 import { ImportPanel } from '../components/ImportPanel'
@@ -35,7 +36,9 @@ export default function TransferPage() {
 function TransferContent() {
   const { t } = useMessages()
   const sites = useLoaded<SiteOption[]>('/micelio/transfers/sites')
-  const [chosen, setChosen] = useState<string | null>(null)
+  // The site the address names (the Sites page links here with `?site=`) is selected when the page opens.
+  const [searchParams] = useSearchParams()
+  const [chosen, setChosen] = useState<string | null>(searchParams.get('site'))
   if (sites.resource.kind === 'loading') return <Page.Loading>{t('transfer.loading')}</Page.Loading>
   if (sites.resource.kind === 'error') {
     return (

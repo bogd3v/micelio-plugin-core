@@ -736,9 +736,9 @@ Admin API routes behind the [extension points](plugins/extension-points.md); bot
 
 ### Sites in the admin
 
-`GET /micelio/sites` needs the Content Manager permission to read the `Site` type; without it the answer is `403` with the `code` `sitesForbidden`. Each site has `sections`, an object keyed by the `id` of every site section whose `permission` the caller has, holding that site's instance of the section's component (`null` if it has none); a section the caller may not read is not a key. The default site comes first, then by slug.
+`GET /micelio/sites` needs the Content Manager permission to read the `Site` type; without it the answer is `403` with the `code` `sitesForbidden`. Each site has `sections`, an object keyed by the `id` of every site section whose `permission` the caller has, holding that site's instance of the section's component (`null` if it has none); a section the caller may not read is not a key. The default site comes first, then by slug. Each site also has `theme`: `{ id, version }` from the `themeId` and `themeVersion` of its `theme` component, or `null` when it has none.
 
-The answer also has `meta.sections`: one `{ id, label, panel }` for each section the caller may read (the same ones that are keys of `sections`, in registration order). The Sites page of the admin renders the panel each `panel` names under the core fields of the selected site ([extension-points.md](plugins/extension-points.md#a-section-on-every-site)).
+The answer also has `meta.sections`: one `{ id, label, panel }` for each section the caller may read (the same ones that are keys of `sections`, in registration order). The Sites page of the admin renders the panel each `panel` names in the card of the selected site, under its form ([extension-points.md](plugins/extension-points.md#a-section-on-every-site)).
 
 ### Pages
 
