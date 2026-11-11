@@ -1,5 +1,5 @@
 // A fixture plugin that registers one of each extension point of the core, as a sibling plugin
-// would (docs/plugins/extension-points.md): an admin page, a site section, two status checks and
+// would (docs/plugins/extension-points.md): an admin page, two site sections, two status checks and
 // an export section with personal data. It is declared before `micelio` in config/plugins.js, so
 // its `register` runs first and uses the `extensions` service.
 const READ = 'plugin::extension-fixture.read'
@@ -22,6 +22,14 @@ module.exports = {
       component: 'extension-fixture.profile',
       label: { en: 'Fixture profile', es: 'Perfil de prueba' },
       panel: 'extension-fixture.profile',
+      permission: READ,
+    })
+    // A section whose panel the fixture's admin never registers: the Sites page shows a notice.
+    extensions.registerSiteSection({
+      id: 'fixture-unpanelled',
+      component: 'extension-fixture.unpanelled',
+      label: { en: 'Fixture without a panel', es: 'Prueba sin panel' },
+      panel: 'extension-fixture.unpanelled',
       permission: READ,
     })
     extensions.registerStatusChecks({

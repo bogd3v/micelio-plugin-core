@@ -17,6 +17,17 @@ const RELOAD_FILE = join(PROJECT, 'reload.txt')
 const COMPONENTS_FIXTURE = join(PLUGIN, 'test', 'fixtures', 'micelio-cms-v0.4.0-components.json')
 // The catalogue's JSON Schema: its options (`contract/options.ts`) that v0.4.0 does not store yet.
 const CATALOGUE_SCHEMA = join(PLUGIN, 'contract', 'blocks.schema.json')
+// The fixture plugin the suites use (`config/plugins.js` loads it too): its components are the ones
+// its site sections attach to every site, and its admin provides the panel of the Sites page.
+const FIXTURE_COMPONENTS = join(
+  PLUGIN,
+  'test',
+  'strapi',
+  'app',
+  'src',
+  'components',
+  'extension-fixture'
+)
 const BUNDLES = [join(DIST, 'server', 'index.js'), join(DIST, 'admin', 'index.js')]
 
 // A rebuild writes `dist/` in several steps (bundles, then declarations): Strapi loads it only after this long without a write.
@@ -87,7 +98,7 @@ function addCatalogueOptions(components) {
   }
 }
 
-/** Writes the fixture's components into the project's `src/components/` (gitignored), where Strapi loads them from. */
+/** Writes the fixture's components, and the fixture plugin's, into the project's `src/components/` (gitignored), where Strapi loads them from. */
 function writeComponents() {
   const { components } = JSON.parse(readFileSync(COMPONENTS_FIXTURE, 'utf8'))
   addCatalogueOptions(components)
@@ -99,6 +110,11 @@ function writeComponents() {
     for (const [legacy, current] of Object.entries(TAXONOMY_UIDS))
       text = text.replaceAll(legacy, current)
     writeFileSync(join(folder, `${name}.json`), text)
+  }
+  const fixture = join(PROJECT, 'src', 'components', 'extension-fixture')
+  mkdirSync(fixture, { recursive: true })
+  for (const file of readdirSync(FIXTURE_COMPONENTS)) {
+    writeFileSync(join(fixture, file), readFileSync(join(FIXTURE_COMPONENTS, file)))
   }
 }
 

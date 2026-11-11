@@ -33,7 +33,7 @@ extensions.registerAdminPage({
 })
 ```
 
-`to` cannot be `about`: the core's About page uses it, and the registration throws a `TypeError`. The core's Export and import page lives at `_export-import`, which `to` can never be (it starts with an underscore), so every other path stays yours. The index (Status) is the empty path, which `to` never matches.
+`to` cannot be `about`: the core's About page uses it, and the registration throws a `TypeError`. The core's Export and import page lives at `_export-import`, which `to` can never be (it starts with an underscore), but the core's own routes win over a plugin's page: `review`, `blocks`, `sites`, `templates` (and `templates/<id>/edit`), `preview/…`, `builder/…` and `new/…`. The registration does not throw for them; the core route answers and your page is never shown, so choose another `to` (the core's Sites page is described below). The index (Status) is the empty path, which `to` never matches.
 
 The item appears in its group of the Micelio sub-navigation (`GET /micelio/admin-pages` lists those the admin user's permissions allow). Provide the page itself from your admin, in `bootstrap` (the Micelio admin plugin is registered by then, whatever the order):
 
@@ -73,7 +73,16 @@ Do it in `register`: Strapi builds the database models after it, and a later cal
 - The site archive carries the instance with the site, as any attribute of the site type.
 - The attribute is `private`: the content API (`/api/micelio/sites?populate=*`, or `populate=site` from a site-scoped type) never returns it, so your `permission` is not bypassed there. The Content Manager still lists it for a role that can read the `Site` type: restrict the field in that role's Content Manager permission (`fields`) if the section must be hidden there too. The core does not do it.
 
-`panel` names the panel your admin offers for the site view; the core keeps and answers it.
+`panel` names the panel your admin offers on the **Sites** page (Micelio → Sites, in the `site` group of the sub-navigation, for a role that may read the `Site` type). The page shows one site at a time, with its core fields as links to its Content Manager entry and, under them, a card for each section of yours the caller may read. Provide the component in your admin's `bootstrap`, with the Micelio admin plugin's `apis`, as you do for a page:
+
+```js
+// admin/src/index.js of your plugin
+bootstrap(app) {
+  app.getPlugin('micelio').apis.registerSitePanel('fediverse.actor', () => import('./panels/Actor'))
+},
+```
+
+The first argument is the registration's `panel`; the loader returns a module whose default export is a component that receives `{ site, section, canWrite }`: the site's `documentId` and `slug`, the section's current data (`null` if the site has none yet) and whether the caller may update the `Site` type. Save through the Content Manager's API with your own permission checks; the page does not save for you. The loader runs only when the page renders the panel, and the page renders it only for a caller who has the section's `permission`: no request is made and no module is fetched for a section the caller cannot read. A `panel` with no registered component shows a notice that links to the site's Content Manager entry, not an error. The core's Sites page lives at `sites`. `registerAdminPage` does not throw for `to: 'sites'`: the registration is accepted, but the core route answers that path, so the page you provide is never shown. Choose another `to`.
 
 ## Checks in the Status page
 
@@ -122,4 +131,4 @@ The archive carries your files under `plugins/<id>/` and your `version` in `mani
 
 ## Test it
 
-The core's own suites use a fixture plugin that registers one of each point (`test/strapi/app/src/plugins/extension-fixture/`); copy its shape for yours.
+The core's own suites use a fixture plugin that registers one of each point (`test/strapi/app/src/plugins/extension-fixture/`), with a panel for its `fixture-profile` section and a second section whose panel is never registered; copy its shape for yours. `npm run dev:docker` loads it too ([manual-testing.md](../operate/manual-testing.md#try-the-sites-page)).

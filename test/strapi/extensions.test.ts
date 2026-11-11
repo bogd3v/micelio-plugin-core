@@ -241,7 +241,8 @@ describe('the extension points', () => {
           documentId: 'old-site-document',
         },
       })
-      expect(await ensureSiteSections(strapi)).toBe(1)
+      // One instance for each of the fixture's two sections.
+      expect(await ensureSiteSections(strapi)).toBe(2)
       expect(await ensureSiteSections(strapi)).toBe(0)
     })
 
@@ -263,6 +264,26 @@ describe('the extension points', () => {
       ).toBe('unset')
 
       for (const site of await read('status-only')) expect(site.sections).toEqual({})
+    })
+
+    it('lists the sections the caller may read in meta.sections, with their panel', async () => {
+      const meta = async (role: Role) =>
+        ((await (await get('/micelio/sites', role)).json()) as { meta: { sections: unknown[] } })
+          .meta.sections
+
+      expect(await meta('fixture-reader')).toEqual([
+        {
+          id: 'fixture-profile',
+          label: { en: 'Fixture profile', es: 'Perfil de prueba' },
+          panel: 'extension-fixture.profile',
+        },
+        {
+          id: 'fixture-unpanelled',
+          label: { en: 'Fixture without a panel', es: 'Prueba sin panel' },
+          panel: 'extension-fixture.unpanelled',
+        },
+      ])
+      expect(await meta('status-only')).toEqual([])
     })
 
     it('keeps the section out of the content API, whatever the populate', async () => {

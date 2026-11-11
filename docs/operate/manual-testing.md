@@ -642,6 +642,20 @@ The plugin's **Export and import** and **About Micelio** pages, in the admin at 
 7. Open **Micelio → About Micelio**: versions, the connected frontend with _OK_, the diagnostics block and **Copy diagnostics**. Paste the clipboard anywhere: it holds versions and counts, no email, token or content.
 8. The update check: `docker compose -f compose.dev.yml logs cms` shows no line for it; to see what leaves the CMS, run the stack with `MICELIO_UPDATE_CHECK=false npm run dev:docker` and press **Run checks again**: the _Update available_ row says the check is off, and `docker compose -f compose.dev.yml exec cms sh -c 'ss -tn | grep -c :443'` stays at `0` (the only other connection is to the frontend, on port 8080). With the default, the row says whether the release feed answered.
 
+## Try the Sites page
+
+The stack loads the fixture plugin of the suites (`test/strapi/app/src/plugins/extension-fixture/`, from `docker/cms/config/plugins.js`): a page, a site section with a panel, a second section whose panel is not registered, checks for the Status page and an export section. **Micelio → Sites** is in the `site` group of the sub-navigation.
+
+1. In the admin, open **Settings → Administration panel → Roles**, create the role `Sites reader` and give it only **Content Manager → Site → Read** (every field). Invite a second admin user with that role (**Users → Invite**; the invite link is in the CMS log if no mail is set up).
+2. As your super admin, open **Micelio → Sites**. **Example Site (default)** is chosen. Under **Core fields**, the name, slug, hosts and frontend are links: each opens the site's Content Manager entry.
+3. Under them there are two cards. **Fixture profile** shows `Profile panel of default: handle unset, editable`: it is the panel the fixture registered with `apis.registerSitePanel`. **Fixture without a panel** says that the plugin that registered the section has not provided its panel, and **Edit the section in the Content Manager** opens the entry.
+4. In **Content Manager → Site**, open the site: **Fixture profile** is a component field. Set its `handle` to `@example`, save, and reload **Sites**: the panel shows `handle @example`.
+5. Create a second site and choose it in the **Site** list of the page: the panel shows its own `handle`.
+6. Sign in as the `Sites reader`: **Micelio → Sites** shows the **Core fields** and no card. Its browser's network tab shows no request for the fixture's panel module (`window.fixtureProfilePanelLoads` is `undefined` in the console).
+7. Give that role **Fixture → Read the fixture** (under **Plugins**): both cards appear, the panel reads `read only` until the role may also update the **Site** type.
+8. The fixture's other points show too: **Micelio → Fixture page** (a heading), the **Fixture checks** card of the Status page after **Run again**, and **Fixture members** among the sections of **Export and import**.
+9. Set the language of your profile to Español and reload: the page, its cards and the fixture's labels are in Spanish.
+
 ## Try the redirects in an archive
 
 The redirects of a site travel in its archive (`redirects.json`,

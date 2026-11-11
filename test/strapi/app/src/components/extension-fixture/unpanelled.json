@@ -1,0 +1,11 @@
+{
+  "collectionName": "components_extension_fixture_unpanelleds",
+  "info": {
+    "displayName": "Unpanelled",
+    "description": "A component of the extension-fixture plugin whose panel its admin never registers"
+  },
+  "options": {},
+  "attributes": {
+    "note": { "type": "string", "default": "unset" }
+  }
+}

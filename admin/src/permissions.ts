@@ -27,3 +27,15 @@ export const TEMPLATES_MANAGE_PERMISSION = {
 
 /** Opens the In review page; the server's `REVIEW_READ_PERMISSION`, registered in its `bootstrap`. */
 export const REVIEW_READ_PERMISSION = { action: 'plugin::micelio.review.read', subject: null }
+
+/** Opens the Sites page and lets it read the sites: the Content Manager's permission to read the `Site` type (`GET /micelio/sites`). */
+export const SITES_READ_PERMISSION = {
+  action: 'plugin::content-manager.explorer.read',
+  subject: 'plugin::micelio.site',
+}
+
+/** What a panel of the Sites page gets as `canWrite`: the Content Manager's permission to update the `Site` type. */
+export const SITES_UPDATE_PERMISSION = {
+  action: 'plugin::content-manager.explorer.update',
+  subject: 'plugin::micelio.site',
+}

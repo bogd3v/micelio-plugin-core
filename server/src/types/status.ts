@@ -65,6 +65,18 @@ export interface SiteWithSections extends StatusSite {
 }
 
 /**
+ * A site section the caller may read, as `meta.sections` of `GET /micelio/sites` lists it: what
+ * the Sites page needs to render the section of each site (`registerSiteSection`).
+ */
+export interface SiteSectionSummary {
+  /** The section's `id`: the key of `sections` in every site. */
+  id: string
+  label: { en: string; es?: string }
+  /** The name of the panel the plugin's admin registered with `apis.registerSitePanel`. */
+  panel: string
+}
+
+/**
  * What a frontend answered on `GET <origin>/_health`.
  *
  * @remarks
