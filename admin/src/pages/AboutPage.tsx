@@ -2,6 +2,7 @@ import { Badge, Box, Button, Flex, Link, Typography, useNotifyAT } from '@strapi
 import { Layouts, Page, useAuth } from '@strapi/strapi/admin'
 import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
+import styled from 'styled-components'
 
 import type { AboutReport } from '../../../server/src/types/about'
 import { MicelioIcon } from '../components/MicelioIcon'
@@ -19,6 +20,22 @@ const LINKS = [
   { id: 'security', href: 'https://github.com/bogd3v/.github/blob/main/SECURITY.md' },
   { id: 'releases', href: `${REPOSITORY}/releases` },
 ] as const
+/** A row of a list or a description list: a rule (the header rule's colour) rules it off from the one before. */
+const RuledRow = styled.div`
+  padding: ${({ theme }) => `${theme.spaces[2]} 0`};
+  & + & {
+    border-top: 1px solid ${({ theme }) => theme.colors.neutral150};
+  }
+`
+const VersionRow = styled(RuledRow)`
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 2fr;
+  gap: ${({ theme }) => theme.spaces[3]};
+`
+/** A row of Where to go: ruled off from the header rule above it as well (the artboard `About`). */
+const LinkRow = styled(RuledRow)`
+  border-top: 1px solid ${({ theme }) => theme.colors.neutral150};
+`
 const TILES = ['editor', 'site', 'themes'] as const
 
 // Two cards side by side while each has room for 36rem, stacked under that (the artboard `About`).
@@ -37,31 +54,53 @@ function Panel({
   title,
   children,
   ruled = true,
+  tight = false,
 }: {
   title: string
   children: ReactNode
   ruled?: boolean
+  /** The rows start close under the header rule (Versions and Where to go), as on the artboard. */
+  tight?: boolean
 }) {
   return (
     <Box tag="section" background="neutral0" hasRadius shadow="filterShadow">
       <Box
-        paddingTop={5}
-        paddingBottom={4}
+        paddingTop={ruled ? 4 : 5}
+        paddingBottom={ruled ? 4 : 0}
         paddingLeft={6}
         paddingRight={6}
         borderColor="neutral150"
         borderStyle="solid"
         borderWidth={ruled ? '0 0 1px 0' : '0'}
       >
-        <Typography variant="epsilon" fontWeight="bold" tag="h2">
+        <Typography variant="delta" fontWeight="bold" tag="h2">
           {title}
         </Typography>
       </Box>
-      <Flex direction="column" alignItems="stretch" gap={4} padding={6} paddingTop={ruled ? 6 : 0}>
+      <Flex
+        direction="column"
+        alignItems="stretch"
+        gap={4}
+        padding={6}
+        paddingTop={tight ? 1 : ruled ? 4 : 0}
+      >
         {children}
       </Flex>
     </Box>
   )
+}
+
+// The text of a card's paragraph stops at about two thirds of the card, as on the artboard.
+const BODY_WIDTH = '78ch'
+
+/** The licence identifier the Licence and credits text sets in bold; it reads the same in every language. */
+const LICENCE_ID = 'AGPL-3.0-only'
+
+/** `text` with each occurrence of `word` in bold. */
+function withBold(text: string, word: string): ReactNode {
+  return text
+    .split(word)
+    .flatMap((part, index) => (index === 0 ? [part] : [<strong key={index}>{word}</strong>, part]))
 }
 
 /** About Micelio: what the plugin is, what runs here and what to paste into a support request. */
@@ -73,23 +112,38 @@ export default function AboutPage() {
   return (
     <Page.Main>
       <Page.Title>{t('about.title')}</Page.Title>
-      <Layouts.Header
-        title={
-          <Flex tag="span" gap={3} alignItems="center">
-            <Box tag="span" color="primary600" display="flex">
+      {/* Not `Layouts.Header`: its subtitle sits under the mark too; here it starts under the title's text. */}
+      <Box
+        background="neutral100"
+        paddingTop={8}
+        paddingBottom={4}
+        paddingLeft={10}
+        paddingRight={10}
+      >
+        <Flex justifyContent="space-between" alignItems="flex-start" gap={4} wrap="wrap">
+          <Flex gap={3} alignItems="flex-start">
+            <Box tag="span" color="primary600" display="flex" paddingTop={1}>
               <MicelioIcon width="4rem" height="4rem" />
             </Box>
-            {t('about.title')}
+            <Flex direction="column" alignItems="flex-start" gap={1}>
+              <Typography variant="alpha" tag="h1">
+                {t('about.title')}
+              </Typography>
+              <Typography variant="epsilon" textColor="neutral600" tag="p">
+                {t('about.subtitle')}
+              </Typography>
+            </Flex>
           </Flex>
-        }
-        subtitle={t('about.subtitle')}
-        primaryAction={current ? <CopyButton text={current.diagnostics} /> : undefined}
-      />
+          {current ? <CopyButton text={current.diagnostics} /> : null}
+        </Flex>
+      </Box>
       <Layouts.Content>
         <Flex direction="column" alignItems="stretch" gap={6}>
           <Panel title={t('about.what.title')} ruled={false}>
-            <Typography>{t('about.body')}</Typography>
-            <Flex gap={4} wrap="wrap" alignItems="stretch">
+            <Typography tag="p" style={{ maxWidth: BODY_WIDTH }}>
+              {t('about.body')}
+            </Typography>
+            <Flex gap={4} wrap="wrap" alignItems="stretch" marginTop={3}>
               {TILES.map((tile) => (
                 <Box
                   key={tile}
@@ -99,10 +153,10 @@ export default function AboutPage() {
                   hasRadius
                   padding={4}
                 >
-                  <Typography variant="omega" fontWeight="bold" tag="h3">
+                  <Typography variant="pi" fontWeight="bold" tag="h3">
                     {t(`about.tile.${tile}.title`)}
                   </Typography>
-                  <Typography tag="p" variant="pi" textColor="neutral600">
+                  <Typography tag="p" variant="pi" textColor="neutral600" style={{ marginTop: 6 }}>
                     {t(`about.tile.${tile}`)}
                   </Typography>
                 </Box>
@@ -116,29 +170,31 @@ export default function AboutPage() {
             reload={reload}
             more={
               <>
-                <Panel title={t('about.links.title')}>
+                <Panel title={t('about.links.title')} tight>
                   <Flex
                     tag="ul"
                     direction="column"
                     alignItems="stretch"
-                    gap={3}
+                    gap={0}
                     margin={0}
                     padding={0}
                   >
                     {LINKS.map(({ id, href }) => (
-                      <li key={id} style={{ listStyle: 'none' }}>
+                      <LinkRow as="li" key={id} style={{ listStyle: 'none' }}>
                         <Link href={href} isExternal>
-                          {t(`about.link.${id}`)}
+                          <Typography fontWeight="bold" textColor="primary600">
+                            {t(`about.link.${id}`)}
+                          </Typography>
                         </Link>
                         <Typography tag="p" variant="pi" textColor="neutral600">
                           {t(`about.link.${id}.hint`)}
                         </Typography>
-                      </li>
+                      </LinkRow>
                     ))}
                   </Flex>
                 </Panel>
                 <Panel title={t('about.licence.title')}>
-                  <Typography tag="p">{t('about.licence.free')}</Typography>
+                  <Typography tag="p">{withBold(t('about.licence.free'), LICENCE_ID)}</Typography>
                   <Typography tag="p">{t('about.licence.strapi')}</Typography>
                   <Typography tag="p">{t('about.licence.trademark')}</Typography>
                 </Panel>
@@ -208,15 +264,8 @@ function Checks(props: {
   return (
     <>
       <div style={COLUMNS}>
-        <Panel title={t('about.versions.title')}>
-          <dl
-            style={{
-              margin: 0,
-              display: 'grid',
-              gridTemplateColumns: 'minmax(120px, 1fr) 2fr',
-              gap: 12,
-            }}
-          >
+        <Panel title={t('about.versions.title')} tight>
+          <dl style={{ margin: 0 }}>
             <Row
               label={t('about.row.plugin')}
               value={`@micelio/strapi-plugin-core ${report.plugin.version}`}
@@ -299,7 +348,13 @@ function Checks(props: {
             color="neutral0"
             hasRadius
             padding={4}
-            style={{ margin: 0, whiteSpace: 'pre-wrap', overflowX: 'auto', fontSize: '1.2rem' }}
+            style={{
+              margin: 0,
+              whiteSpace: 'pre-wrap',
+              overflowX: 'auto',
+              fontSize: '1.3rem',
+              lineHeight: 1.6,
+            }}
           >
             <code>{report.diagnostics}</code>
           </Box>
@@ -338,7 +393,7 @@ function Row({
   mono?: boolean
 }) {
   return (
-    <>
+    <VersionRow>
       <Typography tag="dt" textColor="neutral600">
         {label}
       </Typography>
@@ -348,7 +403,7 @@ function Row({
       >
         {value}
       </Typography>
-    </>
+    </VersionRow>
   )
 }
 
@@ -356,8 +411,17 @@ function UpdateText({ report }: { report: AboutReport }) {
   const { t } = useMessages()
   const { update } = report
   if (update.state === 'available') {
+    // The orange is a dot: `warning700` is 4.42:1 on `neutral0`, so the text keeps the default colour.
     return (
       <>
+        <Box
+          tag="span"
+          aria-hidden="true"
+          data-testid="update-dot"
+          background="warning600"
+          marginRight={2}
+          style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%' }}
+        />
         {t('about.update.available', { version: update.version })}{' '}
         {update.url ? (
           <Link href={update.url} isExternal>
@@ -383,7 +447,7 @@ function CopyButton({ text }: { text: string }) {
     }
   }
   return (
-    <Button variant="tertiary" startIcon={<CopyMark />} onClick={copy}>
+    <Button variant="tertiary" size="L" startIcon={<CopyMark />} onClick={copy}>
       {t('about.copy')}
     </Button>
   )
