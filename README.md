@@ -2,7 +2,7 @@
 
 `@micelio/strapi-plugin-core` is Micelio's core as a Strapi 5 plugin. It will hold what a Micelio site needs from its CMS: several sites per CMS, the block catalogue, the editorial workflow, the hooks other Micelio plugins build on, and a host check that refuses to start in production when the host is missing what Micelio needs ([ADR-0017](https://github.com/bogd3v/micelio/blob/main/docs/adr/0017-distribution-plugins-multisite-editorial.md)).
 
-It is at `0.3.0` and alpha: it holds the `site` type (one row per site,
+It is at `0.4.0` and alpha: it holds the `site` type (one row per site,
 with a default site created on an empty instance), site scoping for content types,
 the editorial workflow,
 the block catalogue ([docs/blocks.md](docs/blocks.md)) and its per-site management
@@ -17,15 +17,25 @@ which opens in a new tab when the frame stays silent
 ([docs/operate/preview.md](docs/operate/preview.md)),
 the page weight budget that refuses a publish over it or without its measurement,
 with the cost meter of the preview page and the cost line of the edit view
-([docs/operate/budgets.md](docs/operate/budgets.md)) and the `category` and `tag` types,
-and the other capabilities arrive with the issues of the first milestone. Until then,
-install nothing from it on a site.
+([docs/operate/budgets.md](docs/operate/budgets.md)) and the `category` and `tag` types.
+Since `0.3.0` it adds the builder, with its keyboard and Media Library
+([docs/guide/builder.md](docs/guide/builder.md)); page settings on a host's page type through the
+exported `withPageSettings`, with redirects when a published slug changes
+([docs/guide/pages.md](docs/guide/pages.md)); page templates
+([docs/guide/templates.md](docs/guide/templates.md)); send to review, schedule, the In review page
+and the editorial panel of the edit view ([docs/guide/review.md](docs/guide/review.md)); the SEO and
+social tab ([docs/guide/seo.md](docs/guide/seo.md)); islands and the presentation options of the
+blocks ([docs/blocks.md](docs/blocks.md)); the Sites, Export and import and About pages
+([docs/operate/transfer-page.md](docs/operate/transfer-page.md),
+[docs/operate/about-page.md](docs/operate/about-page.md)); and the carbon estimate beside the cost
+meter ([docs/operate/budgets.md](docs/operate/budgets.md)). The other capabilities arrive with the
+issues of the first milestone. Until then, install nothing from it on a site.
 
 ## Plugin or distribution
 
 [`micelio-cms`](https://github.com/bogd3v/micelio-cms) is the **reference distribution**: a Strapi project with the plugins installed and the configuration a plugin cannot set for its host (security middlewares, CSP, uploads provider, database, image and Compose files). It is what hosting runs and what "Micelio 0.6" means. Use it to run a Micelio site. The plugin is for a developer who already runs Strapi and wants Micelio in it.
 
-`micelio` in `package.json` names the release line of Micelio this version supports (`0.6`).
+`micelio` in `package.json` names the release line of Micelio this version supports (`0.7`).
 
 ## Getting started
 
@@ -84,7 +94,7 @@ The first release is `v0.1.0`, the `version` in `package.json`: with no earlier 
 `compatibility` is required to publish. Every release states the release line of the core it supports (`micelio` in `package.json`) and the minimum Node (`engines`):
 
 ```
-- Micelio release line: 0.6
+- Micelio release line: 0.7
 - Node: 22.19 or later
 ```
 
