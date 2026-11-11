@@ -2,7 +2,7 @@
 
 How to run the plugin in a Strapi, next to the Micelio frontend, on Docker. It is for whoever works on this plugin: a clean Strapi 5 with only this plugin installed (as `test/strapi/app/` is, for the suites), PostgreSQL and the Micelio frontend. It is not a deployment and nothing here is meant for production.
 
-You need Docker with Compose v2, Node 22 (`.nvmrc`) and free ports 1337 and 3000.
+You need Docker with Compose v2, Node 22 (`.nvmrc`) and free ports 1337 and 3000 (`CMS_PORT` and `FRONTEND_PORT` change them; [A second stack](#a-second-stack)).
 
 ## Bring it up
 
@@ -806,10 +806,35 @@ docker build -t micelio:local ../micelio
 FRONTEND_IMAGE=micelio:local npm run dev:docker
 ```
 
+## A second stack
+
+The two host ports come from `CMS_PORT` (default 1337) and `FRONTEND_PORT` (default 3000), and the project name from `COMPOSE_PROJECT_NAME` (default `micelio-plugin-core-dev`, the `name:` of `compose.dev.yml`). With the first stack up, a second one under its own name and ports:
+
+```bash
+COMPOSE_PROJECT_NAME=micelio-plugin-core-dev-2 CMS_PORT=1347 FRONTEND_PORT=3010 npm run dev:docker
+```
+
+It has its own database and volumes, and the script prints its URLs (`http://localhost:1347/admin`, `http://localhost:3010`) and its `docker compose -p …` commands. Every address in the stack follows the two ports: the site's `url`, the CORS and `frame-src` origin, the media URLs and the forwards. The commands of this page that say `localhost:1337`, `localhost:3000` or `docker compose -f compose.dev.yml` need the second stack's ports and `-p micelio-plugin-core-dev-2`. To see both:
+
+```bash
+docker compose ls --format json | jq -r '.[].Name' | grep '^micelio-plugin-core-dev'
+docker compose -p micelio-plugin-core-dev-2 -f compose.dev.yml port cms 1337       # 127.0.0.1:1347
+docker compose -p micelio-plugin-core-dev-2 -f compose.dev.yml port frontend 8080  # 127.0.0.1:3010
+```
+
+Remove each with the variables it was started with:
+
+```bash
+npm run dev:docker -- down
+COMPOSE_PROJECT_NAME=micelio-plugin-core-dev-2 npm run dev:docker -- down
+```
+
+Ports inside the containers do not change. Every port variable is read from the environment, then from `.env.docker`.
+
 ## When it fails
 
 - `Cannot run docker` or `dependency failed to start`: read the logs of the service the message names.
-- A port is taken: stop what uses 1337 or 3000. The stack publishes both on `127.0.0.1` only.
+- A port is taken: stop what uses 1337 or 3000, or run on other ports with `CMS_PORT` and `FRONTEND_PORT` ([A second stack](#a-second-stack)). The stack publishes both on `127.0.0.1` only.
 - The CMS container exits right after the build: `docker compose -f compose.dev.yml logs cms` shows Strapi's error; a message about a missing variable means `.env.docker` is old or edited by hand. Delete it and run again.
 
 CI runs the same command and asks both services for an answer (the `compose` job of `ci.yml`).
