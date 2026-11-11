@@ -55,9 +55,12 @@ export interface SiteSectionRegistration {
   component: string
   label: LocalisedText
   /**
-   * The name of the panel the plugin's admin offers for the site view. The core keeps and
-   * answers it with the section; the Sites view that renders it under the core fields is a
-   * separate piece of the admin.
+   * The name of the panel the plugin's admin offers for the Sites page. The core answers it in
+   * `meta.sections` of `GET /micelio/sites`, and the Sites page renders, under the core fields of
+   * the selected site, the component the plugin's admin registered under this name with
+   * `app.getPlugin('micelio').apis.registerSitePanel(name, loader)`; the loader returns a module
+   * whose default export is a component that receives `{ site, section, canWrite }`. A name with
+   * no registered component shows a notice that links to the site's Content Manager entry.
    */
   panel: string
   /**

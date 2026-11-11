@@ -46,8 +46,14 @@ export default ({ strapi }: { strapi: Core.Strapi }): Record<'pages' | 'sites', 
       const readable = extensionsOf(strapi)
         .siteSections()
         .filter(({ permission }) => ability.can(permission))
-        .map(({ id }) => id)
-      ctx.body = { data: await readSitesWithSections(strapi, readable) }
+      ctx.body = {
+        data: await readSitesWithSections(
+          strapi,
+          readable.map(({ id }) => id)
+        ),
+        // What the Sites page renders each section with: only those the caller may read.
+        meta: { sections: readable.map(({ id, label, panel }) => ({ id, label, panel })) },
+      }
     },
   }
 }

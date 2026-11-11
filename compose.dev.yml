@@ -70,6 +70,10 @@ services:
       # The `micelio` binary, for `docker compose exec cms node /plugin/bin/micelio.js …` (docs/operate/manual-testing.md).
       - ./bin:/plugin/bin:ro,z
       - ./test/fixtures:/plugin/test/fixtures:ro,z
+      # The fixture plugin of the suites (a page, a site section with a panel, checks and an export
+      # section), which docker/cms/config/plugins.js loads, and the components it attaches to every site.
+      - ./test/strapi/app/src/plugins/extension-fixture:/plugin/test/strapi/app/src/plugins/extension-fixture:ro,z
+      - ./test/strapi/app/src/components/extension-fixture:/plugin/test/strapi/app/src/components/extension-fixture:ro,z
       - ./package.json:/plugin/package.json:ro,z
       - ./strapi-server.js:/plugin/strapi-server.js:ro,z
       - ./strapi-admin.js:/plugin/strapi-admin.js:ro,z

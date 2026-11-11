@@ -738,6 +738,8 @@ Admin API routes behind the [extension points](plugins/extension-points.md); bot
 
 `GET /micelio/sites` needs the Content Manager permission to read the `Site` type; without it the answer is `403` with the `code` `sitesForbidden`. Each site has `sections`, an object keyed by the `id` of every site section whose `permission` the caller has, holding that site's instance of the section's component (`null` if it has none); a section the caller may not read is not a key. The default site comes first, then by slug.
 
+The answer also has `meta.sections`: one `{ id, label, panel }` for each section the caller may read (the same ones that are keys of `sections`, in registration order). The Sites page of the admin renders the panel each `panel` names under the core fields of the selected site ([extension-points.md](plugins/extension-points.md#a-section-on-every-site)).
+
 ### Pages
 
 `GET /micelio/admin-pages` lists the pages sibling plugins registered whose `permission` the caller has, in registration order. The `to` is relative to `/plugins/micelio/`.

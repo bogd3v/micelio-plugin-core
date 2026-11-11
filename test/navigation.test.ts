@@ -7,6 +7,7 @@ import {
 } from '../admin/src/navigation'
 import {
   BLOCKS_READ_PERMISSION,
+  SITES_READ_PERMISSION,
   STATUS_READ_PERMISSION,
   TEMPLATES_MANAGE_PERMISSION,
   TRANSFER_PERMISSION,
@@ -17,7 +18,7 @@ const items: CoreNavItem[] = [
   ...CORE_NAV_ITEMS,
   { id: 'reports', group: 'content', to: 'reports', permission: REPORTS },
 ]
-const ids = (held: { action: string }[]): string[] =>
+const ids = (held: { action: string; subject?: string | null }[]): string[] =>
   visibleNavItems(items, held).map(({ id }) => id)
 
 describe('the items of the core a role sees', () => {
@@ -32,6 +33,14 @@ describe('the items of the core a role sees', () => {
     expect(ids([TRANSFER_PERMISSION])).toEqual(['transfer', 'about'])
     expect(ids([BLOCKS_READ_PERMISSION])).toEqual(['blocks', 'about'])
     expect(ids([TEMPLATES_MANAGE_PERMISSION])).toEqual(['templates', 'about'])
+  })
+
+  it('shows Sites only to a role that may read the Site type, not any type', () => {
+    expect(ids([SITES_READ_PERMISSION])).toEqual(['sites', 'about'])
+    expect(
+      ids([{ action: SITES_READ_PERMISSION.action, subject: 'api::brochure.brochure' }])
+    ).toEqual(['about'])
+    expect(ids([{ action: SITES_READ_PERMISSION.action, subject: null }])).toEqual(['about'])
   })
 })
 

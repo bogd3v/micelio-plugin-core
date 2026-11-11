@@ -4,7 +4,7 @@ import type { StrapiApp } from '@strapi/strapi/admin'
 
 import { Initializer } from './components/Initializer'
 import { MicelioIcon } from './components/MicelioIcon'
-import { registerPage } from './pageRegistry'
+import { registerPage, registerSitePanel } from './pageRegistry'
 import { PLUGIN_ID } from './pluginId'
 import { getTranslation } from './utils/getTranslation'
 
@@ -26,8 +26,9 @@ const plugin: StrapiApp['appPlugins'][string] = {
       initializer: Initializer,
       isReady: false,
       name: PLUGIN_ID,
-      // For sibling plugins: `app.getPlugin('micelio').apis.registerPage(id, loader)`.
-      apis: { registerPage },
+      // For sibling plugins: `app.getPlugin('micelio').apis.registerPage(id, loader)`, and
+      // `registerSitePanel(panel, loader)` for the panel of a site section.
+      apis: { registerPage, registerSitePanel },
     })
   },
 

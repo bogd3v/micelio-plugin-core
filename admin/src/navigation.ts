@@ -2,6 +2,7 @@ import type { AdminPageGroup } from '../../server/src/types/extensions'
 import {
   BLOCKS_READ_PERMISSION,
   REVIEW_READ_PERMISSION,
+  SITES_READ_PERMISSION,
   STATUS_READ_PERMISSION,
   TEMPLATES_MANAGE_PERMISSION,
   TRANSFER_PERMISSION,
@@ -17,8 +18,11 @@ export interface CoreNavItem {
   group: NavGroup
   /** The path under `/plugins/micelio/`; empty for the index. */
   to: string
-  /** The admin permission that shows the item and opens its page; none when every admin user may. */
-  permission?: { action: string; subject: null }
+  /**
+   * The admin permission that shows the item and opens its page; none when every admin user may.
+   * A `subject` narrows it to one content type.
+   */
+  permission?: { action: string; subject: string | null }
 }
 
 /** The groups in the order the sub-navigation lists them; a group with no visible item is left out. */
@@ -35,6 +39,7 @@ export const CORE_NAV_ITEMS: CoreNavItem[] = [
   { id: 'review', group: 'content', to: 'review', permission: REVIEW_READ_PERMISSION },
   { id: 'blocks', group: 'content', to: 'blocks', permission: BLOCKS_READ_PERMISSION },
   { id: 'templates', group: 'content', to: 'templates', permission: TEMPLATES_MANAGE_PERMISSION },
+  { id: 'sites', group: 'site', to: 'sites', permission: SITES_READ_PERMISSION },
   { id: 'transfer', group: 'site', to: '_export-import', permission: TRANSFER_PERMISSION },
   { id: 'about', group: 'about', to: 'about' },
 ]
@@ -42,11 +47,16 @@ export const CORE_NAV_ITEMS: CoreNavItem[] = [
 /** The items a role sees: those with no permission, and those whose own permission it holds. */
 export function visibleNavItems(
   items: CoreNavItem[],
-  permissions: { action: string }[]
+  permissions: { action: string; subject?: string | null }[]
 ): CoreNavItem[] {
   return items.filter(
     (item) =>
-      !item.permission || permissions.some(({ action }) => action === item.permission?.action)
+      !item.permission ||
+      permissions.some(
+        ({ action, subject }) =>
+          action === item.permission?.action &&
+          (item.permission.subject === null || subject === item.permission.subject)
+      )
   )
 }
 

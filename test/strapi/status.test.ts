@@ -122,7 +122,7 @@ describe('the status route', () => {
         name: '@micelio/extension-fixture',
         version: '0.0.0',
         adminPages: ['fixture-page'],
-        siteSections: ['fixture-profile'],
+        siteSections: ['fixture-profile', 'fixture-unpanelled'],
         statusChecks: ['fixture-checks'],
         exportSections: ['fixture-members'],
         hidden: false,
