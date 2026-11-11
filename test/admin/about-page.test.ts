@@ -9,6 +9,8 @@ import { cleanupStrapi, setupStrapi } from '../strapi/harness'
 const EMAIL = 'admin@example.com'
 // A second super admin whose interface language is Spanish (see test/admin/status-page.test.ts).
 const SPANISH_EMAIL = 'admin-es@example.com'
+// A third super admin for the layout tests: the admin login answers 5 attempts a minute per email.
+const DESIGN_EMAIL = 'admin-design@example.com'
 const PASSWORD = 'Password1234'
 
 /** Opens the About page in a context of its own, logged in as one admin user. */
@@ -58,6 +60,7 @@ describe('the theme row of the About page', () => {
     for (const [email, preferedLanguage] of [
       [EMAIL, null],
       [SPANISH_EMAIL, 'es'],
+      [DESIGN_EMAIL, null],
     ]) {
       await strapi.service('admin::user').create({
         email,
@@ -139,6 +142,130 @@ describe('the theme row of the About page', () => {
         return [style.textAlign, style.fontFamily]
       })
     ).resolves.toEqual(['right', 'monospace'])
+  })
+
+  it("starts the subtitle under the title's text, after the mark", async () => {
+    const page = await openAbout(browser, base, DESIGN_EMAIL)
+    await page.getByRole('heading', { name: 'Versions and compatibility' }).waitFor()
+    for (const width of [1600, 700]) {
+      await page.setViewportSize({ width, height: 1000 })
+      const title = await page
+        .getByRole('heading', { level: 1, name: 'About Micelio' })
+        .boundingBox()
+      const subtitle = await page.getByText('A site engine built on Strapi.').boundingBox()
+      const mark = await page.locator('main svg').first().boundingBox()
+      if (!title || !subtitle || !mark) throw new Error('the header is missing a part')
+      expect(
+        Math.abs(subtitle.x - title.x),
+        `subtitle and title start together at ${width}`
+      ).toBeLessThan(2)
+      expect(title.x, `the title is after the mark at ${width}`).toBeGreaterThan(
+        mark.x + mark.width - 1
+      )
+      expect(subtitle.y, `the subtitle is under the title at ${width}`).toBeGreaterThan(title.y)
+    }
+    // On a wide window (the Design System's buttons grow on a narrow one), Copy diagnostics is the Design System's size L (40 px tall), Run checks again stays S (32 px).
+    await page.setViewportSize({ width: 1600, height: 1000 })
+    const copy = await page.getByRole('button', { name: 'Copy diagnostics' }).boundingBox()
+    const run = await page.getByRole('button', { name: 'Run checks again' }).boundingBox()
+    expect(copy?.height).toBeGreaterThanOrEqual(40)
+    expect(run?.height).toBeLessThan(36)
+  })
+
+  it('rules off each row of Versions and each link of Where to go', async () => {
+    const page = await openAbout(browser, base, DESIGN_EMAIL)
+    await page.getByRole('heading', { name: 'Versions and compatibility' }).waitFor()
+    const rules = (selector: string) =>
+      page.locator(selector).evaluateAll((items) =>
+        items.map((item) => {
+          const style = item.ownerDocument.defaultView!.getComputedStyle(item)
+          return [style.borderTopWidth, style.borderTopStyle]
+        })
+      )
+    const versions = await rules('dl > div')
+    expect(versions.length).toBeGreaterThan(1)
+    expect(versions[0], 'Versions: the header rule is the first').toEqual(['0px', 'none'])
+    for (const rule of versions.slice(1)) expect(rule).toEqual(['1px', 'solid'])
+    const links = await rules('section ul > li')
+    expect(links.length).toBeGreaterThan(1)
+    // Where to go: the artboard rules above the first link too.
+    for (const rule of links) expect(rule).toEqual(['1px', 'solid'])
+  })
+
+  it('starts the first row of Versions and Where to go close under the header rule', async () => {
+    const page = await openAbout(browser, base, DESIGN_EMAIL)
+    await page.getByRole('heading', { name: 'Versions and compatibility' }).waitFor()
+    const gap = (selector: string) =>
+      page
+        .locator(selector)
+        .first()
+        .evaluate((row) => {
+          const rule = row.closest('section')!.querySelector('h2')!.parentElement!
+          return row.getBoundingClientRect().top - rule.getBoundingClientRect().bottom
+        })
+    // The artboard sits 4 CSS px under the rule (the design system's space 1); 16 was the gap before.
+    expect(await gap('dl > div')).toBeLessThanOrEqual(8)
+    expect(await gap('section ul > li')).toBeLessThanOrEqual(8)
+  })
+
+  it('sets the Where to go labels and the licence name in bold', async () => {
+    const page = await openAbout(browser, base, DESIGN_EMAIL)
+    await page.getByRole('heading', { name: 'Licence and credits' }).waitFor()
+    const weightOf = (selector: string) =>
+      page.locator(selector).evaluateAll((items) =>
+        items.map((item) => {
+          const view = item.ownerDocument.defaultView!
+          const text = [...item.querySelectorAll('*')].find(
+            (element) => element.children.length === 0 && element.textContent
+          )
+          return Number(view.getComputedStyle(text ?? item).fontWeight)
+        })
+      )
+    const labels = await weightOf('section ul > li a')
+    const licence = await weightOf('strong:text-is("AGPL-3.0-only")')
+    expect(labels.length).toBeGreaterThan(0)
+    for (const weight of labels) expect(weight).toBeGreaterThanOrEqual(600)
+    expect(licence).toHaveLength(1)
+    expect(licence[0]).toBeGreaterThanOrEqual(600)
+  })
+
+  it('marks an available update with a warning dot, its text at a contrast of at least 4.5:1', async () => {
+    const service = strapi.plugin('micelio').service('about') as {
+      read(): Promise<Record<string, unknown>>
+    }
+    const read = service.read
+    service.read = async () => ({
+      ...(await read.call(service)),
+      update: { state: 'available', version: '0.8.0', url: 'https://example.com/notes' },
+    })
+    try {
+      const page = await openAbout(browser, base, DESIGN_EMAIL)
+      await page.getByRole('heading', { name: 'Versions and compatibility' }).waitFor()
+      const row = page
+        .locator('dt', { hasText: 'Update' })
+        .locator('xpath=following-sibling::dd[1]')
+      expect(await row.textContent()).toContain('Release 0.8.0')
+      const dot = row.locator('[data-testid="update-dot"]')
+      expect(await dot.getAttribute('aria-hidden')).toBe('true')
+      const colours = await row.evaluate((element) => {
+        const view = element.ownerDocument.defaultView!
+        const dotStyle = view.getComputedStyle(element.querySelector('[data-testid="update-dot"]')!)
+        return [dotStyle.backgroundColor, view.getComputedStyle(element).color]
+      })
+      const channels = (rgb: string) => (rgb.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+      // The dot is orange (red well above blue); the text is dark, 4.5:1 or more on white.
+      const [dotR, , dotB] = channels(colours[0])
+      expect(dotR).toBeGreaterThan(dotB + 100)
+      const linear = channels(colours[1]).map((value) => {
+        const channel = value / 255
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+      })
+      const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+      expect(1.05 / (luminance + 0.05)).toBeGreaterThanOrEqual(4.5)
+      await page.context().close()
+    } finally {
+      service.read = read
+    }
   })
 
   it('shows the diagnostics on a dark block with a contrast of at least 4.5:1, in light and dark mode', async () => {
