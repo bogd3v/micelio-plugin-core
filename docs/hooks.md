@@ -266,7 +266,7 @@ registerStatusChecks(checks: StatusChecksRegistration): void
 
 Adds checks of your plugin to the Status page.
 
-The core runs them for every site on "Run again" and on the daily refresh
+The core runs them for every site on "Run host check" and on the daily refresh
 (`statusRefreshRule`), keeps the latest results, and answers them under
 `plugins[<id>].checks` of `GET /micelio/status` for callers who have `permission`. They are
 part of "Copy diagnostics" as one line per plugin.
@@ -358,12 +358,12 @@ The result of one status check.
 
 A group of status checks of a sibling plugin, shown as one card in the Status page.
 
-| Field        | Type                                                    | Description                                                                                                                                                                                                                                                                                               |
-| ------------ | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`         | `string`                                                | Unique among status checks: lower case letters, digits and hyphens.                                                                                                                                                                                                                                       |
-| `label`      | `LocalisedText`                                         |                                                                                                                                                                                                                                                                                                           |
-| `permission` | `string`                                                | The admin permission that shows the card and its results in the status response.                                                                                                                                                                                                                          |
-| `run`        | `run(site: ExtensionSite): Promise<Check[]> \| Check[]` | Runs the plugin's checks for one site. Called for every site, on "Run again" and on the daily refresh, never when the page loads. A call that throws or takes more than 10 seconds is reported as a failed check of the plugin and logged. It runs outside any request: it must not assume an admin user. |
+| Field        | Type                                                    | Description                                                                                                                                                                                                                                                                                                    |
+| ------------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | `string`                                                | Unique among status checks: lower case letters, digits and hyphens.                                                                                                                                                                                                                                            |
+| `label`      | `LocalisedText`                                         |                                                                                                                                                                                                                                                                                                                |
+| `permission` | `string`                                                | The admin permission that shows the card and its results in the status response.                                                                                                                                                                                                                               |
+| `run`        | `run(site: ExtensionSite): Promise<Check[]> \| Check[]` | Runs the plugin's checks for one site. Called for every site, on "Run host check" and on the daily refresh, never when the page loads. A call that throws or takes more than 10 seconds is reported as a failed check of the plugin and logged. It runs outside any request: it must not assume an admin user. |
 
 #### `ExportEntry`
 

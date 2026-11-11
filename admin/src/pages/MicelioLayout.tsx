@@ -3,6 +3,7 @@ import { Layouts, Page, SubNav, useAuth } from '@strapi/strapi/admin'
 import { Suspense, lazy, useMemo, type ComponentType } from 'react'
 import { useIntl } from 'react-intl'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import { styled } from 'styled-components'
 
 import { useAdminPages, type AdminPageItem } from '../hooks/useAdminPages'
 import { useInReviewCount } from '../hooks/useInReviewCount'
@@ -23,6 +24,26 @@ import TemplateBuilderPage from './TemplateBuilderPage'
 import TemplatesGalleryPage from './TemplatesGalleryPage'
 import TemplatesManagePage from './TemplatesManagePage'
 import TransferPage from './TransferPage'
+
+/**
+ * The bar on the right edge of the open item (the artboard's `Main`): the link the router marks
+ * `aria-current="page"` gets a 3px bar in the design system's primary colour, drawn inside the link
+ * so the list's width does not change.
+ */
+const ActiveBar = styled.div`
+  a[aria-current='page'] {
+    position: relative;
+  }
+  a[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 3px;
+    background: ${({ theme }) => theme.colors.primary600};
+  }
+`
 
 /**
  * The Micelio section of the admin: its sub-navigation and the page of each item.
@@ -103,11 +124,27 @@ export default function MicelioLayout() {
           <SubNav.Sections>
             {NAV_GROUPS.map((group) => ({ group, links: linksOf(group) }))
               .filter(({ links }) => links.length > 0)
-              .map(({ group, links }) => (
-                <SubNav.Section key={group} label={t(`nav.group.${group}`)}>
-                  {links}
-                </SubNav.Section>
-              ))}
+              .map(({ group, links }) =>
+                group === 'about' ? (
+                  // No heading: the item sits under a divider (the artboards).
+                  <ActiveBar key={group}>
+                    <Box paddingLeft={2} paddingRight={2}>
+                      <Box
+                        paddingTop={2}
+                        borderColor="neutral150"
+                        borderStyle="solid"
+                        borderWidth="1px 0 0 0"
+                      >
+                        {links}
+                      </Box>
+                    </Box>
+                  </ActiveBar>
+                ) : (
+                  <ActiveBar key={group}>
+                    <SubNav.Section label={t(`nav.group.${group}`)}>{links}</SubNav.Section>
+                  </ActiveBar>
+                )
+              )}
             {hasFailed ? <Typography textColor="neutral600">{t('nav.error')}</Typography> : null}
           </SubNav.Sections>
         </SubNav.Main>

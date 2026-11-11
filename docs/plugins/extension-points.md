@@ -106,7 +106,7 @@ extensions.registerStatusChecks({
 })
 ```
 
-The core calls `run` once per site on **Run again** and on the daily refresh (`statusRefreshRule`, README), never when the page loads. Results show as a card per plugin in Status, and as a line per plugin (`fediverse: 1 ok, 0 warn, 0 fail`) in **Copy diagnostics**. A `run` that throws, returns a malformed result or takes more than ten seconds becomes one failed check, `run`; the cause is logged and is not in the answer. `GET /micelio/status` carries the latest results under `plugins[<id>]` ([api.md](../api.md#status)).
+The core calls `run` once per site on **Run host check** and on the daily refresh (`statusRefreshRule`, README), never when the page loads. Results show as a card per plugin in Status, and as a line per plugin (`fediverse: 1 ok, 0 warn, 0 fail`) in **Copy diagnostics**. A `run` that throws, returns a malformed result or takes more than ten seconds becomes one failed check, `run`; the cause is logged and is not in the answer. `GET /micelio/status` carries the latest results under `plugins[<id>]` ([api.md](../api.md#status)).
 
 ## Files in the archive
 

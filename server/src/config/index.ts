@@ -40,7 +40,7 @@ export interface PluginConfig {
   scheduledPublishRule: string | false
   /**
    * When the host check and the checks of sibling plugins run again on their own, as a cron rule,
-   * or `false` to run them only on "Run again".
+   * or `false` to run them only on "Run host check".
    *
    * @defaultValue `'0 4 * * *'`, every day at 04:00 server time.
    */

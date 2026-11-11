@@ -653,7 +653,7 @@ The stack loads the fixture plugin of the suites (`test/strapi/app/src/plugins/e
 5. Create a second site and choose it in the **Site** list of the page: the panel shows its own `handle`.
 6. Sign in as the `Sites reader`: **Micelio → Sites** shows the **Core fields** and no card. Its browser's network tab shows no request for the fixture's panel module (`window.fixtureProfilePanelLoads` is `undefined` in the console).
 7. Give that role **Fixture → Read the fixture** (under **Plugins**): both cards appear, the panel reads `read only` until the role may also update the **Site** type.
-8. The fixture's other points show too: **Micelio → Fixture page** (a heading), the **Fixture checks** card of the Status page after **Run again**, and **Fixture members** among the sections of **Export and import**.
+8. The fixture's other points show too: **Micelio → Fixture page** (a heading), the **Fixture checks** card of the Status page after **Run host check**, and **Fixture members** among the sections of **Export and import**.
 9. Set the language of your profile to Español and reload: the page, its cards and the fixture's labels are in Spanish.
 
 ## Try the redirects in an archive
