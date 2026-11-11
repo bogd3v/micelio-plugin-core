@@ -3,9 +3,11 @@ import type { AddressInfo } from 'node:net'
 import AxeBuilder from '@axe-core/playwright'
 import type { Core, UID } from '@strapi/strapi'
 import { chromium, type Browser, type Page } from 'playwright'
+import packageJson from '../../package.json'
 import { SITE_UID } from '../../server/src/constants/site'
 import { cleanupStrapi, setupStrapi } from '../strapi/harness'
 
+const PLUGIN_VERSION = packageJson.version
 const PASSWORD = 'Password1234'
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']
 const BROCHURE = 'api::brochure.brochure'
@@ -63,13 +65,18 @@ describe('the sub-navigation in the admin', () => {
     return created.documentId
   }
 
-  async function open(email: string, path = ''): Promise<Page> {
+  async function open(
+    email: string,
+    path = '',
+    beforeGoto?: (page: Page) => Promise<void>
+  ): Promise<Page> {
     const page = await (await browser.newContext()).newPage()
     await page.goto(`${base}/admin/auth/login`)
     await page.locator('input[name="email"]').fill(email)
     await page.locator('input[name="password"]').fill(PASSWORD)
     await page.getByRole('button', { name: 'Login' }).click()
     await page.waitForURL(/\/admin(?!\/auth)/)
+    await beforeGoto?.(page)
     await page.goto(`${base}/admin/plugins/micelio${path}`)
     return page
   }
@@ -84,6 +91,10 @@ describe('the sub-navigation in the admin', () => {
     await createUser('admin-review@example.com', null, 'super')
     // And one for the look of the items.
     await createUser('admin-look@example.com', null, 'super')
+    // The new tests each log in on their own: the rate limit counts the logins of one account.
+    for (const name of ['version', 'held', 'failed', 'fill', 'order']) {
+      await createUser(`admin-${name}@example.com`, null, 'super')
+    }
     // Only a sibling plugin's permission: not the status page's.
     await createUser('sibling@example.com', null, ['plugin::extension-fixture.read'])
     // No permission of any plugin.
@@ -104,9 +115,9 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Fixture page' }).waitFor()
     await expect(nav.getByRole('link').allTextContents()).resolves.toEqual([
       'Status',
-      'In review',
       'Block catalogue',
       'Page templates',
+      'In review',
       'Sites',
       'Export and import',
       'Fixture page',
@@ -120,6 +131,120 @@ describe('the sub-navigation in the admin', () => {
       nav.getByRole('link', { name: 'Status' }).getAttribute('aria-current')
     ).resolves.toBe('page')
     await expect(nav.locator('[aria-current="page"]').count()).resolves.toBe(1)
+  })
+
+  it('shows the plugin core version under the Micelio title', async () => {
+    const page = await open('admin-version@example.com')
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    const title = nav.getByRole('heading', { level: 2, name: 'Micelio' })
+    const version = nav.getByText(`plugin core ${PLUGIN_VERSION}`, { exact: true })
+    await version.waitFor()
+    // It is `plugin.version` of `GET /micelio/about`, under the title and in neutral600.
+    const [titleBox, versionBox] = await Promise.all([title.boundingBox(), version.boundingBox()])
+    expect(versionBox!.y).toBeGreaterThanOrEqual(titleBox!.y + titleBox!.height)
+    // The rule under the header is neutral150 (rgb(234, 234, 239)), and ours alone.
+    await expect(
+      title.evaluate((heading) => {
+        const view = heading.ownerDocument.defaultView!
+        const header = heading.parentElement!
+        return {
+          rule: view.getComputedStyle(header).borderBottom,
+          colour: view.getComputedStyle(heading.nextElementSibling!).color,
+        }
+      })
+    ).resolves.toEqual({ rule: '1px solid rgb(234, 234, 239)', colour: 'rgb(102, 102, 135)' })
+  })
+
+  it('shows the items while the version is not known yet', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    const page = await open('admin-held@example.com', '', async (target) => {
+      await target.route('**/micelio/about', async (route) => {
+        await held
+        await route.continue()
+      })
+    })
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    // The items and the page show while the request is held; the title is alone.
+    await nav.getByRole('link', { name: 'Status' }).waitFor()
+    await nav.getByRole('link', { name: 'Block catalogue' }).waitFor()
+    await nav.getByRole('heading', { level: 2, name: 'Micelio' }).waitFor()
+    await expect(nav.getByText(/^plugin core/).count()).resolves.toBe(0)
+    release()
+    await nav.getByText(`plugin core ${PLUGIN_VERSION}`, { exact: true }).waitFor()
+    // A request that fails leaves the title alone too.
+    const failing = await open('admin-failed@example.com', '', async (target) => {
+      await target.route('**/micelio/about', (route) => route.abort())
+    })
+    const failingNav = failing.getByRole('navigation', { name: 'Micelio sections' })
+    await failingNav.getByRole('link', { name: 'Block catalogue' }).waitFor()
+    await expect(failingNav.getByText(/^plugin core/).count()).resolves.toBe(0)
+  })
+
+  it("fills the open item to the sub-navigation's width, with the bar on its right border", async () => {
+    const page = await open('admin-fill@example.com')
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    await nav.getByRole('link', { name: 'Status' }).waitFor()
+    const measure = (name: string) =>
+      nav.getByRole('link', { name }).evaluate((link) => {
+        const view = link.ownerDocument.defaultView!
+        const navigation = link.closest('nav')!
+        const inner = link.firstElementChild!
+        const box = link.getBoundingClientRect()
+        const edge = navigation.getBoundingClientRect()
+        const innerBox = inner.getBoundingClientRect()
+        const inside = view.getComputedStyle(inner)
+        const label = link.querySelector('div > div > div')!.getBoundingClientRect()
+        return {
+          // The link runs from the sub-navigation's left edge to its right border.
+          left: box.left - edge.left,
+          right:
+            edge.right - parseFloat(view.getComputedStyle(navigation).borderRightWidth) - box.right,
+          fills: innerBox.width === box.width,
+          radius: inside.borderTopLeftRadius,
+          background: inside.backgroundColor,
+          labelLeft: label.left - edge.left,
+        }
+      })
+    await expect(measure('Status')).resolves.toMatchObject({
+      left: 0,
+      right: 0,
+      fills: true,
+      radius: '0px',
+      // primary100
+      background: 'rgb(240, 240, 255)',
+      // The text keeps the left edge of the headings (20px).
+      labelLeft: 20,
+    })
+    // The About item, under the divider, fills the width too.
+    await expect(measure('About Micelio')).resolves.toMatchObject({
+      left: 0,
+      right: 0,
+      fills: true,
+    })
+    // The divider runs from the text's left edge to the same inset on the right.
+    const rule = await nav.getByRole('link', { name: 'About Micelio' }).evaluate((link) => {
+      let node = link.parentElement!
+      while (node.ownerDocument.defaultView!.getComputedStyle(node).borderTopWidth !== '1px')
+        node = node.parentElement!
+      const edge = link.closest('nav')!.getBoundingClientRect()
+      const box = node.getBoundingClientRect()
+      return { left: box.left - edge.left, right: edge.right - 1 - box.right }
+    })
+    expect(rule).toEqual({ left: 20, right: 20 })
+  })
+
+  it('lists Block catalogue, Page templates and In review in the group Content, in that order', async () => {
+    const page = await open('admin-order@example.com')
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    await nav.getByRole('link', { name: 'Fixture page' }).waitFor()
+    await expect(
+      nav
+        .getByText('Content', { exact: true })
+        .locator('xpath=ancestor::li[1]')
+        .getByRole('link')
+        .allTextContents()
+    ).resolves.toEqual(['Block catalogue', 'Page templates', 'In review'])
   })
 
   it('shows the groups Installation, Content and Site, and About Micelio under a divider with no heading', async () => {
@@ -228,9 +353,9 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Status' }).waitFor()
     await nav.getByRole('link', { name: 'Status' }).focus()
     for (const [name, path] of [
-      ['In review', /\/plugins\/micelio\/review$/],
       ['Block catalogue', /\/plugins\/micelio\/blocks$/],
       ['Page templates', /\/plugins\/micelio\/templates$/],
+      ['In review', /\/plugins\/micelio\/review$/],
       ['Sites', /\/plugins\/micelio\/sites$/],
       ['Export and import', /\/plugins\/micelio\/_export-import$/],
       ['Fixture page', /\/plugins\/micelio\/fixture$/],

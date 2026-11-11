@@ -5,7 +5,9 @@ import { useIntl } from 'react-intl'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { styled } from 'styled-components'
 
+import type { AboutReport } from '../../../server/src/types/about'
 import { useAdminPages, type AdminPageItem } from '../hooks/useAdminPages'
+import { useLoaded } from '../hooks/useAsync'
 import { useInReviewCount } from '../hooks/useInReviewCount'
 import { useMessages } from '../messages'
 import { CORE_NAV_ITEMS, NAV_GROUPS, visibleNavItems, type NavGroup } from '../navigation'
@@ -26,11 +28,22 @@ import TemplatesManagePage from './TemplatesManagePage'
 import TransferPage from './TransferPage'
 
 /**
- * The bar on the right edge of the open item (the artboard's `Main`): the link the router marks
- * `aria-current="page"` gets a 3px bar in the design system's primary colour, drawn inside the link
- * so the list's width does not change.
+ * The open item of the sub-navigation (the artboard's `Main`): the design system's rounded link,
+ * inset by 8px, fills the sub-navigation's width instead, with no radius, and the link the router
+ * marks `aria-current="page"` gets a 3px bar in the primary colour on the right border. The items'
+ * text keeps the left edge of the section headings (`spaces[5]`), and the bar is drawn inside the
+ * link so the list's width does not change.
  */
 const ActiveBar = styled.div`
+  ol {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  && a > div {
+    border-radius: 0;
+    padding-left: ${({ theme }) => theme.spaces[5]};
+    padding-right: ${({ theme }) => theme.spaces[5]};
+  }
   a[aria-current='page'] {
     position: relative;
   }
@@ -43,6 +56,12 @@ const ActiveBar = styled.div`
     width: 3px;
     background: ${({ theme }) => theme.colors.primary600};
   }
+`
+
+/** The link under the divider: it undoes the divider's inset so the open item still fills the width. */
+const FullWidth = styled.div`
+  margin-left: -${({ theme }) => theme.spaces[5]};
+  margin-right: -${({ theme }) => theme.spaces[5]};
 `
 
 /**
@@ -60,6 +79,9 @@ export default function MicelioLayout() {
   const { t } = useMessages()
   const { locale } = useIntl()
   const { pages, hasFailed, isLoading } = useAdminPages()
+  // The version the server runs, read once; the title shows alone while it loads or if it fails.
+  const { resource: about } = useLoaded<AboutReport>('/micelio/about')
+  const version = about.kind === 'ready' ? about.data.plugin.version : null
   // The user's permission list, once loaded: `useRBAC` can answer "no" from an empty list while the
   // list is still loading, and the index would then redirect to About for good.
   const isLoadingPermissions = useAuth('MicelioLayout', (state) => state.isLoading)
@@ -120,7 +142,24 @@ export default function MicelioLayout() {
     <Layouts.Root
       sideNav={
         <SubNav.Main aria-label={t('nav.label')}>
-          <SubNav.Header label={t('nav.title')} />
+          <Box
+            borderColor="neutral150"
+            borderStyle="solid"
+            borderWidth="0 0 1px 0"
+            paddingBottom={4}
+            paddingLeft={5}
+            paddingRight={5}
+            paddingTop={4}
+          >
+            <Typography variant="beta" tag="h2">
+              {t('nav.title')}
+            </Typography>
+            {version ? (
+              <Typography tag="p" textColor="neutral600">
+                {t('nav.version', { version })}
+              </Typography>
+            ) : null}
+          </Box>
           <SubNav.Sections>
             {NAV_GROUPS.map((group) => ({ group, links: linksOf(group) }))
               .filter(({ links }) => links.length > 0)
@@ -128,14 +167,14 @@ export default function MicelioLayout() {
                 group === 'about' ? (
                   // No heading: the item sits under a divider (the artboards).
                   <ActiveBar key={group}>
-                    <Box paddingLeft={2} paddingRight={2}>
+                    <Box paddingLeft={5} paddingRight={5}>
                       <Box
                         paddingTop={2}
                         borderColor="neutral150"
                         borderStyle="solid"
                         borderWidth="1px 0 0 0"
                       >
-                        {links}
+                        <FullWidth>{links}</FullWidth>
                       </Box>
                     </Box>
                   </ActiveBar>

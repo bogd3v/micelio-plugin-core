@@ -57,6 +57,7 @@
   "status.sites.noHosts": "Ninguno",
   "status.sites.noUrl": "Sin URL",
   "nav.title": "Micelio",
+  "nav.version": "núcleo del plugin {version}",
   "nav.label": "Secciones de Micelio",
   "nav.group.overview": "Instalación",
   "nav.group.content": "Contenido",

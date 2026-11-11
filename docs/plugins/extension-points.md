@@ -35,7 +35,7 @@ extensions.registerAdminPage({
 
 `to` cannot be `about`: the core's About page uses it, and the registration throws a `TypeError`. The core's Export and import page lives at `_export-import`, which `to` can never be (it starts with an underscore), but the core's own routes win over a plugin's page: `review`, `blocks`, `sites`, `templates` (and `templates/<id>/edit`), `preview/…`, `builder/…` and `new/…`. The registration does not throw for them; the core route answers and your page is never shown, so choose another `to` (the core's Sites page is described below). The index (Status) is the empty path, which `to` never matches.
 
-The item appears in its group of the Micelio sub-navigation (`GET /micelio/admin-pages` lists those the admin user's permissions allow). Provide the page itself from your admin, in `bootstrap` (the Micelio admin plugin is registered by then, whatever the order):
+The item appears in its group of the Micelio sub-navigation, after the core's own items of that group (`GET /micelio/admin-pages` lists those the admin user's permissions allow). Provide the page itself from your admin, in `bootstrap` (the Micelio admin plugin is registered by then, whatever the order):
 
 ```js
 // admin/src/index.js of your plugin

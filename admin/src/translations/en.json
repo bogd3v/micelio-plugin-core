@@ -57,6 +57,7 @@
   "status.sites.noHosts": "None",
   "status.sites.noUrl": "No URL",
   "nav.title": "Micelio",
+  "nav.version": "plugin core {version}",
   "nav.label": "Micelio sections",
   "nav.group.overview": "Installation",
   "nav.group.content": "Content",

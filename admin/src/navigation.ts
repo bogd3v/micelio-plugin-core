@@ -36,9 +36,9 @@ export const NAV_GROUPS: NavGroup[] = ['overview', 'content', 'site', 'about']
  */
 export const CORE_NAV_ITEMS: CoreNavItem[] = [
   { id: 'status', group: 'overview', to: '', permission: STATUS_READ_PERMISSION },
-  { id: 'review', group: 'content', to: 'review', permission: REVIEW_READ_PERMISSION },
   { id: 'blocks', group: 'content', to: 'blocks', permission: BLOCKS_READ_PERMISSION },
   { id: 'templates', group: 'content', to: 'templates', permission: TEMPLATES_MANAGE_PERMISSION },
+  { id: 'review', group: 'content', to: 'review', permission: REVIEW_READ_PERMISSION },
   { id: 'sites', group: 'site', to: 'sites', permission: SITES_READ_PERMISSION },
   { id: 'transfer', group: 'site', to: '_export-import', permission: TRANSFER_PERMISSION },
   { id: 'about', group: 'about', to: 'about' },
