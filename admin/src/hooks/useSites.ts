@@ -13,18 +13,23 @@ export interface SitesAnswer {
 export type SitesState =
   { kind: 'loading' } | { kind: 'ready'; data: SitesAnswer } | { kind: 'error' }
 
-/** Loads `GET /micelio/sites` once, and again on `reload()`. */
-export function useSites(): { state: SitesState; reload: () => void } {
+/**
+ * Loads `GET /micelio/sites` once, and again on `reload()` (the page shows its loading state
+ * meanwhile) or `refresh()` (the page keeps what it shows until the new answer arrives).
+ */
+export function useSites(): { state: SitesState; reload: () => void; refresh: () => void } {
   // The client is rebuilt on every render; the effect must not depend on it.
   const client = useFetchClient()
   const clientRef = useRef(client)
   clientRef.current = client
   const [state, setState] = useState<SitesState>({ kind: 'loading' })
   const [count, setCount] = useState(0)
+  const isQuietRef = useRef(false)
 
   useEffect(() => {
     let isCurrent = true
-    setState({ kind: 'loading' })
+    if (!isQuietRef.current) setState({ kind: 'loading' })
+    isQuietRef.current = false
     void (async () => {
       try {
         const response = await clientRef.current.get<{
@@ -48,5 +53,9 @@ export function useSites(): { state: SitesState; reload: () => void } {
   }, [count])
 
   const reload = useCallback(() => setCount((value) => value + 1), [])
-  return { state, reload }
+  const refresh = useCallback(() => {
+    isQuietRef.current = true
+    setCount((value) => value + 1)
+  }, [])
+  return { state, reload, refresh }
 }

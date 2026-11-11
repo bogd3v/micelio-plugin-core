@@ -132,6 +132,30 @@ describe('the Export and import and About pages in the admin', () => {
     await page.close()
   })
 
+  it('selects the site the site query names when the page opens', async () => {
+    const named = await open(ADMIN_EMAIL, '_export-import?site=other')
+    await named.getByRole('heading', { level: 1, name: 'Export and import' }).waitFor()
+    const select = named.getByLabel('Site', { exact: true })
+    await expect(select.inputValue()).resolves.toBe('other')
+    await named.close()
+
+    // No query, or a site that does not exist: the first one, as before.
+    const first = await open(ADMIN_EMAIL, '_export-import')
+    await first.getByRole('heading', { level: 1, name: 'Export and import' }).waitFor()
+    const [firstOption] = await first
+      .getByLabel('Site', { exact: true })
+      .locator('option')
+      .evaluateAll((options) => options.map((option) => option.getAttribute('value')))
+    await expect(first.getByLabel('Site', { exact: true }).inputValue()).resolves.toBe(firstOption)
+    await first.close()
+    const unknown = await open(ADMIN_EMAIL, '_export-import?site=nope')
+    await unknown.getByRole('heading', { level: 1, name: 'Export and import' }).waitFor()
+    await expect(unknown.getByLabel('Site', { exact: true }).inputValue()).resolves.toBe(
+      firstOption
+    )
+    await unknown.close()
+  })
+
   it('shows the export and import page in Spanish with no violation', async () => {
     const page = await open(SPANISH_EMAIL, '_export-import')
     await page.getByRole('heading', { level: 1, name: 'Exportar e importar' }).waitFor()

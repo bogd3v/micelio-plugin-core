@@ -55,8 +55,17 @@ export interface StatusSite {
   origin: string | null
 }
 
+/** The theme a site pins: the `themeId` and `themeVersion` of its `theme` component. */
+export interface SiteTheme {
+  id: string
+  /** Empty when the component has an id and no version. */
+  version: string
+}
+
 /** A site as `GET /micelio/sites` answers it. */
 export interface SiteWithSections extends StatusSite {
+  /** The site's theme, from its `theme` component; `null` when it has none. */
+  theme: SiteTheme | null
   /**
    * The instance of each site section the caller may read, by section `id`; `null` when the site
    * has none yet. A section the caller's permissions do not allow is not a key.

@@ -73,7 +73,7 @@ Do it in `register`: Strapi builds the database models after it, and a later cal
 - The site archive carries the instance with the site, as any attribute of the site type.
 - The attribute is `private`: the content API (`/api/micelio/sites?populate=*`, or `populate=site` from a site-scoped type) never returns it, so your `permission` is not bypassed there. The Content Manager still lists it for a role that can read the `Site` type: restrict the field in that role's Content Manager permission (`fields`) if the section must be hidden there too. The core does not do it.
 
-`panel` names the panel your admin offers on the **Sites** page (Micelio → Sites, in the `site` group of the sub-navigation, for a role that may read the `Site` type). The page shows one site at a time, with its core fields as links to its Content Manager entry and, under them, a card for each section of yours the caller may read. Provide the component in your admin's `bootstrap`, with the Micelio admin plugin's `apis`, as you do for a page:
+`panel` names the panel your admin offers on the **Sites** page (Micelio → Sites, in the `overview` group of the sub-navigation, right after Status, for a role that may read the `Site` type). The page lists the sites in a table and shows one at a time in a card: the form of its core fields and, under the form, a box titled with the section's label for each section of yours the caller may read, with your panel inside. Provide the component in your admin's `bootstrap`, with the Micelio admin plugin's `apis`, as you do for a page:
 
 ```js
 // admin/src/index.js of your plugin

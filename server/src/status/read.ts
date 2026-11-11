@@ -6,7 +6,13 @@ import { extensionsOf } from '../extensions'
 import { readFrontend } from '../host-check/facts'
 import { contractsOf, describeSiblings, siblingPlugins } from './siblings'
 import type { HostCheckReport } from '../types/host-check'
-import type { SiteWithSections, StatusFrontend, StatusReport, StatusSite } from '../types/status'
+import type {
+  SiteTheme,
+  SiteWithSections,
+  StatusFrontend,
+  StatusReport,
+  StatusSite,
+} from '../types/status'
 
 interface SiteRow {
   documentId: string
@@ -73,9 +79,10 @@ export async function readSitesWithSections(
   const attributes = Object.fromEntries(
     sections.map((id) => [extensionsOf(strapi).siteSectionAttribute(id), true])
   )
-  const rows = await readSiteRows(strapi, attributes)
+  const rows = await readSiteRows(strapi, { ...attributes, theme: true })
   return rows.map((row) => ({
     ...toSite(row),
+    theme: themeOf(row.theme),
     sections: Object.fromEntries(
       sections.map((id) => [id, row[extensionsOf(strapi).siteSectionAttribute(id)] ?? null])
     ),
@@ -115,6 +122,13 @@ function toSite(row: SiteRow): StatusSite {
     isDefault: row.isDefault === true,
     origin: originOf(row.url),
   }
+}
+
+/** The id and version of a site's `theme` component; `null` when it has none or no id. */
+function themeOf(theme: unknown): SiteTheme | null {
+  const { themeId, themeVersion } = (theme ?? {}) as Record<string, unknown>
+  if (typeof themeId !== 'string' || themeId === '') return null
+  return { id: themeId, version: typeof themeVersion === 'string' ? themeVersion : '' }
 }
 
 function originOf(url: string | null): string | null {

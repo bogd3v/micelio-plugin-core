@@ -266,6 +266,32 @@ describe('the extension points', () => {
       for (const site of await read('status-only')) expect(site.sections).toEqual({})
     })
 
+    it("answers each site's theme id and version, or null when it has no theme", async () => {
+      const themed = await sites().create({
+        data: {
+          name: 'Themed',
+          slug: 'themed',
+          modules: {},
+          theme: { themeId: 'bloom', themeVersion: '1.2.0' },
+        } as never,
+      })
+      const read = async () =>
+        (
+          (await (await get('/micelio/sites', 'fixture-reader')).json()) as {
+            data: { slug: string; theme: { id: string; version: string } | null }[]
+          }
+        ).data
+      const answered = await read()
+      expect(answered.find(({ slug }) => slug === 'themed')?.theme).toEqual({
+        id: 'bloom',
+        version: '1.2.0',
+      })
+      // A site with no theme component answers null, and every site has the key.
+      expect(answered.find(({ slug }) => slug === 'default')?.theme).toBeNull()
+      for (const site of answered) expect(site).toHaveProperty('theme')
+      await sites().delete({ documentId: themed.documentId })
+    })
+
     it('lists the sections the caller may read in meta.sections, with their panel', async () => {
       const meta = async (role: Role) =>
         ((await (await get('/micelio/sites', role)).json()) as { meta: { sections: unknown[] } })

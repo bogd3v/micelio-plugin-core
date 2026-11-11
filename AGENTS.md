@@ -145,7 +145,7 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
 - `admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`),
   the **Micelio** menu entry (`pages/MicelioLayout.tsx`: the sub-navigation from `navigation.ts`,
   each item shown to a role with its permission, and the pages of sibling plugins),
-  the pages (`StatusPage`, `SitesPage` (the panels sibling plugins register for their site sections with `apis.registerSitePanel`, `pageRegistry.ts`), `TransferPage` with `ExportPanel` and `ImportPanel`, `AboutPage`,
+  the pages (`StatusPage`, `SitesPage` (the table of sites, the card with the form of the core fields, saved through the Content Manager's admin API, and the panels sibling plugins register for their site sections with `apis.registerSitePanel`, `pageRegistry.ts`), `TransferPage` with `ExportPanel` and `ImportPanel`, `AboutPage`,
   `PreviewPage`, `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
   Save as template dialog, `ReviewPage` (the In review page), `TemplatesManagePage` at `templates`
   and `TemplateBuilderPage` at `templates/:id/edit`; the SEO and social tab of the page settings is

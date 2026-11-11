@@ -115,10 +115,10 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Fixture page' }).waitFor()
     await expect(nav.getByRole('link').allTextContents()).resolves.toEqual([
       'Status',
+      'Sites',
       'Block catalogue',
       'Page templates',
       'In review',
-      'Sites',
       'Export and import',
       'Fixture page',
       'About Micelio',
@@ -247,6 +247,22 @@ describe('the sub-navigation in the admin', () => {
     ).resolves.toEqual(['Block catalogue', 'Page templates', 'In review'])
   })
 
+  it('lists Sites in the group of Status, right after Status', async () => {
+    const page = await open('admin@example.com')
+    const nav = page.getByRole('navigation', { name: 'Micelio sections' })
+    await nav.getByRole('link', { name: 'Sites' }).waitFor()
+    // The links of the group Status is in: the first ancestor of the link that holds more than one.
+    // Found by the group, not by its label, which #176 renamed.
+    const group = await nav.getByRole('link', { name: 'Status' }).evaluate((link) => {
+      let node = link.parentElement
+      while (node && node.tagName !== 'NAV' && node.querySelectorAll('a').length < 2) {
+        node = node.parentElement
+      }
+      return [...(node?.querySelectorAll('a') ?? [])].map((anchor) => anchor.textContent)
+    })
+    expect(group).toEqual(['Status', 'Sites'])
+  })
+
   it('shows the groups Installation, Content and Site, and About Micelio under a divider with no heading', async () => {
     const page = await open('admin-look@example.com')
     const nav = page.getByRole('navigation', { name: 'Micelio sections' })
@@ -353,10 +369,10 @@ describe('the sub-navigation in the admin', () => {
     await nav.getByRole('link', { name: 'Status' }).waitFor()
     await nav.getByRole('link', { name: 'Status' }).focus()
     for (const [name, path] of [
+      ['Sites', /\/plugins\/micelio\/sites$/],
       ['Block catalogue', /\/plugins\/micelio\/blocks$/],
       ['Page templates', /\/plugins\/micelio\/templates$/],
       ['In review', /\/plugins\/micelio\/review$/],
-      ['Sites', /\/plugins\/micelio\/sites$/],
       ['Export and import', /\/plugins\/micelio\/_export-import$/],
       ['Fixture page', /\/plugins\/micelio\/fixture$/],
       ['About Micelio', /\/plugins\/micelio\/about$/],
