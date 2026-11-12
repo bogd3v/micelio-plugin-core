@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Flex,
+  LinkButton,
   Table,
   Tbody,
   Td,
@@ -12,9 +13,10 @@ import {
   Typography,
   useNotifyAT,
 } from '@strapi/design-system'
-import { Layouts, Page } from '@strapi/strapi/admin'
+import { Layouts, Page, useAuth } from '@strapi/strapi/admin'
 import type { ReactNode } from 'react'
 import { useIntl } from 'react-intl'
+import { NavLink } from 'react-router-dom'
 import { styled } from 'styled-components'
 
 import type { HostCheckResult } from '../../../server/src/types/host-check'
@@ -26,23 +28,29 @@ import type {
   StatusSite,
 } from '../../../server/src/types/status'
 import { hasMessage, useMessages } from '../messages'
-import { STATUS_READ_PERMISSION } from '../permissions'
+import { SITES_READ_PERMISSION, STATUS_READ_PERMISSION } from '../permissions'
 import { useHostCheckRun, type HostCheckRun } from '../hooks/useHostCheckRun'
 import { useStatus } from '../hooks/useStatus'
 import { checkText, type Text } from '../utils/checkText'
 import { diagnosticsText } from '../utils/diagnostics'
 import { localised } from '../utils/localised'
+import { relativeTime } from '../utils/relativeTime'
+import { PLUGIN_ID } from '../pluginId'
 
 type Tone = 'success' | 'danger' | 'warning' | 'neutral'
 
 // Token pairs instead of the Badge variants: the `danger` variant's text is 3.9:1 on its
 // background, below the 4.5:1 of WCAG AA for its size.
-const TONES: Record<Tone, { backgroundColor: string; textColor: string }> = {
-  success: { backgroundColor: 'success100', textColor: 'success700' },
-  danger: { backgroundColor: 'danger100', textColor: 'danger700' },
-  // warning700 on warning100 is 4.0:1, below the 4.5:1 of WCAG AA.
-  warning: { backgroundColor: 'warning100', textColor: 'neutral800' },
-  neutral: { backgroundColor: 'neutral150', textColor: 'neutral700' },
+//
+// The dot has a colour of its own: it is decorative, the word beside it carries the result, so
+// it does not need the 4.5:1 of the text and can be the tone's mid colour, as the artboard draws it.
+const TONES: Record<Tone, { backgroundColor: string; textColor: string; dotColor: string }> = {
+  success: { backgroundColor: 'success100', textColor: 'success700', dotColor: 'success600' },
+  danger: { backgroundColor: 'danger100', textColor: 'danger700', dotColor: 'danger600' },
+  // warning700 on warning100 is 4.0:1, below the 4.5:1 of WCAG AA: the text stays dark and the
+  // orange is carried by the dot.
+  warning: { backgroundColor: 'warning100', textColor: 'neutral800', dotColor: 'warning600' },
+  neutral: { backgroundColor: 'neutral150', textColor: 'neutral700', dotColor: 'neutral500' },
 }
 
 /** What a host check result shows as: a failed check that is not required is a warning. */
@@ -122,8 +130,13 @@ function LoadedStatus({
   refresh: () => Promise<void>
   header: (action?: ReactNode) => ReactNode
 }) {
-  const { t, date } = useMessages()
+  const { t } = useMessages()
+  const { locale } = useIntl()
   const { notifyStatus, notifyAlert } = useNotifyAT()
+  const canReadSites = useAuth('StatusPage', (auth) => auth.permissions).some(
+    ({ action, subject }) =>
+      action === SITES_READ_PERMISSION.action && subject === SITES_READ_PERMISSION.subject
+  )
   // The run lives here, not in the card: its button is in the page header.
   const hostCheck = useHostCheckRun(report.hostCheck)
   const runHostCheck = async () => {
@@ -135,17 +148,27 @@ function LoadedStatus({
       notifyStatus(
         `${t(answer.ok ? 'status.hostCheck.ok' : 'status.hostCheck.failed')} ${t(
           'status.hostCheck.checkedAt',
-          { date: date(answer.checkedAt), environment: answer.environment }
-        )}`
+          {
+            time: relativeTime(answer.checkedAt, Date.now(), locale),
+            environment: answer.environment,
+          }
+        )}.`
       )
     } else notifyAlert(t('status.hostCheck.runFailed'))
   }
   return (
     <>
       {header(
-        <Button variant="tertiary" loading={hostCheck.isRunning} onClick={runHostCheck}>
-          {t(hostCheck.isRunning ? 'status.hostCheck.running' : 'status.hostCheck.run')}
-        </Button>
+        <Flex gap={2}>
+          <Button variant="tertiary" size="L" loading={hostCheck.isRunning} onClick={runHostCheck}>
+            {t(hostCheck.isRunning ? 'status.hostCheck.running' : 'status.hostCheck.run')}
+          </Button>
+          {canReadSites ? (
+            <LinkButton tag={NavLink} size="L" to={`/plugins/${PLUGIN_ID}/sites`}>
+              {t('status.manageSites')}
+            </LinkButton>
+          ) : null}
+        </Flex>
       )}
       <Layouts.Content>
         <Flex direction="column" alignItems="stretch" gap={6}>
@@ -173,7 +196,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Box tag="section" background="neutral0" hasRadius shadow="filterShadow" padding={6} flex="1">
       <Flex direction="column" alignItems="stretch" gap={4}>
-        <Typography variant="delta" tag="h2">
+        <Typography variant="delta" fontWeight="bold" tag="h2">
           {title}
         </Typography>
         {children}
@@ -183,7 +206,26 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function StatusBadge({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return <Badge {...TONES[tone]}>{children}</Badge>
+  const { backgroundColor, textColor } = TONES[tone]
+  return (
+    <Badge backgroundColor={backgroundColor} textColor={textColor}>
+      {children}
+    </Badge>
+  )
+}
+
+/** The dot before a result: decorative, the word beside it carries the result. */
+function Dot({ color }: { color: string }) {
+  return (
+    <Box
+      tag="span"
+      aria-hidden
+      width="0.6rem"
+      height="0.6rem"
+      background={color}
+      style={{ borderRadius: '50%' }}
+    />
+  )
 }
 
 /** A result of a check: a dot and the word in sentence case, on the tone's background. */
@@ -202,15 +244,8 @@ function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
       paddingBottom={1}
       background={TONES[tone].backgroundColor}
     >
-      <Box
-        tag="span"
-        aria-hidden
-        width="0.6rem"
-        height="0.6rem"
-        background={TONES[tone].textColor}
-        style={{ borderRadius: '50%' }}
-      />
-      <Typography variant="pi" fontWeight="semiBold" textColor={TONES[tone].textColor}>
+      <Dot color={TONES[tone].dotColor} />
+      <Typography variant="pi" fontWeight="bold" textColor={TONES[tone].textColor}>
         {children}
       </Typography>
     </Flex>
@@ -239,13 +274,16 @@ function StatCard({ label, value, note }: { label: string; value: ReactNode; not
       hasRadius
       shadow="filterShadow"
       padding={6}
+      // 20px above and below the text: the artboard's cards are 124px high, the theme's 24px make 126.
+      paddingTop={5}
+      paddingBottom={5}
       style={{ listStyle: 'none' }}
     >
-      <Flex tag="dl" direction="column" alignItems="flex-start" gap={2} margin={0}>
+      <Flex tag="dl" direction="column" alignItems="flex-start" gap={1} margin={0}>
         <Typography variant="sigma" textColor="neutral600" tag="dt">
           {label}
         </Typography>
-        <Typography variant="alpha" fontWeight="bold" tag="dd">
+        <Typography fontSize={6} fontWeight="bold" lineHeight={1} tag="dd">
           {value}
         </Typography>
         <Typography variant="omega" textColor="neutral600" tag="dd">
@@ -280,16 +318,22 @@ function StatCards({ report }: { report: StatusReport }) {
       <StatCard
         label={t('status.card.frontend')}
         value={
-          frontend ? (frontend.version ?? t('status.frontends.noVersion')) : t('status.card.none')
+          frontend ? (frontend.version ?? <span aria-hidden="true">–</span>) : t('status.card.none')
         }
         note={
           frontend ? (
-            <Typography
-              variant="omega"
-              textColor={frontend.health === 'reachable' ? 'success700' : 'neutral600'}
-            >
-              {t(`status.card.frontend.${frontend.health}`)}
-            </Typography>
+            <Flex tag="span" gap={1} alignItems="center">
+              {frontend.version === undefined && frontend.health === 'reachable' ? (
+                <span>{`${t('status.card.frontend.noVersion')} · `}</span>
+              ) : null}
+              <Dot color={frontend.health === 'reachable' ? 'success600' : 'neutral500'} />
+              <Typography
+                variant="omega"
+                textColor={frontend.health === 'reachable' ? 'success700' : 'neutral600'}
+              >
+                {t(`status.card.frontend.${frontend.health}`)}
+              </Typography>
+            </Flex>
           ) : (
             t('status.card.frontend.none')
           )
@@ -298,7 +342,10 @@ function StatCards({ report }: { report: StatusReport }) {
       <StatCard
         label={t('status.card.sites')}
         value={report.sites.length}
-        note={t('status.card.sites.note', { name: defaultSite?.name ?? '-', hosts })}
+        note={t('status.card.sites.note', {
+          n: report.sites.filter((site) => site.isDefault).length,
+          hosts,
+        })}
       />
       <StatCard
         label={t('status.card.blocks')}
@@ -408,19 +455,43 @@ const WarningMark = () => (
   </svg>
 )
 
-/** The table of a card: the card is its frame, so the table's own shadow and corners are taken off. */
+/**
+ * The table of a card: the card is its frame, so the table's own shadow and corners are taken off.
+ * The Design System insets a table's rows by 24px; the table takes them back (`marginInline` in
+ * `HostCheckSection`), so the rules run to the card's edges, and the first and last cell keep the
+ * 24px: the first column starts where the card's title does and the last ends where the badge
+ * above it does, with its words on the right.
+ */
 const FlatTable = styled.div`
   & > div {
     box-shadow: none;
+    border: 0;
     border-radius: 0;
+  }
+  && td {
+    white-space: normal;
   }
   thead {
     background: ${({ theme }) => theme.colors.neutral100};
   }
+  && th {
+    height: ${({ theme }) => theme.spaces[8]};
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  && th:first-of-type,
+  && td:first-of-type {
+    padding-left: ${({ theme }) => theme.spaces[6]};
+  }
+  && th:last-of-type,
+  && td:last-of-type {
+    padding-right: ${({ theme }) => theme.spaces[6]};
+  }
 `
 
 function HostCheckSection({ run }: { run: HostCheckRun }) {
-  const { t, date } = useMessages()
+  const { t, rich, date } = useMessages()
+  const { locale } = useIntl()
   const { report, hasFailed } = run
   const say = (text: Text) => ('messageId' in text ? t(text.messageId) : text.text)
   const results = report ? report.results.map((check) => ({ check, result: resultOf(check) })) : []
@@ -440,11 +511,16 @@ function HostCheckSection({ run }: { run: HostCheckRun }) {
         </Typography>
         <Typography textColor="neutral600" variant="pi">
           {report
-            ? t('status.hostCheck.checkedAt', {
-                date: date(report.checkedAt),
+            ? rich('status.hostCheck.checkedAt', {
+                time: (
+                  <time dateTime={report.checkedAt} title={date(report.checkedAt)}>
+                    {relativeTime(report.checkedAt, Date.now(), locale)}
+                  </time>
+                ),
                 environment: report.environment,
               })
-            : t('status.hostCheck.notRun')}{' '}
+            : t('status.hostCheck.notRun')}
+          {' · '}
           {t('status.hostCheck.alsoAs')}{' '}
           <Box
             tag="code"
@@ -484,7 +560,11 @@ function HostCheckSection({ run }: { run: HostCheckRun }) {
         </Box>
         {report ? (
           <FlatTable>
-            <Table colCount={3} rowCount={results.length + 1}>
+            <Table
+              colCount={3}
+              rowCount={results.length + 1}
+              style={{ width: 'calc(100% + 48px)', marginInline: '-24px' }}
+            >
               <Thead>
                 <Tr>
                   <Th>
@@ -494,7 +574,9 @@ function HostCheckSection({ run }: { run: HostCheckRun }) {
                     <Typography variant="sigma">{t('status.hostCheck.column.found')}</Typography>
                   </Th>
                   <Th>
-                    <Typography variant="sigma">{t('status.hostCheck.column.status')}</Typography>
+                    <Flex justifyContent="flex-end" width="100%">
+                      <Typography variant="sigma">{t('status.hostCheck.column.status')}</Typography>
+                    </Flex>
                   </Th>
                 </Tr>
               </Thead>
@@ -519,9 +601,11 @@ function HostCheckSection({ run }: { run: HostCheckRun }) {
                         <Typography textColor="neutral800">{check.detail}</Typography>
                       </Td>
                       <Td>
-                        <Pill tone={CHECK_TONES[result]}>
-                          {t(`status.hostCheck.status.${result}`)}
-                        </Pill>
+                        <Flex justifyContent="flex-end">
+                          <Pill tone={CHECK_TONES[result]}>
+                            {t(`status.hostCheck.status.${result}`)}
+                          </Pill>
+                        </Flex>
                       </Td>
                     </Tr>
                   )

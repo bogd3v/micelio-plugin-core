@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { AddressInfo } from 'node:net'
 import AxeBuilder from '@axe-core/playwright'
 import type { Core, UID } from '@strapi/strapi'
-import { chromium, type Browser, type Page } from 'playwright'
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
 import { BLOCKS } from '../../contract/blocks'
 import en from '../../admin/src/translations/en.json'
 import es from '../../admin/src/translations/es.json'
@@ -67,6 +67,61 @@ async function violationsOf(page: Page): Promise<unknown[]> {
   return results.violations.flatMap(({ id, nodes }) =>
     nodes.map(({ target, failureSummary }) => ({ id, target, failureSummary }))
   )
+}
+
+/** What the page measures of an element: `Element` is not in this file's type-check. */
+type Box = { getBoundingClientRect(): { left: number; right: number } }
+
+type Session = Awaited<ReturnType<BrowserContext['storageState']>>
+
+type HostCheckBody = {
+  checkedAt: string
+  environment: string
+  results: { id: string; status: string; required: boolean; fix?: string }[]
+}
+
+/**
+ * Opens the status page with the answer of `GET /micelio/status` changed by `change`.
+ *
+ * @param login - An email to log in as, or the session of a user already logged in: Strapi
+ * answers a sixth login of one email in a few minutes with 429, and the suite logs `EMAIL` in five
+ * times before these tests.
+ */
+async function openChanged(
+  browser: Browser,
+  base: string,
+  login: string | Session,
+  change: (hostCheck: HostCheckBody) => void
+): Promise<Page> {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    ...(typeof login === 'string' ? {} : { storageState: login }),
+  })
+  const own = await context.newPage()
+  await own.route('**/micelio/status', async (route) => {
+    const response = await route.fetch()
+    const body = await response.json()
+    change(body.data.hostCheck)
+    await route.fulfill({ response, json: body })
+  })
+  if (typeof login === 'string') {
+    await own.goto(`${base}/admin/auth/login`)
+    await own.locator('input[name="email"]').fill(login)
+    await own.locator('input[name="password"]').fill(PASSWORD)
+    await own.getByRole('button', { name: 'Login' }).click()
+    await own.waitForURL(/\/admin(?!\/auth)/)
+  }
+  await own.goto(`${base}/admin/plugins/micelio`)
+  await own.getByRole('heading', { name: /Host check|Comprobación del host/ }).waitFor()
+  return own
+}
+
+/** The Design System's light colours the page's tokens resolve to, as `rgb()` strings. */
+const COLOURS = {
+  success600: 'rgb(50, 128, 72)',
+  warning600: 'rgb(217, 130, 47)',
+  danger600: 'rgb(208, 43, 32)',
+  neutral500: 'rgb(142, 142, 169)',
 }
 
 describe('the status page in the admin', () => {
@@ -167,7 +222,7 @@ describe('the status page in the admin', () => {
     expect(text).toContain(packageJson.micelio)
     expect(text).toContain(`Blocks in the catalogue${BLOCKS.length}`)
     // Host check results, translated by their id.
-    expect(text).toContain('Also available as')
+    expect(text).toContain('also available as')
     expect(text).toContain('npx micelio doctor')
     expect(text).toContain('Sanitiser for HTML from content')
     expect(text).toContain('Frontend release line')
@@ -256,13 +311,12 @@ describe('the status page in the admin', () => {
       isDefault: boolean
     }[]
     const hosts = sites.reduce((sum, site) => sum + (site.hosts?.length ?? 0), 0)
-    const defaultSite = sites.find((site) => site.isDefault)!
     const card = (label: string) => cards.getByRole('listitem').filter({ hasText: label })
     await expect(card('Plugin core').textContent()).resolves.toBe(
       `Plugin core${packageJson.version}supports core line ${packageJson.micelio}`
     )
     await expect(card('Sites').textContent()).resolves.toBe(
-      `Sites${sites.length}Default: ${defaultSite.name} · ${hosts} hosts`
+      `Sites${sites.length}1 default · ${hosts} hosts`
     )
     await expect(card('Block catalogue').textContent()).resolves.toBe(
       `Block catalogue${BLOCKS.length}blocks`
@@ -400,6 +454,297 @@ describe('the status page in the admin', () => {
     await header.getByRole('button', { name: 'Run host check' }).waitFor()
     expect(posts).toHaveLength(1)
     await own.context().close()
+  })
+
+  /** The session of the super admin the suite logged in as, for a page of its own. */
+  const session = () => page.context().storageState()
+
+  it('colours the dot of each pill and of the count badge by its result, with bold text', async () => {
+    /** The dot before the word `word` in `scope`, and the weight of the word. */
+    const pillOf = (scope: Page | ReturnType<Page['getByRole']>, word: string) =>
+      scope.getByText(word, { exact: true }).evaluate((text) => {
+        const view = text.ownerDocument.defaultView!
+        const dot = text.previousElementSibling!
+        return {
+          dot: view.getComputedStyle(dot).backgroundColor,
+          hidden: dot.getAttribute('aria-hidden'),
+          weight: view.getComputedStyle(text).fontWeight,
+        }
+      })
+    const mixed = await openChanged(browser, base, await session(), ({ results }) => {
+      for (const result of results) {
+        if (result.id === 'node') Object.assign(result, { status: 'fail', required: true })
+        if (['frontend-release-line', 'preview-frame-src'].includes(result.id)) {
+          Object.assign(result, { status: 'fail', required: false })
+        }
+      }
+    })
+    const row = (title: string) => mixed.getByRole('row').filter({ hasText: title })
+    const expected = (dot: string) => ({ dot, hidden: 'true', weight: '600' })
+    await expect(pillOf(row('Node version'), 'Fail')).resolves.toEqual(expected(COLOURS.danger600))
+    await expect(pillOf(row('Frontend release line'), 'Warning')).resolves.toEqual(
+      expected(COLOURS.warning600)
+    )
+    await expect(pillOf(row('Security middlewares'), 'Pass')).resolves.toEqual(
+      expected(COLOURS.success600)
+    )
+    await expect(pillOf(row('PostgreSQL in production'), 'Skipped')).resolves.toEqual(
+      expected(COLOURS.neutral500)
+    )
+    // The badge with a failure is red, one with only warnings is orange.
+    const section = mixed.locator('section').filter({
+      has: mixed.getByRole('heading', { name: 'Host check' }),
+    })
+    await expect(pillOf(section, '1 failure · 2 warnings')).resolves.toEqual(
+      expected(COLOURS.danger600)
+    )
+    await mixed.context().close()
+    const warned = await openChanged(browser, base, await session(), ({ results }) => {
+      for (const result of results) {
+        if (result.id === 'preview-frame-src')
+          Object.assign(result, { status: 'fail', required: false })
+      }
+    })
+    await expect(pillOf(warned, '1 warning')).resolves.toEqual(expected(COLOURS.warning600))
+    await warned.context().close()
+  })
+
+  it('shows the four stat cards at one height, each value and note on one line, at 1280 px wide with a frontend that reports no version', async () => {
+    const quiet = await startFrontend()
+    const sitesService = strapi.documents(SITE_UID as UID.ContentType)
+    const [defaultDocument] = await sitesService.findMany({ filters: { isDefault: true } })
+    await sitesService.update({
+      documentId: defaultDocument.documentId,
+      data: { url: quiet.origin } as never,
+    })
+    try {
+      const own = await openChanged(browser, base, await session(), () => {})
+      const cards = own.getByRole('list', { name: 'Summary' }).getByRole('listitem')
+      await expect(cards.count()).resolves.toBe(4)
+      const measures = await cards.evaluateAll((items) =>
+        items.map((item) => {
+          const view = item.ownerDocument.defaultView!
+          const lines = [...item.querySelectorAll('dd')].map((line) => {
+            const style = view.getComputedStyle(line)
+            return {
+              text: line.textContent,
+              fontSize: style.fontSize,
+              lines: Math.round(line.getBoundingClientRect().height / parseFloat(style.lineHeight)),
+            }
+          })
+          return { height: item.getBoundingClientRect().height, lines }
+        })
+      )
+      expect(new Set(measures.map(({ height }) => height)).size).toBe(1)
+      // The artboard's cards are 124 px high.
+      expect(measures[0].height).toBeLessThanOrEqual(124)
+      for (const { lines } of measures) {
+        for (const line of lines) expect(line.lines, line.text ?? '').toBe(1)
+        // The value is the theme's `fontSizes[6]`, 2.8rem.
+        expect(lines[0].fontSize).toBe('28px')
+      }
+      const frontendCard = cards.filter({ hasText: 'Frontend' })
+      // The en dash stands for the missing version and is hidden from assistive technology.
+      await expect(frontendCard.getByText('–').getAttribute('aria-hidden')).resolves.toBe('true')
+      await expect(frontendCard.textContent()).resolves.toBe('Frontend–no version · healthy')
+      await own.context().close()
+    } finally {
+      await sitesService.update({
+        documentId: defaultDocument.documentId,
+        data: { url: null } as never,
+      })
+      await quiet.close()
+    }
+  })
+
+  it("shows the frontend's health with a dot in its tone", async () => {
+    const sitesService = strapi.documents(SITE_UID as UID.ContentType)
+    const [defaultDocument] = await sitesService.findMany({ filters: { isDefault: true } })
+    const dotOf = async (origin: string) => {
+      await sitesService.update({
+        documentId: defaultDocument.documentId,
+        data: { url: origin } as never,
+      })
+      const own = await openChanged(browser, base, await session(), () => {})
+      const health = own
+        .getByRole('list', { name: 'Summary' })
+        .getByRole('listitem')
+        .filter({ hasText: 'Frontend' })
+        .getByText(/^(healthy|not available)$/)
+      const shown = {
+        text: await health.textContent(),
+        ...(await health.evaluate((text) => {
+          const dot = text.previousElementSibling!
+          return {
+            colour: text.ownerDocument.defaultView!.getComputedStyle(dot).backgroundColor,
+            hidden: dot.getAttribute('aria-hidden'),
+          }
+        })),
+      }
+      await own.context().close()
+      return shown
+    }
+    try {
+      await expect(dotOf(frontend.origin)).resolves.toEqual({
+        text: 'healthy',
+        colour: COLOURS.success600,
+        hidden: 'true',
+      })
+      const closed = await startFrontend()
+      await closed.close()
+      await expect(dotOf(closed.origin)).resolves.toEqual({
+        text: 'not available',
+        colour: COLOURS.neutral500,
+        hidden: 'true',
+      })
+    } finally {
+      await sitesService.update({
+        documentId: defaultDocument.documentId,
+        data: { url: null } as never,
+      })
+    }
+  })
+
+  it('shows every card title in the weight of the Host check title', async () => {
+    const weights = await page
+      .getByRole('main')
+      .getByRole('heading', { level: 2 })
+      .evaluateAll((titles) =>
+        titles.map((title) => ({
+          title: title.textContent,
+          weight: title.ownerDocument.defaultView!.getComputedStyle(title).fontWeight,
+        }))
+      )
+    const titles = weights.map(({ title }) => title)
+    for (const title of [
+      'Host check',
+      'Micelio plugins',
+      'Contracts this core exposes',
+      'Frontends',
+      'Sites',
+    ]) {
+      expect(titles).toContain(title)
+    }
+    // The plugin's checks card too: the extension fixture registers one.
+    expect(titles.length).toBeGreaterThanOrEqual(6)
+    for (const { title, weight } of weights) expect(weight, title ?? '').toBe('600')
+  })
+
+  it("lines up the host check table's first column with the card's title, its rules running to the card's edges", async () => {
+    const own = await openChanged(browser, base, await session(), ({ results }) => {
+      for (const result of results) {
+        if (result.id === 'preview-frame-src')
+          Object.assign(result, { status: 'fail', required: false })
+      }
+    })
+    const section = own.locator('section').filter({
+      has: own.getByRole('heading', { name: 'Host check' }),
+    })
+    const edges = await section.evaluate((card) => {
+      const left = (element: Box | null) => element!.getBoundingClientRect().left
+      const right = (element: Box | null) => element!.getBoundingClientRect().right
+      const rows = [...card.querySelectorAll('tr')]
+      const cards = card.getBoundingClientRect()
+      return {
+        cardLeft: cards.left,
+        cardRight: cards.right,
+        titleLeft: left(card.querySelector('h2')),
+        headerRowHeight: card.querySelector('thead tr')!.getBoundingClientRect().height,
+        headerTexts: [...card.querySelectorAll('thead th span')].map((span) => span.textContent),
+        headerLastRight: right(card.querySelector('thead th:last-child span')),
+        headerTextLeft: left(card.querySelector('th span')),
+        firstCellTextLeft: left(card.querySelector('tbody tr td span')),
+        rows: rows.map((row) => ({ left: left(row), right: right(row) })),
+        lastCellRights: [...card.querySelectorAll('tbody tr td:last-child > div > span')].map(
+          right
+        ),
+        badgeRight: right(card.querySelector('h2')!.parentElement!.nextElementSibling),
+      }
+    })
+    const near = (value: number, wanted: number) => expect(Math.abs(value - wanted)).toBeLessThan(1)
+    near(edges.headerTextLeft, edges.titleLeft)
+    near(edges.firstCellTextLeft, edges.titleLeft)
+    expect(edges.rows.length).toBeGreaterThan(2)
+    for (const row of edges.rows) {
+      near(row.left, edges.cardLeft)
+      near(row.right, edges.cardRight)
+    }
+    for (const right of edges.lastCellRights) near(right, edges.badgeRight)
+    // The header's last word ends where the pills do, not where its column starts.
+    near(edges.headerLastRight, edges.badgeRight)
+    // The artboard's header row is 41.6 px (65 of 1531 display px): the Design System's is 56.
+    expect(edges.headerRowHeight).toBeLessThanOrEqual(42)
+    expect(edges.headerTexts).toEqual(['Check', 'Found', 'Result'])
+    await own.context().close()
+  })
+
+  it('shows when the host check last ran as a relative time, with the full date in its title', async () => {
+    const twoMinutesAgo = () => new Date(Date.now() - 125_000).toISOString()
+    let environment = ''
+    let checkedAt = ''
+    const own = await openChanged(browser, base, await session(), (hostCheck) => {
+      checkedAt = twoMinutesAgo()
+      environment = hostCheck.environment
+      hostCheck.checkedAt = checkedAt
+    })
+    const line = own.locator('section').filter({
+      has: own.getByRole('heading', { name: 'Host check' }),
+    })
+    const time = line.locator('time')
+    await expect(time.textContent()).resolves.toBe('2 minutes ago')
+    await expect(time.getAttribute('datetime')).resolves.toBe(checkedAt)
+    await expect(time.getAttribute('title')).resolves.toBe(
+      await own.evaluate(
+        (iso) =>
+          new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'medium' }).format(
+            new Date(iso)
+          ),
+        checkedAt
+      )
+    )
+    await expect(time.locator('xpath=..').textContent()).resolves.toBe(
+      `Last run 2 minutes ago, in the ${environment} environment · also available as npx micelio doctor`
+    )
+    await own.context().close()
+    const spanish = await openChanged(browser, base, SPANISH_EMAIL, (hostCheck) => {
+      hostCheck.checkedAt = twoMinutesAgo()
+    })
+    await expect(spanish.locator('time').textContent()).resolves.toBe('hace 2 minutos')
+    await expect(spanish.locator('time').locator('xpath=..').textContent()).resolves.toContain(
+      'Última ejecución hace 2 minutos, en el entorno'
+    )
+    await spanish.context().close()
+  })
+
+  it('shows Manage sites, a link to the Sites page, only to a role that may read sites', async () => {
+    const own = await openChanged(browser, base, await session(), () => {})
+    const header = own.locator('[data-strapi-header]')
+    const run = header.getByRole('button', { name: 'Run host check' })
+    const manage = header.getByRole('link', { name: 'Manage sites' })
+    await expect(manage.getAttribute('href')).resolves.toBe('/admin/plugins/micelio/sites')
+    await expect(manage.getAttribute('target')).resolves.toBeNull()
+    // Both buttons are the Design System's size L, and Manage sites follows Run host check.
+    const heights = [await run.boundingBox(), await manage.boundingBox()].map((box) => box?.height)
+    expect(heights).toEqual([40, 40])
+    expect((await run.boundingBox())!.x).toBeLessThan((await manage.boundingBox())!.x)
+    // It opens in the admin's router: the same page, no new window.
+    const pages = own.context().pages().length
+    await manage.click()
+    await own.waitForURL(/\/admin\/plugins\/micelio\/sites$/)
+    expect(own.context().pages()).toHaveLength(pages)
+    await own.context().close()
+
+    // A role with the status permission and not the Sites page's.
+    const restricted = await openStatusPage(browser, base, STATUS_ONLY_EMAIL)
+    await restricted.getByRole('heading', { name: 'Host check' }).waitFor()
+    await expect(
+      restricted
+        .locator('[data-strapi-header]')
+        .getByRole('button', { name: 'Run host check' })
+        .count()
+    ).resolves.toBe(1)
+    await expect(restricted.getByRole('link', { name: 'Manage sites' }).count()).resolves.toBe(0)
+    await restricted.context().close()
   })
 
   // After the run: the button and the replaced report are checked too.
