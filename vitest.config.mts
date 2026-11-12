@@ -2,7 +2,7 @@ import { configDefaults, defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    include: ['test/**/*.test.ts'],
+    include: ['test/**/*.test.ts', 'packages/*/test/**/*.test.ts'],
     // A browser and an admin build: `npm run test:admin` (vitest.admin.config.mts).
     exclude: [...configDefaults.exclude, 'test/admin/**'],
     globalSetup: ['test/global-setup.ts'],

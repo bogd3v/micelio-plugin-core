@@ -3,3 +3,8 @@ docs/engineering-standard.md
 dist/
 test/strapi/app/build/
 docs/standard/
+# Data files that scripts write in one line (npm run icons:generate)
+contract/icons.names.json
+contract/icons.schema.json
+packages/icons/index.json
+packages/icons/glyphs/

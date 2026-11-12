@@ -28,3 +28,8 @@ docker/cms/types/
 # written by dev.mjs from test/fixtures/: the components of micelio-cms the page fixture lists
 docker/cms/src/components/
 docker/cms/node_modules/
+
+# The glyphs of @micelio/icons: npm run build -w @micelio/icons writes them from the pinned @tabler/icons
+packages/icons/glyphs/
+packages/icons/NOTICE
+packages/icons/LICENSES/

@@ -46,3 +46,15 @@ path = [
 ]
 SPDX-FileCopyrightText = "2015-present Strapi Solutions SAS"
 SPDX-License-Identifier = "MIT"
+
+# Tabler Icons 3.51.0 (@tabler/icons, MIT): the glyphs of @micelio/icons, normalised by Micelio, and the notice that ships with them
+[[annotations]]
+path = ["packages/icons/glyphs/**", "packages/icons/NOTICE"]
+SPDX-FileCopyrightText = "2020-2026 Paweł Kuna"
+SPDX-License-Identifier = "MIT"
+
+# The index is made from Tabler's names, categories and tags
+[[annotations]]
+path = "packages/icons/index.json"
+SPDX-FileCopyrightText = ["2020-2026 Paweł Kuna", "2026 Alejandro Ramirez Garcia and the Micelio contributors"]
+SPDX-License-Identifier = "AGPL-3.0-only AND MIT"

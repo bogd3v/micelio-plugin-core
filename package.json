@@ -26,6 +26,7 @@
   "exports": {
     "./package.json": "./package.json",
     "./blocks.schema.json": "./contract/blocks.schema.json",
+    "./icons.schema.json": "./contract/icons.schema.json",
     "./preview.schema.json": "./contract/preview.schema.json",
     "./strapi-admin": {
       "types": "./dist/admin/src/index.d.ts",
@@ -49,6 +50,7 @@
     "bin",
     "dist",
     "contract/blocks.schema.json",
+    "contract/icons.schema.json",
     "contract/preview.schema.json",
     "strapi-admin.js",
     "strapi-server.js",
@@ -62,10 +64,12 @@
     "prepack": "npm run build",
     "blocks:generate": "jiti scripts/blocks/generate.ts",
     "preview:generate": "jiti scripts/preview/generate.ts",
+    "icons:generate": "jiti packages/icons/scripts/generate.ts",
     "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p admin/tsconfig.json --noEmit && tsc -p tsconfig.json --noEmit",
-    "lint": "eslint . && npm run lint:blocks && npm run lint:preview",
+    "lint": "eslint . && npm run lint:blocks && npm run lint:preview && npm run lint:icons",
     "lint:blocks": "jiti scripts/blocks/generate.ts --check",
     "lint:preview": "jiti scripts/preview/generate.ts --check",
+    "lint:icons": "jiti packages/icons/scripts/generate.ts --check",
     "lint:fix": "eslint . --fix",
     "lint:licenses": "node scripts/check-licenses.mjs",
     "lint:ee": "micelio-lint-ee --allow package-lock.json",
@@ -131,5 +135,8 @@
   "prettier": "@micelio/prettier-config",
   "overrides": {
     "dompurify": "^3.4.17"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

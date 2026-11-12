@@ -1,0 +1,12 @@
+{
+  // What `npm run build` emits into dist/: the runtime API only. The scripts and the labels list
+  // of the core's names are not shipped.
+  "extends": "@micelio/tsconfig",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "noEmit": false
+  },
+  "include": ["src"]
+}

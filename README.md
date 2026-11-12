@@ -31,6 +31,10 @@ blocks ([docs/blocks.md](docs/blocks.md)); the Sites, Export and import and Abou
 meter ([docs/operate/budgets.md](docs/operate/budgets.md)). The other capabilities arrive with the
 issues of the first milestone. Until then, install nothing from it on a site.
 
+This repository is an npm workspace: it also holds `@micelio/icons` (`packages/icons/`), the Tabler
+icon set the block contract pins, normalised, with its index and Spanish labels
+([docs/icons.md](docs/icons.md)).
+
 ## Plugin or distribution
 
 [`micelio-cms`](https://github.com/bogd3v/micelio-cms) is the **reference distribution**: a Strapi project with the plugins installed and the configuration a plugin cannot set for its host (security middlewares, CSP, uploads provider, database, image and Compose files). It is what hosting runs and what "Micelio 0.6" means. Use it to run a Micelio site. The plugin is for a developer who already runs Strapi and wants Micelio in it.

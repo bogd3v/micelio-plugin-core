@@ -1,0 +1,49 @@
+{
+  "name": "@micelio/icons",
+  "version": "0.1.0",
+  "description": "The Tabler icon set the Micelio block contract pins, normalised: glyphs, index and Spanish labels.",
+  "type": "module",
+  "license": "AGPL-3.0-only AND MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bogd3v/micelio-plugin-core.git",
+    "directory": "packages/icons"
+  },
+  "keywords": [
+    "micelio",
+    "icons",
+    "tabler"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./index.json": "./index.json",
+    "./glyphs/*": "./glyphs/*"
+  },
+  "files": [
+    "dist",
+    "glyphs",
+    "index.json",
+    "labels/es.json",
+    "NOTICE",
+    "THIRD-PARTY.md",
+    "LICENSES"
+  ],
+  "scripts": {
+    "build": "jiti scripts/build.ts && tsc -p tsconfig.build.json",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@tabler/icons": "3.51.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

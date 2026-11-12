@@ -43,6 +43,8 @@ npm run test:admin       # the admin pages in Chromium, with an axe run (once: n
 npm run reference        # regenerate docs/hooks.md from the TSDoc of server/src/types/hooks.ts
 npm run blocks:generate  # contract/blocks.schema.json and the reference in docs/blocks.md
 npm run preview:generate # contract/preview.schema.json, from contract/preview.ts
+npm run icons:generate   # contract/icons.names.json, contract/icons.schema.json and packages/icons/index.json, from contract/icons.ts and the pinned @tabler/icons
+npm run build -w @micelio/icons  # the glyphs, NOTICE and LICENSES of @micelio/icons (not committed; `npm run test` builds them)
 ```
 
 `npm run test` builds the plugin first (`test/global-setup.ts`): the suites load `dist/`, as a host does.
@@ -128,7 +130,7 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
     the hooks API and its payloads; `budget.ts`: a measurement; `blocks.ts`:
     a site's settings of a block and a page that holds one) it is the shared folder of section 4 of
     the standard.
-- `contract/` — the block catalogue (ADR-0018): `seo.ts` (the SEO and social limits, derivations and
+- `contract/` — the block catalogue (ADR-0018) and the icon catalogue (ADR-0021: `icons.ts`, the pinned Tabler version, its names and the alias table; `icons.names.json` and `icons.schema.json` generated, the schema published as `./icons.schema.json`): `seo.ts` (the SEO and social limits, derivations and
   checks the server and the admin share), `blocks.ts` (the 19 entries),
   `islands.ts` (what the catalogue and the admin share about islands: the five kinds, the 1 MB
   rule that decides the trigger, and what counts as a filled field), `options.ts` (the
@@ -144,6 +146,7 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   expected output)
   (ADR-0019, section 4) and the generated `preview.schema.json`,
   published as `./preview.schema.json`.
+- `packages/icons/` — `@micelio/icons` (ADR-0021), the second package of this repository, an npm workspace (`workspaces` in the root `package.json`; the plugin stays at the root), with its own `version` and `license`. `scripts/normalise.ts` (pure: Tabler's SVG to the glyph), `scripts/index-build.ts` (pure: the index), `scripts/build.ts` (the glyphs, `NOTICE` and `LICENSES/`, from the pinned `@tabler/icons`; not committed), `scripts/generate.ts` (behind `icons:generate` and `lint:icons`), `src/` (what ships: `loadIndex`, `readGlyph`, `searchIcons`), `labels/es.json` and `labels/core-names.ts` (the Spanish labels). The pin is `contract/icons.ts`. `docs/icons.md` describes the set, how to raise it and how to add a Spanish label.
 - `admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`),
   the **Micelio** menu entry (`pages/MicelioLayout.tsx`: the sub-navigation from `navigation.ts`,
   each item shown to a role with its permission, and the pages of sibling plugins),
@@ -204,6 +207,7 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   (`IslandBadge` and the island marks of `Overlay`, `Palette` and `BlockPanel`); Strapi's
   `variant="secondary"` on a button is a different thing and is not it.
 - A site-scoped, editorial type with a dynamic zone that `budgets.contentTypes` lists is measured by the frontend when it is published (any other publishes as before), and the publish is refused above its budget or without the measurement (`budget/`): nothing publishes it outside the `transitions` service (the import of a site archive is the one deliberate exception: it restores what was published), and the frontend's API token needs `plugin::micelio.preview.draft`. The test app lists `api::story.story` by default; a suite that needs another lists it while it runs (the browser suite of the cost meter `api::landing.landing`, the page-settings suites `api::guide.guide`). A suite that publishes such a type needs a frontend that answers the weight route (`strapi/weight-site.ts`).
+- The icon catalogue is a contract too (section 6; ADR-0021, section 6): a change to `contract/icons.ts` regenerates `contract/icons.names.json`, `contract/icons.schema.json` and `packages/icons/index.json` in the same pull request (`lint:icons` fails otherwise). Raising the pinned Tabler version when it only adds names is a MINOR of the block contract; a rename keeps the old name in `ICON_ALIASES`; dropping an alias is a MAJOR. The set is never loaded from a CDN or an icon API. `@micelio/icons` has its own version and is published by hand: the Release workflow publishes the plugin only (`docs/icons.md`, "Releasing the package").
 - Every user-facing string of the admin lands in `en` and `es` in the same pull request.
 - The suites run on the clean Strapi of `test/strapi/app/`: Strapi's defaults and no other plugin (users-permissions is not installed by default; only `test/strapi/taxonomy-takeover.test.ts` turns it on, with `MICELIO_TEST_USERS_PERMISSIONS`, because the public role's grants are what the takeover keeps). What the distribution adds (security middlewares, CSP, uploads provider) is never added there; the host check (#7) is what verifies it.
 - Before 1.0.0 a breaking change raises `y` and everything else raises `z` (section 7). The bump is made by a `chore(release)` pull request before the tag.

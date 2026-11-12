@@ -45,6 +45,8 @@ jobs:
       compatibility: ${{ inputs.compatibility }}
       breaking-changes: ${{ inputs.breaking_changes }}
       upgrade-notes: ${{ inputs.upgrade_notes }}
-      # The package is at the root of this repository, not a workspace.
+      # The plugin is at the root of this repository. The workspace @micelio/icons is not listed
+      # here: it has its own version, and the reusable workflow does not skip a version that is
+      # already published. It is published by hand (docs/icons.md, "Releasing the package").
       npm-root: true
     secrets: inherit
