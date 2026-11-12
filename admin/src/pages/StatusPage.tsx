@@ -263,6 +263,18 @@ function Fact({ label, value }: { label: string; value: string | number }) {
   )
 }
 
+/**
+ * The small uppercase label of a stat card and of a host check column: the theme's `sigma` at
+ * `fontSizes[1]` and with tracking, as the artboard draws it. The letter-spacing is the one literal
+ * value: the theme has no letter-spacing token.
+ */
+const SmallLabel = styled(Typography)`
+  font-size: ${({ theme }) => theme.fontSizes[1]};
+  font-weight: ${({ theme }) => theme.fontWeights.bold};
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+`
+
 /** One of the four cards on top: a label, a figure and a line under it. */
 function StatCard({ label, value, note }: { label: string; value: ReactNode; note: ReactNode }) {
   return (
@@ -280,9 +292,9 @@ function StatCard({ label, value, note }: { label: string; value: ReactNode; not
       style={{ listStyle: 'none' }}
     >
       <Flex tag="dl" direction="column" alignItems="flex-start" gap={1} margin={0}>
-        <Typography variant="sigma" textColor="neutral600" tag="dt">
+        <SmallLabel variant="sigma" textColor="neutral600" tag="dt">
           {label}
-        </Typography>
+        </SmallLabel>
         <Typography fontSize={6} fontWeight="bold" lineHeight={1} tag="dd">
           {value}
         </Typography>
@@ -568,14 +580,14 @@ function HostCheckSection({ run }: { run: HostCheckRun }) {
               <Thead>
                 <Tr>
                   <Th>
-                    <Typography variant="sigma">{t('status.hostCheck.column.check')}</Typography>
+                    <SmallLabel variant="sigma">{t('status.hostCheck.column.check')}</SmallLabel>
                   </Th>
                   <Th>
-                    <Typography variant="sigma">{t('status.hostCheck.column.found')}</Typography>
+                    <SmallLabel variant="sigma">{t('status.hostCheck.column.found')}</SmallLabel>
                   </Th>
                   <Th>
                     <Flex justifyContent="flex-end" width="100%">
-                      <Typography variant="sigma">{t('status.hostCheck.column.status')}</Typography>
+                      <SmallLabel variant="sigma">{t('status.hostCheck.column.status')}</SmallLabel>
                     </Flex>
                   </Th>
                 </Tr>
@@ -587,7 +599,9 @@ function HostCheckSection({ run }: { run: HostCheckRun }) {
                     <Tr key={check.id}>
                       <Td>
                         <Flex direction="column" alignItems="flex-start" gap={1}>
-                          <Typography fontWeight="bold">{title ? say(title) : check.id}</Typography>
+                          <Typography fontWeight="regular">
+                            {title ? say(title) : check.id}
+                          </Typography>
                           <Typography variant="pi" textColor="neutral600">
                             {t(
                               check.required
