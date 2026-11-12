@@ -1,8 +1,12 @@
 {
   "source": {
     "repository": "bogd3v/micelio-cms",
-    "tag": "v0.4.0",
-    "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad"
+    "commit": "4d0cbf0791af0fa52eb0f6c58975bb0f2f2f5786",
+    "derivedFrom": {
+      "tag": "v0.4.0",
+      "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
+      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag"
+    }
   },
   "components": {
     "section.cta": {
@@ -14,6 +18,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["banner", "card"],
@@ -35,6 +40,7 @@
       },
       "options": {},
       "attributes": {
+        "itemId": { "type": "string" },
         "question": { "type": "string", "required": true },
         "answer": { "type": "richtext", "required": true }
       }
@@ -48,6 +54,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["list", "two-columns"],
@@ -72,6 +79,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["grid", "list", "bento"],
@@ -98,6 +106,7 @@
       },
       "options": {},
       "attributes": {
+        "itemId": { "type": "string" },
         "icon": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
         "title": { "type": "string", "required": true },
         "text": { "type": "text" }
@@ -112,6 +121,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["grid", "masonry"],
@@ -136,6 +146,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["centered", "split", "full-bleed"],
@@ -171,6 +182,7 @@
       "info": { "displayName": "Logo cloud", "icon": "apps", "description": "Logos with links" },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["row", "marquee"],
@@ -190,6 +202,7 @@
       },
       "options": {},
       "attributes": {
+        "itemId": { "type": "string" },
         "image": {
           "type": "media",
           "multiple": false,
@@ -209,6 +222,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["left", "right", "stacked"],
@@ -235,6 +249,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["inline", "card"],
@@ -251,6 +266,7 @@
       "info": { "displayName": "Plan", "icon": "priceTag", "description": "A pricing plan" },
       "options": {},
       "attributes": {
+        "itemId": { "type": "string" },
         "name": { "type": "string", "required": true },
         "price": { "type": "string", "required": true },
         "period": { "type": "string" },
@@ -268,6 +284,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["cards", "list"],
@@ -293,6 +310,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["cards", "table"],
@@ -312,7 +330,10 @@
         "description": "Long text in Markdown"
       },
       "options": {},
-      "attributes": { "body": { "type": "richtext", "required": true } }
+      "attributes": {
+        "blockId": { "type": "string" },
+        "body": { "type": "richtext", "required": true }
+      }
     },
     "section.scene": {
       "collectionName": "components_section_scenes",
@@ -323,6 +344,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["background", "inline"],
@@ -355,6 +377,7 @@
       },
       "options": {},
       "attributes": {
+        "itemId": { "type": "string" },
         "value": { "type": "string", "required": true },
         "label": { "type": "string", "required": true }
       }
@@ -368,6 +391,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["row", "cards"],
@@ -393,6 +417,7 @@
       },
       "options": {},
       "attributes": {
+        "itemId": { "type": "string" },
         "quote": { "type": "text", "required": true },
         "author": { "type": "string", "required": true },
         "role": { "type": "string" },
@@ -408,6 +433,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["single", "grid"],
@@ -466,6 +492,7 @@
       "info": { "displayName": "Media", "icon": "file-video" },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "file": {
           "allowedTypes": ["images", "files", "videos"],
           "type": "media",
@@ -503,6 +530,7 @@
       },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "runtime": {
           "type": "enumeration",
           "enum": ["python", "sql", "javascript"],
@@ -518,19 +546,19 @@
           "code": {
             "edit": {
               "label": "code",
-              "description": "Código que el lector ve y puede editar y ejecutar."
+              "description": "C\u00f3digo que el lector ve y puede editar y ejecutar."
             }
           },
           "expectedOutput": {
             "edit": {
               "label": "expectedOutput",
-              "description": "Salida que se muestra sin ejecutar nada, y también si el navegador no puede ejecutar el código."
+              "description": "Salida que se muestra sin ejecutar nada, y tambi\u00e9n si el navegador no puede ejecutar el c\u00f3digo."
             }
           },
           "setup": {
             "edit": {
               "label": "setup",
-              "description": "Código oculto que se ejecuta antes de «code», por ejemplo para crear las tablas de un ejemplo SQL. El lector no lo ve."
+              "description": "C\u00f3digo oculto que se ejecuta antes de \u00abcode\u00bb, por ejemplo para crear las tablas de un ejemplo SQL. El lector no lo ve."
             }
           }
         }
@@ -540,7 +568,11 @@
       "collectionName": "components_shared_quotes",
       "info": { "displayName": "Quote", "icon": "indent" },
       "options": {},
-      "attributes": { "title": { "type": "string" }, "body": { "type": "text" } }
+      "attributes": {
+        "blockId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "text" }
+      }
     },
     "shared.reference": {
       "collectionName": "components_shared_references",
@@ -589,7 +621,7 @@
       "collectionName": "components_shared_rich_texts",
       "info": { "displayName": "Rich text", "icon": "align-justify", "description": "" },
       "options": {},
-      "attributes": { "body": { "type": "richtext" } }
+      "attributes": { "blockId": { "type": "string" }, "body": { "type": "richtext" } }
     },
     "shared.seo": {
       "collectionName": "components_shared_seos",
@@ -630,6 +662,7 @@
       },
       "options": {},
       "attributes": {
+        "itemId": { "type": "string" },
         "file": {
           "type": "media",
           "multiple": false,
@@ -645,6 +678,7 @@
       "info": { "displayName": "Slider", "icon": "address-book", "description": "" },
       "options": {},
       "attributes": {
+        "blockId": { "type": "string" },
         "items": { "type": "component", "repeatable": true, "component": "shared.slide" },
         "files": {
           "type": "media",
@@ -658,7 +692,7 @@
           "files": {
             "edit": {
               "label": "files (obsoleto)",
-              "description": "Obsoleto: usa «items», donde cada imagen lleva su pie y su crédito. Al arrancar, un slider con imágenes aquí y sin «items» se copia a «items»."
+              "description": "Obsoleto: usa \u00abitems\u00bb, donde cada imagen lleva su pie y su cr\u00e9dito. Al arrancar, un slider con im\u00e1genes aqu\u00ed y sin \u00abitems\u00bb se copia a \u00abitems\u00bb."
             }
           }
         }

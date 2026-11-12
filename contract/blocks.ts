@@ -94,6 +94,11 @@ type BlockGroup = 'section' | 'article'
 /** The text of a `static` alternative for a block that needs no JavaScript. */
 const ITSELF = 'Itself: the block needs no JavaScript.'
 
+// The instance fields (ADR-0018, section 1; micelio-cms#440): the server fills them on save and the
+// builder hides them. Optional in the content API, as they are for a stored row that has none yet.
+const BLOCK_ID = string()
+const ITEM_ID = string()
+
 // Parts (ADR-0018, section 6, "Parts and fields"): they are nested in the blocks that use them and
 // are never entries of the catalogue.
 const link = part('section.link', {
@@ -101,20 +106,24 @@ const link = part('section.link', {
   url: string({ required: true, regex: '^(https?://\\S+|mailto:\\S+|/\\S*)$' }),
 })
 const featureItem = part('section.feature-item', {
+  itemId: ITEM_ID,
   icon: media(['images']),
   title: string({ required: true }),
   text: text(),
 })
 const faqItem = part('section.faq-item', {
+  itemId: ITEM_ID,
   question: string({ required: true }),
   answer: richtext({ required: true }),
 })
 const logo = part('section.logo', {
+  itemId: ITEM_ID,
   image: media(['images'], { required: true }),
   name: string({ required: true }),
   url: string({ regex: '^https?://\\S+$' }),
 })
 const plan = part('section.plan', {
+  itemId: ITEM_ID,
   name: string({ required: true }),
   price: string({ required: true }),
   period: string(),
@@ -123,10 +132,12 @@ const plan = part('section.plan', {
   recommended: boolean({ default: false }),
 })
 const stat = part('section.stat', {
+  itemId: ITEM_ID,
   value: string({ required: true }),
   label: string({ required: true }),
 })
 const testimonial = part('section.testimonial', {
+  itemId: ITEM_ID,
   quote: text({ required: true }),
   author: string({ required: true }),
   role: string(),
@@ -159,6 +170,7 @@ const imageCredit = part('shared.image-credit', {
   modifications: string(),
 })
 const slide = part('shared.slide', {
+  itemId: ITEM_ID,
   file: media(['images'], { required: true }),
   caption: text(),
   credit: component(imageCredit),
@@ -170,6 +182,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'hero',
     group: 'section',
     schema: part('section.hero', {
+      blockId: BLOCK_ID,
       title: string({ required: true }),
       text: text(),
       primaryLink: component(link),
@@ -187,6 +200,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'feature-grid',
     group: 'section',
     schema: part('section.feature-grid', {
+      blockId: BLOCK_ID,
       title: string(),
       text: text(),
       items: component(featureItem, { repeatable: true, min: 3, max: 6 }),
@@ -202,6 +216,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'media-showcase',
     group: 'section',
     schema: part('section.media-showcase', {
+      blockId: BLOCK_ID,
       title: string(),
       text: richtext(),
       media: media(['images', 'videos'], { required: true }),
@@ -218,6 +233,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'stats',
     group: 'section',
     schema: part('section.stats', {
+      blockId: BLOCK_ID,
       title: string(),
       items: component(stat, { repeatable: true, min: 2, max: 4 }),
     }),
@@ -232,6 +248,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'logo-cloud',
     group: 'section',
     schema: part('section.logo-cloud', {
+      blockId: BLOCK_ID,
       title: string(),
       logos: component(logo, { repeatable: true, min: 1 }),
     }),
@@ -247,6 +264,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'testimonials',
     group: 'section',
     schema: part('section.testimonials', {
+      blockId: BLOCK_ID,
       title: string(),
       items: component(testimonial, { repeatable: true, min: 1 }),
     }),
@@ -261,6 +279,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'pricing',
     group: 'section',
     schema: part('section.pricing', {
+      blockId: BLOCK_ID,
       title: string(),
       text: text(),
       plans: component(plan, { repeatable: true, min: 1 }),
@@ -276,6 +295,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'faq',
     group: 'section',
     schema: part('section.faq', {
+      blockId: BLOCK_ID,
       title: string(),
       items: component(faqItem, { repeatable: true, min: 1 }),
     }),
@@ -290,6 +310,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'cta',
     group: 'section',
     schema: part('section.cta', {
+      blockId: BLOCK_ID,
       title: string({ required: true }),
       text: text(),
       primaryLink: component(link),
@@ -306,6 +327,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'post-list',
     group: 'section',
     schema: part('section.post-list', {
+      blockId: BLOCK_ID,
       title: string(),
       category: relation('api::category.category'),
       tag: relation('api::tag.tag'),
@@ -322,6 +344,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'newsletter',
     group: 'section',
     schema: part('section.newsletter', {
+      blockId: BLOCK_ID,
       title: string(),
       text: text(),
       buttonLabel: string(),
@@ -340,6 +363,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'rich-text',
     group: 'section',
     schema: part('section.rich-text', {
+      blockId: BLOCK_ID,
       body: richtext({ required: true }),
     }),
     options: { ...presentation('rich-text', 'section', 'width') },
@@ -350,6 +374,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'gallery',
     group: 'section',
     schema: part('section.gallery', {
+      blockId: BLOCK_ID,
       title: string(),
       images: media(['images'], { required: true, multiple: true }),
     }),
@@ -364,6 +389,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'scene',
     group: 'section',
     schema: part('section.scene', {
+      blockId: BLOCK_ID,
       model: media(['files'], { required: true }),
       poster: media(['images'], { required: true }),
       alt: string({ required: true }),
@@ -392,6 +418,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'prose',
     group: 'article',
     schema: part('shared.rich-text', {
+      blockId: BLOCK_ID,
       body: richtext(),
     }),
     options: {},
@@ -404,6 +431,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'quote',
     group: 'article',
     schema: part('shared.quote', {
+      blockId: BLOCK_ID,
       title: string(),
       body: text(),
     }),
@@ -415,6 +443,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'media',
     group: 'article',
     schema: part('shared.media', {
+      blockId: BLOCK_ID,
       file: media(['images', 'files', 'videos']),
       caption: text(),
       credit: component(imageCredit),
@@ -427,6 +456,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'slider',
     group: 'article',
     schema: part('shared.slider', {
+      blockId: BLOCK_ID,
       items: component(slide, { repeatable: true }),
       files: media(['images'], { multiple: true }),
     }),
@@ -438,6 +468,7 @@ export const BLOCKS: readonly Block[] = [
     id: 'playground',
     group: 'article',
     schema: part('shared.playground', {
+      blockId: BLOCK_ID,
       runtime: enumeration(['python', 'sql', 'javascript'], { required: true }),
       code: text({ required: true, maxLength: 5000 }),
       expectedOutput: text({ maxLength: 5000 }),

@@ -116,6 +116,63 @@ describe('the builder’s document model', () => {
     ])
   })
 
+  it('duplicates a block without its blockId, and its items without their itemId', () => {
+    const original: BuilderBlock = {
+      key: 'a',
+      id: 7,
+      component: 'section.feature-grid',
+      fields: {
+        blockId: 'block-1',
+        title: 'T',
+        items: [
+          { id: 4, itemId: 'item-1', title: 'One' },
+          { id: 5, itemId: 'item-2', title: 'Two' },
+        ],
+      },
+    }
+    const copy = duplicate(original, schemas)
+    expect(copy.fields).toEqual({ title: 'T', items: [{ title: 'One' }, { title: 'Two' }] })
+    expect(original.fields.blockId).toBe('block-1')
+  })
+
+  it('takes in the blockId and itemId the server made, and never replaces one it has', () => {
+    const sent: BuilderBlock[] = [
+      {
+        key: 'a',
+        component: 'section.feature-grid',
+        fields: { items: [{ title: 'One' }, { title: 'Two', itemId: 'mine' }] },
+      },
+      block('b', 'section.cta', 9),
+    ]
+    const answered = [
+      {
+        __component: 'section.feature-grid',
+        id: 11,
+        blockId: 'made-1',
+        items: [
+          { id: 1, itemId: 'made-2' },
+          { id: 2, itemId: 'made-3' },
+        ],
+      },
+      { __component: 'section.cta', id: 9, blockId: 'made-4' },
+    ]
+    const adopted = adoptIds(sent, answered, sent)
+    expect(adopted[0]!.fields).toEqual({
+      blockId: 'made-1',
+      items: [
+        { title: 'One', itemId: 'made-2' },
+        { title: 'Two', itemId: 'mine' },
+      ],
+    })
+    expect(adopted[1]!.fields).toEqual({ ...sent[1]!.fields, blockId: 'made-4' })
+    // An item list that changed while the save was in flight is left alone.
+    const edited = [{ ...sent[0]!, fields: { items: [{ title: 'One' }] } }, sent[1]!]
+    expect(adoptIds(sent, answered, edited)[0]!.fields).toEqual({
+      blockId: 'made-1',
+      items: [{ title: 'One' }],
+    })
+  })
+
   it('lays fields over one block only', () => {
     const list = [block('a'), block('b')]
     const next = setFields(list, 'b', { body: 'changed', extra: 1 })

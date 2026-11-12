@@ -62,6 +62,16 @@ describe('the fields of the panel', () => {
     expect(fieldsOf(undefined, {})).toEqual({ options: [], text: [], items: [] })
   })
 
+  it('hides the blockId of a block and the itemId of an item', () => {
+    const withIds = { ...grid, attributes: { blockId: { type: 'string' }, ...grid.attributes } }
+    expect(fieldsOf(withIds, {}).text.map(({ name }) => name)).toEqual(['title', 'text'])
+    const item = {
+      uid: 'section.feature-item',
+      attributes: { itemId: { type: 'string' }, title: { type: 'string' } },
+    }
+    expect(fieldsOf(item, {}).text.map(({ name }) => name)).toEqual(['title'])
+  })
+
   it('names the required text a block lacks, blank text included', () => {
     const fields = fieldsOf(grid, {})
     expect(missingRequired(fields, { title: '', text: '  ' })).toEqual(['text'])

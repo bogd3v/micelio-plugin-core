@@ -55,6 +55,12 @@ The merged view is `GET /micelio/blocks?site=` ([`docs/api.md`](api.md#block-cat
 
 Adding an option to a block, or a value to an option, changes the block's fingerprint, so `blockCatalogueChanged` runs with the block in `changed` on the next boot.
 
+## Instance ids
+
+Every block has a `blockId` and every repeatable item an `itemId` (ADR-0018, section 1; the catalogue `id` names a kind of block, these name one instance of it). `id` is reserved by Strapi, hence the names. Both are opaque strings (a UUID when the plugin makes one) and optional in the schema, so content saved before them stays valid; `micelio-cms` fills the stored content in a boot migration.
+
+**Generation at save.** On `create`, `update` and `clone` of any type with a dynamic zone, the plugin gives a block of the data that has no `blockId` one that is unique in its zone, and an item that has no `itemId` one that is unique in its parent block. On `update` the ids stored in the draft win over what the save writes: an edit that sends another id at a block's or item's place keeps the stored one, a save that omits them keeps them, and a reorder moves each id with its block. An id that no stored entry holds is kept only when it is unique, so an import or a duplicate restores the ids it carries. A component that does not declare the field is left alone. A page template keeps neither id, so a page made from one gets its own. The builder hides both fields: editors never see them, its duplicate of a block carries neither id, and it takes in the ids a save answers, so a block added in a session keeps its id when it is moved and saved again.
+
 ## Islands
 
 A block that loads script once it is used declares `cost.island`: its `id` in the heavy island
@@ -93,10 +99,10 @@ Each block's JSON Schema describes its content as the content API answers it, it
 | `relation`, with `relation` and `target`       | An entry with its `documentId`                                   |
 | `component`, with `component` and `repeatable` | The part's object, or a list of them with `minItems`, `maxItems` |
 
-`default` is Strapi's default, filled in when an entry is created. `test/blocks.test.ts` reads every schema back as Strapi attributes (`contract/strapi.ts`) and compares them, less the options of the vocabulary that `v0.4.0` does not store yet, with the component JSON of `micelio-cms` `v0.4.0` in `test/fixtures/micelio-cms-v0.4.0-components.json`. That fixture is test data, never registered as a component; a catalogue update regenerates it from the new tag in the same pull request:
+`default` is Strapi's default, filled in when an entry is created. `test/blocks.test.ts` reads every schema back as Strapi attributes (`contract/strapi.ts`) and compares them, less the options of the vocabulary that `v0.4.0` does not store yet, with the component JSON of `micelio-cms` in `test/fixtures/micelio-cms-components-with-ids.json`: the components of `v0.4.0` plus the `blockId` and `itemId` attributes as `micelio-cms` stores them since #477 (its `source` names the commit and the tag it derives from). That fixture is test data, never registered as a component; a catalogue update regenerates it from the new tag in the same pull request:
 
 ```bash
-node test/fixtures/micelio-cms-components.mjs <micelio-cms checkout> v0.4.0
+node test/fixtures/micelio-cms-components.mjs <micelio-cms checkout> <tag>
 ```
 
 ## Known limitations
@@ -193,6 +199,7 @@ The measurement of 2026-10-23, in gzip bytes:
 
 | Field           | Type                   | Required | Details |
 | --------------- | ---------------------- | -------- | ------- |
+| `blockId`       | string                 | No       |         |
 | `title`         | string                 | Yes      |         |
 | `text`          | text                   | No       |         |
 | `primaryLink`   | `section.link`         | No       |         |
@@ -209,11 +216,12 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 643 B of CSS and 1350 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
-| Field   | Type                               | Required | Details               |
-| ------- | ---------------------------------- | -------- | --------------------- |
-| `title` | string                             | No       |                       |
-| `text`  | text                               | No       |                       |
-| `items` | `section.feature-item`, repeatable | No       | at least 3; at most 6 |
+| Field     | Type                               | Required | Details               |
+| --------- | ---------------------------------- | -------- | --------------------- |
+| `blockId` | string                             | No       |                       |
+| `title`   | string                             | No       |                       |
+| `text`    | text                               | No       |                       |
+| `items`   | `section.feature-item`, repeatable | No       | at least 3; at most 6 |
 
 ### `media-showcase`
 
@@ -224,12 +232,13 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 214 B of CSS and 1423 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript, and a video shows its native controls.
 
-| Field   | Type                   | Required | Details |
-| ------- | ---------------------- | -------- | ------- |
-| `title` | string                 | No       |         |
-| `text`  | richtext               | No       |         |
-| `media` | media (images, videos) | Yes      |         |
-| `link`  | `section.link`         | No       |         |
+| Field     | Type                   | Required | Details |
+| --------- | ---------------------- | -------- | ------- |
+| `blockId` | string                 | No       |         |
+| `title`   | string                 | No       |         |
+| `text`    | richtext               | No       |         |
+| `media`   | media (images, videos) | Yes      |         |
+| `link`    | `section.link`         | No       |         |
 
 ### `stats`
 
@@ -242,10 +251,11 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 527 B of CSS and 540 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
-| Field   | Type                       | Required | Details               |
-| ------- | -------------------------- | -------- | --------------------- |
-| `title` | string                     | No       |                       |
-| `items` | `section.stat`, repeatable | No       | at least 2; at most 4 |
+| Field     | Type                       | Required | Details               |
+| --------- | -------------------------- | -------- | --------------------- |
+| `blockId` | string                     | No       |                       |
+| `title`   | string                     | No       |                       |
+| `items`   | `section.stat`, repeatable | No       | at least 2; at most 4 |
 
 ### `logo-cloud`
 
@@ -257,10 +267,11 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 497 B of CSS and 1446 B of JS, gzip
 - **Static:** Itself: the marquee is CSS only, and it stops under reduced motion and when a logo is a link.
 
-| Field   | Type                       | Required | Details    |
-| ------- | -------------------------- | -------- | ---------- |
-| `title` | string                     | No       |            |
-| `logos` | `section.logo`, repeatable | No       | at least 1 |
+| Field     | Type                       | Required | Details    |
+| --------- | -------------------------- | -------- | ---------- |
+| `blockId` | string                     | No       |            |
+| `title`   | string                     | No       |            |
+| `logos`   | `section.logo`, repeatable | No       | at least 1 |
 
 ### `testimonials`
 
@@ -272,10 +283,11 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 599 B of CSS and 1482 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
-| Field   | Type                              | Required | Details    |
-| ------- | --------------------------------- | -------- | ---------- |
-| `title` | string                            | No       |            |
-| `items` | `section.testimonial`, repeatable | No       | at least 1 |
+| Field     | Type                              | Required | Details    |
+| --------- | --------------------------------- | -------- | ---------- |
+| `blockId` | string                            | No       |            |
+| `title`   | string                            | No       |            |
+| `items`   | `section.testimonial`, repeatable | No       | at least 1 |
 
 ### `pricing`
 
@@ -286,11 +298,12 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 805 B of CSS and 1186 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
-| Field   | Type                       | Required | Details    |
-| ------- | -------------------------- | -------- | ---------- |
-| `title` | string                     | No       |            |
-| `text`  | text                       | No       |            |
-| `plans` | `section.plan`, repeatable | No       | at least 1 |
+| Field     | Type                       | Required | Details    |
+| --------- | -------------------------- | -------- | ---------- |
+| `blockId` | string                     | No       |            |
+| `title`   | string                     | No       |            |
+| `text`    | text                       | No       |            |
+| `plans`   | `section.plan`, repeatable | No       | at least 1 |
 
 ### `faq`
 
@@ -301,10 +314,11 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 527 B of CSS and 525 B of JS, gzip
 - **Static:** Itself: the answers open and close with the native `<details>` element.
 
-| Field   | Type                           | Required | Details    |
-| ------- | ------------------------------ | -------- | ---------- |
-| `title` | string                         | No       |            |
-| `items` | `section.faq-item`, repeatable | No       | at least 1 |
+| Field     | Type                           | Required | Details    |
+| --------- | ------------------------------ | -------- | ---------- |
+| `blockId` | string                         | No       |            |
+| `title`   | string                         | No       |            |
+| `items`   | `section.faq-item`, repeatable | No       | at least 1 |
 
 ### `cta`
 
@@ -319,6 +333,7 @@ The measurement of 2026-10-23, in gzip bytes:
 
 | Field           | Type           | Required | Details |
 | --------------- | -------------- | -------- | ------- |
+| `blockId`       | string         | No       |         |
 | `title`         | string         | Yes      |         |
 | `text`          | text           | No       |         |
 | `primaryLink`   | `section.link` | No       |         |
@@ -335,6 +350,7 @@ The measurement of 2026-10-23, in gzip bytes:
 
 | Field      | Type                                 | Required | Details                             |
 | ---------- | ------------------------------------ | -------- | ----------------------------------- |
+| `blockId`  | string                               | No       |                                     |
 | `title`    | string                               | No       |                                     |
 | `category` | relation to `api::category.category` | No       |                                     |
 | `tag`      | relation to `api::tag.tag`           | No       |                                     |
@@ -352,6 +368,7 @@ The measurement of 2026-10-23, in gzip bytes:
 
 | Field         | Type   | Required | Details |
 | ------------- | ------ | -------- | ------- |
+| `blockId`     | string | No       |         |
 | `title`       | string | No       |         |
 | `text`        | text   | No       |         |
 | `buttonLabel` | string | No       |         |
@@ -364,9 +381,10 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 1940 B of CSS and 226 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
-| Field  | Type     | Required | Details |
-| ------ | -------- | -------- | ------- |
-| `body` | richtext | Yes      |         |
+| Field     | Type     | Required | Details |
+| --------- | -------- | -------- | ------- |
+| `blockId` | string   | No       |         |
+| `body`    | richtext | Yes      |         |
 
 ### `gallery`
 
@@ -378,10 +396,11 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 425 B of CSS and 1251 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
-| Field    | Type                    | Required | Details |
-| -------- | ----------------------- | -------- | ------- |
-| `title`  | string                  | No       |         |
-| `images` | media, several (images) | Yes      |         |
+| Field     | Type                    | Required | Details |
+| --------- | ----------------------- | -------- | ------- |
+| `blockId` | string                  | No       |         |
+| `title`   | string                  | No       |         |
+| `images`  | media, several (images) | Yes      |         |
 
 ### `scene`
 
@@ -394,13 +413,14 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Static alternative needs:** `poster`, `alt`, filled in before the page is sent to review
 - **Static:** The required poster, with the alt text of the scene.
 
-| Field    | Type           | Required | Details |
-| -------- | -------------- | -------- | ------- |
-| `model`  | media (files)  | Yes      |         |
-| `poster` | media (images) | Yes      |         |
-| `alt`    | string         | Yes      |         |
-| `title`  | string         | No       |         |
-| `text`   | text           | No       |         |
+| Field     | Type           | Required | Details |
+| --------- | -------------- | -------- | ------- |
+| `blockId` | string         | No       |         |
+| `model`   | media (files)  | Yes      |         |
+| `poster`  | media (images) | Yes      |         |
+| `alt`     | string         | Yes      |         |
+| `title`   | string         | No       |         |
+| `text`    | text           | No       |         |
 
 ### `prose`
 
@@ -409,9 +429,10 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 1895 B of CSS and 610 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript. A Mermaid diagram inside it is the `mermaid` island, and shows its source until it loads.
 
-| Field  | Type     | Required | Details |
-| ------ | -------- | -------- | ------- |
-| `body` | richtext | No       |         |
+| Field     | Type     | Required | Details |
+| --------- | -------- | -------- | ------- |
+| `blockId` | string   | No       |         |
+| `body`    | richtext | No       |         |
 
 ### `quote`
 
@@ -422,10 +443,11 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 293 B of CSS and 259 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
-| Field   | Type   | Required | Details |
-| ------- | ------ | -------- | ------- |
-| `title` | string | No       |         |
-| `body`  | text   | No       |         |
+| Field     | Type   | Required | Details |
+| --------- | ------ | -------- | ------- |
+| `blockId` | string | No       |         |
+| `title`   | string | No       |         |
+| `body`    | text   | No       |         |
 
 ### `media`
 
@@ -438,6 +460,7 @@ The measurement of 2026-10-23, in gzip bytes:
 
 | Field     | Type                          | Required | Details |
 | --------- | ----------------------------- | -------- | ------- |
+| `blockId` | string                        | No       |         |
 | `file`    | media (images, files, videos) | No       |         |
 | `caption` | text                          | No       |         |
 | `credit`  | `shared.image-credit`         | No       |         |
@@ -450,10 +473,11 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 1545 B of CSS and 2615 B of JS, gzip
 - **Static:** The first slide, with its caption and credit; the controls work once hydrated.
 
-| Field   | Type                       | Required | Details |
-| ------- | -------------------------- | -------- | ------- |
-| `items` | `shared.slide`, repeatable | No       |         |
-| `files` | media, several (images)    | No       |         |
+| Field     | Type                       | Required | Details |
+| --------- | -------------------------- | -------- | ------- |
+| `blockId` | string                     | No       |         |
+| `items`   | `shared.slide`, repeatable | No       |         |
+| `files`   | media, several (images)    | No       |         |
 
 ### `playground`
 
@@ -467,6 +491,7 @@ The measurement of 2026-10-23, in gzip bytes:
 
 | Field            | Type        | Required | Details                       |
 | ---------------- | ----------- | -------- | ----------------------------- |
+| `blockId`        | string      | No       |                               |
 | `runtime`        | enumeration | Yes      | `python`, `sql`, `javascript` |
 | `code`           | text        | Yes      | at most 5000 characters       |
 | `expectedOutput` | text        | No       | at most 5000 characters       |
@@ -483,6 +508,7 @@ Nested in `faq`.
 
 | Field      | Type     | Required | Details |
 | ---------- | -------- | -------- | ------- |
+| `itemId`   | string   | No       |         |
 | `question` | string   | Yes      |         |
 | `answer`   | richtext | Yes      |         |
 
@@ -490,11 +516,12 @@ Nested in `faq`.
 
 Nested in `feature-grid`.
 
-| Field   | Type           | Required | Details |
-| ------- | -------------- | -------- | ------- |
-| `icon`  | media (images) | No       |         |
-| `title` | string         | Yes      |         |
-| `text`  | text           | No       |         |
+| Field    | Type           | Required | Details |
+| -------- | -------------- | -------- | ------- |
+| `itemId` | string         | No       |         |
+| `icon`   | media (images) | No       |         |
+| `title`  | string         | Yes      |         |
+| `text`   | text           | No       |         |
 
 ### `section.link`
 
@@ -509,11 +536,12 @@ Nested in `hero`, `media-showcase`, `pricing`, `cta`.
 
 Nested in `logo-cloud`.
 
-| Field   | Type           | Required | Details                    |
-| ------- | -------------- | -------- | -------------------------- |
-| `image` | media (images) | Yes      |                            |
-| `name`  | string         | Yes      |                            |
-| `url`   | string         | No       | matches `^https?:\/\/\S+$` |
+| Field    | Type           | Required | Details                    |
+| -------- | -------------- | -------- | -------------------------- |
+| `itemId` | string         | No       |                            |
+| `image`  | media (images) | Yes      |                            |
+| `name`   | string         | Yes      |                            |
+| `url`    | string         | No       | matches `^https?:\/\/\S+$` |
 
 ### `section.plan`
 
@@ -521,6 +549,7 @@ Nested in `pricing`.
 
 | Field         | Type           | Required | Details              |
 | ------------- | -------------- | -------- | -------------------- |
+| `itemId`      | string         | No       |                      |
 | `name`        | string         | Yes      |                      |
 | `price`       | string         | Yes      |                      |
 | `period`      | string         | No       |                      |
@@ -532,10 +561,11 @@ Nested in `pricing`.
 
 Nested in `stats`.
 
-| Field   | Type   | Required | Details |
-| ------- | ------ | -------- | ------- |
-| `value` | string | Yes      |         |
-| `label` | string | Yes      |         |
+| Field    | Type   | Required | Details |
+| -------- | ------ | -------- | ------- |
+| `itemId` | string | No       |         |
+| `value`  | string | Yes      |         |
+| `label`  | string | Yes      |         |
 
 ### `section.testimonial`
 
@@ -543,6 +573,7 @@ Nested in `testimonials`.
 
 | Field    | Type           | Required | Details |
 | -------- | -------------- | -------- | ------- |
+| `itemId` | string         | No       |         |
 | `quote`  | text           | Yes      |         |
 | `author` | string         | Yes      |         |
 | `role`   | string         | No       |         |
@@ -569,6 +600,7 @@ Nested in `slider`.
 
 | Field     | Type                  | Required | Details |
 | --------- | --------------------- | -------- | ------- |
+| `itemId`  | string                | No       |         |
 | `file`    | media (images)        | Yes      |         |
 | `caption` | text                  | No       |         |
 | `credit`  | `shared.image-credit` | No       |         |

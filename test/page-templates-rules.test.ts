@@ -109,6 +109,35 @@ describe('what a template keeps of a block', () => {
     )
     expect(shapeContent(attributesOf, 'section.feature-grid', once, 'sample')).toEqual(once)
   })
+
+  it('keeps no blockId or itemId, and counts neither as a sample text', () => {
+    const entry = {
+      blockId: 'b-1',
+      title: 'Why',
+      items: [{ itemId: 'i-1', title: 'Fast' }],
+    }
+    const ids = {
+      'section.feature-grid': { blockId: { type: 'string' } },
+      'section.feature-item': { itemId: { type: 'string' } },
+    }
+    const withIds: AttributesOf = (component) =>
+      ({ ...COMPONENTS[component], ...ids[component as keyof typeof ids] }) as never
+    const kept = shapeContent(withIds, 'section.feature-grid', entry, 'sample')
+    expect(kept).toEqual({ title: 'Why', items: [{ title: 'Fast' }] })
+    expect(
+      samplesOf(withIds, [
+        {
+          block: 'feature-grid',
+          component: 'section.feature-grid',
+          content: 'sample',
+          data: entry,
+        },
+      ] as never)
+    ).toEqual(['Why', 'Fast'])
+    expect(
+      findSampleText(withIds, [{ __component: 'section.feature-grid', ...entry }], ['Why', 'Fast'])
+    ).toEqual([{ block: 'feature-grid', position: 0, fields: ['title', 'items[1].title'] }])
+  })
 })
 
 describe('the sample texts of a page', () => {

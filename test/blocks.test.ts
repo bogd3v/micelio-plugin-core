@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { BLOCKS, ISLAND_KINDS, blockContentSchema, type Block } from '../contract/blocks'
 import { OPTION_NAMES } from '../contract/options'
 import { strapiComponents, type StrapiAttributes } from '../contract/strapi'
-import fixture from './fixtures/micelio-cms-v0.4.0-components.json'
+import fixture from './fixtures/micelio-cms-components-with-ids.json'
 
 // The first catalogue, as ADR-0018, section 6, lists it: id, component and `variant`, default first.
 const CATALOGUE: [string, string, string[]][] = [
@@ -102,7 +102,7 @@ describe('the block catalogue', () => {
   })
 
   it.each(CATALOGUE)(
-    '%s matches %s of micelio-cms v0.4.0, with every part it nests',
+    '%s matches %s of the micelio-cms components fixture, with every part it nests',
     (id, component) => {
       const described = withoutVocabulary(strapiComponents(blockOf(id)).components, component)
       expect(described[component]).toBeDefined()
@@ -188,7 +188,7 @@ describe('the block catalogue', () => {
 })
 
 // The options of the vocabulary (contract/options.ts) are new in the catalogue: the components of
-// micelio-cms v0.4.0 have only `variant`, and micelio-cms adds the rest in its own change (standard,
+// micelio-cms v0.4.0 (the base of the fixture) have only `variant`, and micelio-cms adds the rest in its own change (standard,
 // section 6: CMS first). test/block-options.test.ts covers them; everything else is compared as is.
 function withoutVocabulary(
   components: Record<string, StrapiAttributes>,

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Core, Schema } from '@strapi/strapi'
 import { readDraftQuery } from '../server/src/preview/draft-query'
 import type { PopulateSpec } from '../server/src/preview/draft-query'
-import cms from './fixtures/micelio-cms-v0.4.0-components.json'
+import cms from './fixtures/micelio-cms-components-with-ids.json'
 import { ARTICLE_POPULATE, PAGE_POPULATE } from './fixtures/micelio-populate'
 
 // The draft read's allowlist against the `populate` the frontend really sends (the verbatim
