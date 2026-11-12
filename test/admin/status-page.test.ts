@@ -747,6 +747,59 @@ describe('the status page in the admin', () => {
     await restricted.context().close()
   })
 
+  it("shows each host check's name in regular weight", async () => {
+    const section = page.locator('section').filter({
+      has: page.getByRole('heading', { name: 'Host check' }),
+    })
+    const names = await section
+      .getByRole('row')
+      .locator('td:first-child > div > :first-child')
+      .evaluateAll((cells) =>
+        cells.map((cell) => ({
+          name: cell.textContent,
+          weight: cell.ownerDocument.defaultView!.getComputedStyle(cell).fontWeight,
+        }))
+      )
+    expect(names.length).toBeGreaterThan(0)
+    for (const { weight } of names) expect(weight).toBe('400')
+  })
+
+  it('shows the stat card labels and the host check headers at 1.2rem, bold and uppercase, with 0.08em letter-spacing', async () => {
+    const section = page.locator('section').filter({
+      has: page.getByRole('heading', { name: 'Host check' }),
+    })
+    const read = (locator: ReturnType<Page['locator']>) =>
+      locator.evaluateAll((labels) =>
+        labels.map((label) => {
+          const style = label.ownerDocument.defaultView!.getComputedStyle(label)
+          return {
+            text: label.textContent,
+            size: style.fontSize,
+            weight: style.fontWeight,
+            transform: style.textTransform,
+            spacing: style.letterSpacing,
+          }
+        })
+      )
+    const cards = await read(page.getByRole('list', { name: 'Summary' }).locator('dt'))
+    const headers = await read(section.locator('thead').getByText(/^(Check|Found|Result)$/))
+    expect(cards.map(({ text }) => text)).toEqual([
+      'Plugin core',
+      'Frontend',
+      'Sites',
+      'Block catalogue',
+    ])
+    expect(headers.map(({ text }) => text)).toEqual(['Check', 'Found', 'Result'])
+    for (const label of [...cards, ...headers]) {
+      expect(label).toMatchObject({
+        size: '12px',
+        weight: '600',
+        transform: 'uppercase',
+        spacing: '0.96px',
+      })
+    }
+  })
+
   // After the run: the button and the replaced report are checked too.
   it('has no WCAG 2.2 A or AA violation', async () => {
     await expect(violationsOf(page)).resolves.toEqual([])
