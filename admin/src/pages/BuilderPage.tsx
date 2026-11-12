@@ -28,6 +28,7 @@ import { useRefusalNotice } from '../hooks/useRefusalNotice'
 import { useTransition } from '../hooks/useTransition'
 import { useBuilderFrame } from '../hooks/useBuilderFrame'
 import { usePageSettings } from '../hooks/usePageSettings'
+import { usePlaygroundRun } from '../hooks/usePlaygroundRun'
 import { useBuilderShortcuts } from '../hooks/useBuilderShortcuts'
 import { useNewTab, usePreviewSource } from '../hooks/usePreviewSource'
 import { useMessages } from '../messages'
@@ -325,6 +326,18 @@ function Builder() {
     addItem,
     goBack,
   } = edits
+  // A Playground block runs in the frame, and its output fills the field of its static alternative.
+  const playgroundRun = usePlaygroundRun({
+    frame,
+    frameState,
+    state,
+    addressOf,
+    fill: (key, output) => {
+      const block = blocks.find((candidate) => candidate.key === key)
+      const field = islandOf(block ? entryOf(block) : undefined)?.alternative[0]
+      if (field) edits.fill(key, { [field]: output }, t('builder.toast.filled'))
+    },
+  })
 
   const { carrying } = useBuilderShortcuts({
     blocks,
@@ -582,7 +595,10 @@ function Builder() {
                     onChange={setFrameState}
                     onBlocked={() => setIsBlocked(true)}
                     isCovered={isSilent}
-                    onMessage={onFrameMessage}
+                    onMessage={(message) => {
+                      onFrameMessage(message)
+                      playgroundRun.onFrameMessage(message)
+                    }}
                   >
                     <Overlay
                       report={report}
@@ -624,6 +640,11 @@ function Builder() {
                 island={islandOf(selectedEntry)}
                 samples={samples}
                 isFixed={lockedKeys.has(selectedBlock.key)}
+                run={{
+                  phase: playgroundRun.phaseOf(selectedBlock.key),
+                  canRun: playgroundRun.canRun,
+                  onRun: () => playgroundRun.run(selectedBlock.key),
+                }}
                 isReadOnly={isReadOnly}
                 onSetFields={setValues}
                 onSetItem={setItem}

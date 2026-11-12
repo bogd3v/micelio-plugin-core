@@ -89,6 +89,11 @@ export interface BuilderEdits {
   goBack: () => void
   /** Puts the selected block's options back to their defaults; `false` when there is nothing to reset. */
   resetOptions: () => boolean
+  /**
+   * Sets text fields of a block by its key, selected or not, as one step Undo takes back, and says
+   * so in the toast: what a run of a Playground block fills.
+   */
+  fill: (key: string, values: Record<string, string>, toast: string) => void
 }
 
 /**
@@ -285,6 +290,12 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
     return true
   }
 
+  const fill = (key: string, values: Record<string, string>, toast: string) => {
+    lastText.current = undefined
+    edit(setFields(blocks, key, values))
+    say(toast)
+  }
+
   useEffect(() => {
     if (!toast) return
     const timer = window.setTimeout(() => setToast(undefined), TOAST_MS)
@@ -312,5 +323,6 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
     addItem,
     goBack,
     resetOptions,
+    fill,
   }
 }

@@ -5,7 +5,7 @@
 
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { blocksScript, markBlocks } from './preview-site-blocks'
+import { blocksScript, markBlocks, runScript, type RunBehaviour } from './preview-site-blocks'
 import { solidPng } from './png'
 import { answerWeight, newWeightBehaviour, type WeightBehaviour } from './weight-site'
 
@@ -32,6 +32,11 @@ export interface PreviewSite {
   readonly cardRequests: { uid: string; documentId: string; grant: string | undefined }[]
   /** The envelope versions its page lists in `ready`; `[2]` plays a frontend this plugin cannot talk to. */
   speaks: number[]
+  /**
+   * How its page answers `micelio:run`, read when the page loads (`runScript`); `{ kind: 'answer' }`
+   * by default.
+   */
+  run: RunBehaviour
   /** Its page never posts `ready`, as a frame that gets the 404 page of a refused cookie, or an older frontend. */
   isSilent: boolean
   /**
@@ -51,6 +56,7 @@ interface Section {
   items?: { title?: string; icon?: { url?: string } | null }[]
   poster?: { url?: string }
   images?: { url?: string; alternativeText?: string | null }[]
+  code?: string
 }
 
 interface Draft {
@@ -111,7 +117,8 @@ function pageHtml(
   isStatic: boolean,
   cms: { base: string; adminOrigin: string },
   speaks: number[],
-  isSilent: boolean
+  isSilent: boolean,
+  run: RunBehaviour
 ): string {
   const locale = draft.locale ?? null
   const ready = JSON.stringify({
@@ -139,7 +146,7 @@ window.addEventListener('message', (event) => {
       message.payload.documentId === ${JSON.stringify(draft.documentId)} &&
       message.payload.locale === ${JSON.stringify(locale)}) window.location.reload()
 })
-${isSilent ? '' : `if (window.parent !== window) { window.parent.postMessage(${ready}, adminOrigin); ${blocksScript(cms.adminOrigin, draft.updatedAt)} }`}
+${isSilent ? '' : `if (window.parent !== window) { window.parent.postMessage(${ready}, adminOrigin); ${blocksScript(cms.adminOrigin, draft.updatedAt)} ${runScript(cms.adminOrigin, draft.updatedAt, draft.sections ?? [], run)} }`}
 </script>
 </body>
 </html>`
@@ -265,8 +272,12 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     const withMedia = new URLSearchParams(query)
     withMedia.set(grid, '*')
     withMedia.set('populate[sections][on][section.gallery][populate]', '*')
+    // The islands' page holds the Playground, whose code the page's run reads.
+    const withPlayground = new URLSearchParams(query)
+    withPlayground.set('populate[sections][on][shared.playground][populate]', '*')
     let answer = await read(withMore)
     if (!answer.ok) answer = await read(withMedia)
+    if (!answer.ok) answer = await read(withPlayground)
     if (!answer.ok) answer = await read(query)
     if (!answer.ok) {
       response.writeHead(404).end('Page not found')
@@ -276,7 +287,14 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     const { data } = (await answer.json()) as { data: Draft }
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
     response.end(
-      pageHtml(data, url.searchParams.get('mode') === 'static', cms, site.speaks, site.isSilent)
+      pageHtml(
+        data,
+        url.searchParams.get('mode') === 'static',
+        cms,
+        site.speaks,
+        site.isSilent,
+        site.run
+      )
     )
   }
 
@@ -293,6 +311,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
   const site: PreviewSite = {
     speaks: [1],
     weight: newWeightBehaviour(),
+    run: { kind: 'answer' },
     isSilent: false,
     isRefused: false,
     origin: `http://127.0.0.1:${port}`,

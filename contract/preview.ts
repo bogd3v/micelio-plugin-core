@@ -3,7 +3,8 @@
 // the amendment of 2026-11-02 (bogd3v/micelio#732), namespaced `micelio:`: `select`, `hover`,
 // `insertGap` and `patch` towards the frame, `blocks`, `selected` and `hovered` towards the admin.
 // The amendment of 2026-11-04 (bogd3v/micelio#837) adds `micelio:renderMode`, the render mode of
-// one block, towards the frame.
+// one block, towards the frame. The amendment of 2026-11-06 (bogd3v/micelio#851) adds `micelio:run`
+// towards the frame and its answer, `micelio:runResult`, towards the admin.
 // The JSON Schema generated from these schemas is `preview.schema.json`; the frontend validates
 // against it.
 import { z } from 'zod'
@@ -180,6 +181,67 @@ export const renderModeMessage = envelope
     description: 'Admin → frame: show a block as its static alternative or as the page renders it.',
   })
 
+/**
+ * Admin → frame: run the Playground block at `address`, as the draft the frame shows holds it.
+ *
+ * @remarks
+ * The payload is the address and an id, and nothing else: a run that carries code, a language, a
+ * setup or any other field is refused, because the frame never runs code that arrives in a message
+ * (ADR-0019, amendment of 2026-11-06). `requestId` is unique among the runs the admin has open for
+ * the frame, which answers with `micelio:runResult`.
+ */
+export const runMessage = envelope
+  .extend({
+    type: z.literal('micelio:run'),
+    payload: z.strictObject({
+      requestId: z.string().min(1),
+      address: blockAddress.strict(),
+    }),
+  })
+  .meta({
+    id: 'micelio:run',
+    title: 'micelio:run',
+    description: 'Admin → frame: run the Playground block at an address, as the draft holds it.',
+  })
+
+/** Why a run gave no output to use: the closed list of the amendment of 2026-11-06. */
+const runFailure = z.enum(['codeError', 'timeout', 'runtimeUnavailable', 'notRunnable'])
+
+/**
+ * Frame → admin: the answer to a `micelio:run`, with its `requestId` and `address`.
+ *
+ * @remarks
+ * `ok: true` carries the output, cut at 64 KB of UTF-8 (`truncated` says so); `ok: false` carries a
+ * `reason`, and `codeError` the message a reader would see as `output`. The output is plain text:
+ * the admin shows it as text, never as HTML.
+ */
+export const runResultMessage = envelope
+  .extend({
+    type: z.literal('micelio:runResult'),
+    payload: z.discriminatedUnion('ok', [
+      z.object({
+        requestId: z.string().min(1),
+        address: blockAddress,
+        ok: z.literal(true),
+        output: z.string(),
+        truncated: z.boolean(),
+      }),
+      z.object({
+        requestId: z.string().min(1),
+        address: blockAddress,
+        ok: z.literal(false),
+        reason: runFailure,
+        /** The error message a reader would see; only with `codeError`. */
+        output: z.string().optional(),
+      }),
+    ]),
+  })
+  .meta({
+    id: 'micelio:runResult',
+    title: 'micelio:runResult',
+    description: 'Frame → admin: the output of a run, or why it failed.',
+  })
+
 /** Frame → admin: every block and item with its box, on each reflow and scroll. */
 export const blocksMessage = envelope
   .extend({
@@ -228,7 +290,7 @@ export const hoveredMessage = envelope
     description: 'Frame → admin: the hovered block.',
   })
 
-/** The messages of phases 1 and 2, and the render mode. */
+/** The messages of phases 1 and 2, the render mode and the run of a Playground block. */
 export const previewMessage = z.union([
   readyMessage,
   loadDraftMessage,
@@ -237,9 +299,11 @@ export const previewMessage = z.union([
   insertGapMessage,
   patchMessage,
   renderModeMessage,
+  runMessage,
   blocksMessage,
   selectedMessage,
   hoveredMessage,
+  runResultMessage,
 ])
 
 /** A message of the protocol. */
@@ -247,6 +311,9 @@ export type PreviewMessage = z.infer<typeof previewMessage>
 
 /** How a block is shown in the frame. */
 export type RenderMode = z.infer<typeof renderMode>
+
+/** Why a run of a Playground block gave no output to use. */
+export type RunFailure = z.infer<typeof runFailure>
 
 /** The address of a block, as a message carries it. */
 export type BlockAddress = z.infer<typeof blockAddress>

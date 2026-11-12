@@ -15,6 +15,7 @@ export type OutgoingMessage = Extract<
       | 'micelio:insertGap'
       | 'micelio:patch'
       | 'micelio:renderMode'
+      | 'micelio:run'
   }
 >
 
@@ -59,6 +60,16 @@ export const renderModeMessage = (
   mode: RenderMode
 ): Extract<OutgoingMessage, { type: 'micelio:renderMode' }> =>
   envelope('micelio:renderMode', { address, mode })
+
+/**
+ * Ask the frame to run the Playground block at `address`, as the draft it shows holds it. The
+ * message carries the address and the id only, never the code (ADR-0019, amendment of 2026-11-06).
+ */
+export const runMessage = (
+  requestId: string,
+  address: BlockAddress
+): Extract<OutgoingMessage, { type: 'micelio:run' }> =>
+  envelope('micelio:run', { requestId, address })
 
 /** The height of the gap that opens while a block is dragged over a place, in pixels. */
 export const GAP_OPEN_HEIGHT = 120

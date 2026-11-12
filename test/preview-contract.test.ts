@@ -155,3 +155,83 @@ describe('the preview messages', () => {
     expect(file).toEqual(JSON.parse(JSON.stringify(previewJsonSchema())))
   })
 })
+
+describe('the run of a Playground block (ADR-0019, amendment of 2026-11-06)', () => {
+  const playground = { ...address, block: 'playground' }
+  const run = { v: 1, type: 'micelio:run', payload: { requestId: 'run-1', address: playground } }
+  const answers = [
+    {
+      v: 1,
+      type: 'micelio:runResult',
+      payload: {
+        requestId: 'run-1',
+        address: playground,
+        ok: true,
+        output: '3.5\n',
+        truncated: false,
+      },
+    },
+    {
+      v: 1,
+      type: 'micelio:runResult',
+      payload: {
+        requestId: 'run-1',
+        address: playground,
+        ok: false,
+        reason: 'codeError',
+        output: 'NameError: name "flow" is not defined',
+      },
+    },
+    {
+      v: 1,
+      type: 'micelio:runResult',
+      payload: { requestId: 'run-1', address: playground, ok: false, reason: 'timeout' },
+    },
+  ]
+
+  it('accepts micelio:run and micelio:runResult and refuses a run that carries code', () => {
+    expect(parsePreviewMessage(run)).toEqual(run)
+    for (const answer of answers) expect(parsePreviewMessage(answer)).toEqual(answer)
+
+    // The admin sends an address and an id, never the code, a language or a setup: the frame runs
+    // what the draft holds, so a run with any of them, in the payload or in the address, is refused.
+    for (const extra of [
+      { code: 'print(1)' },
+      { runtime: 'python' },
+      { language: 'python' },
+      { setup: 'import os' },
+    ]) {
+      expect(parsePreviewMessage({ ...run, payload: { ...run.payload, ...extra } })).toBeUndefined()
+      expect(
+        parsePreviewMessage({
+          ...run,
+          payload: { ...run.payload, address: { ...playground, ...extra } },
+        })
+      ).toBeUndefined()
+    }
+    for (const payload of [
+      { address: playground },
+      { requestId: '', address: playground },
+      { requestId: 'run-1', address: null },
+    ]) {
+      expect(parsePreviewMessage({ ...run, payload })).toBeUndefined()
+    }
+
+    // An answer: the output with `ok`, a reason from the closed list without.
+    const [ok, failed] = answers as { payload: Record<string, unknown> }[]
+    for (const payload of [
+      { ...ok!.payload, truncated: undefined },
+      { ...ok!.payload, output: undefined },
+      { ...failed!.payload, reason: 'crashed' },
+      { ...failed!.payload, reason: undefined },
+      { ...ok!.payload, requestId: undefined },
+    ]) {
+      expect(parsePreviewMessage({ v: 1, type: 'micelio:runResult', payload })).toBeUndefined()
+    }
+    // Two message types are a MINOR of the contract: the envelope version does not move.
+    expect(parsePreviewMessage({ ...run, v: 2 })).toBeUndefined()
+    const text = JSON.stringify(previewJsonSchema())
+    expect(text).toContain('"micelio:run"')
+    expect(text).toContain('"micelio:runResult"')
+  })
+})

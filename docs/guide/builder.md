@@ -82,8 +82,16 @@ a second one is refused when the page is saved.
   The fields of its static alternative (a Scene's poster and alt text, a Playground's expected
   output) are marked required: a page cannot be sent to review while one is empty, and the panel
   says which. A poster is chosen in the Content Manager's form, as every file is.
-- **Run here and fill expected output** (Playground) is shown disabled: the admin has no runtime
-  to run the code with yet. Write the expected output by hand.
+- **Run here and fill expected output** (Playground): the preview runs the block's saved code, as
+  a reader's **Run** button does, and what it prints fills **Expected output**. The admin never
+  runs the code. Unsaved edits are saved first; the panel says _Saving the page before the run…_,
+  then _Running in the preview…_. The filled value is an edit like any other: it is saved, you can
+  still change it, and **Undo** brings back the old one. When the code fails, runs longer than 5
+  seconds, or the preview cannot run it (it has no runtime for the language, it loaded the page
+  again, or no answer came within 70 seconds), the panel says why and the field stays as it was;
+  a failing code shows the error a reader would see. The button waits until the preview has
+  loaded the page, and the template editor, which has no preview, offers it disabled; a frontend
+  that does not run code yet never answers.
 
 ## Compose
 

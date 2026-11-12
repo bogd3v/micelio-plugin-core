@@ -1,6 +1,7 @@
 // The part of the stub site that plays phase 2 of the preview protocol (ADR-0019, amendment of
 // 2026-11-02, bogd3v/micelio#732): it marks the blocks of the zone, reports their boxes and answers
-// `select`, `hover`, `insertGap`, `patch` and `renderMode`. The frontend's own code (`previewBridge.ts` in
+// `select`, `hover`, `insertGap`, `patch` and `renderMode`, and `runScript` answers `run` (amendment of
+// 2026-11-06). The frontend's own code (`previewBridge.ts` in
 // `micelio`) is the real thing; this plays it so the suites run without that image.
 
 /** The catalogue id of a component: its name without the namespace. */
@@ -104,5 +105,57 @@ document.addEventListener('pointermove', (event) => {
 addEventListener('scroll', report, { passive: true })
 new ResizeObserver(report).observe(zone)
 report()
+`
+}
+
+/**
+ * How the stub's page answers `micelio:run` (ADR-0019, amendment of 2026-11-06): `answer` runs the
+ * Playground block as the draft it loaded holds it, and its output is `ran: <code>` (`truncated`
+ * plays an output cut at 64 KB); `error`
+ * answers `ok: false` with a reason; `silent` never answers, as a frontend that does not know the
+ * message.
+ */
+export type RunBehaviour =
+  | { kind: 'answer'; truncated?: boolean }
+  | { kind: 'error'; reason: string; output?: string }
+  | { kind: 'silent' }
+
+/**
+ * The script of the stub's page that answers `micelio:run`. The frontend's own code
+ * (bogd3v/micelio#880) is the real thing: this finds the block in the draft's data by its position and
+ * catalogue id, drops a run of another version, and never reads code from the message.
+ */
+export function runScript(
+  adminOrigin: string,
+  version: string,
+  sections: { __component?: string; code?: string }[],
+  behaviour: RunBehaviour
+): string {
+  // Inside a <script>: no `<` may close it.
+  const json = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c')
+  const blocks = sections.map((section) => ({
+    block: blockIdOf(section.__component),
+    code: section.code ?? null,
+  }))
+  return `
+;(() => {
+const adminOrigin = ${json(adminOrigin)}
+const version = ${json(version)}
+const blocks = ${json(blocks)}
+const behaviour = ${json(behaviour)}
+addEventListener('message', (event) => {
+  if (event.origin !== adminOrigin || event.source !== window.parent) return
+  const m = event.data
+  if (!m || m.v !== 1 || m.type !== 'micelio:run' || !m.payload) return
+  const { requestId, address } = m.payload
+  if (typeof requestId !== 'string' || !address || address.version !== version) return
+  if (behaviour.kind === 'silent') return
+  const answer = (rest) => window.parent.postMessage({ v: 1, type: 'micelio:runResult', payload: { requestId, address, ...rest } }, adminOrigin)
+  const found = blocks[address.index]
+  if (!found || found.block !== address.block || found.block !== 'playground') return answer({ ok: false, reason: 'notRunnable' })
+  if (behaviour.kind === 'error') return answer({ ok: false, reason: behaviour.reason, ...(behaviour.output === undefined ? {} : { output: behaviour.output }) })
+  answer({ ok: true, output: 'ran: ' + found.code, truncated: behaviour.truncated === true })
+})
+})()
 `
 }
