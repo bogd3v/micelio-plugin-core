@@ -16,6 +16,8 @@ import { fieldLabel, Input, labelStyle } from './fieldStyle'
 import { MediaInputs } from './MediaInputs'
 import { ChevronRightIcon, DownIcon, DuplicateIcon, TrashIcon, UpIcon } from './icons'
 import { IslandBadge, alternativeName } from './IslandBadge'
+import { RunHere } from './RunHere'
+import type { RunPhase } from '../../utils/builder/run'
 
 const Aside = styled.aside`
   flex: 0 1 320px;
@@ -143,45 +145,6 @@ function IslandCost(props: { island: IslandInfo; name: string }) {
   )
 }
 
-/**
- * "Run here and fill expected output" (the Heavy islands artboard): the output of the code would
- * become the expected output, which is the static alternative of a runtime island.
- *
- * @remarks
- * Not available yet: the admin has no runtime to run Python, SQL or JavaScript with, and running the
- * editor's code in the page would need a content security policy the admin does not have by default.
- * The button is shown disabled with the reason, so the editor sees where the field comes from.
- */
-function RunHere() {
-  const { colors } = useTheme()
-  const { t } = useMessages()
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <button
-        type="button"
-        disabled
-        aria-describedby="run-unavailable"
-        style={{
-          height: 36,
-          padding: '0 12px',
-          border: `1px solid ${colors.neutral200}`,
-          borderRadius: 4,
-          background: colors.neutral100,
-          color: colors.neutral600,
-          fontSize: 13,
-          fontWeight: 600,
-          textAlign: 'left',
-        }}
-      >
-        {t('builder.island.run')}
-      </button>
-      <span id="run-unavailable" style={{ fontSize: 12, color: colors.neutral600 }}>
-        {t('builder.island.runUnavailable')}
-      </span>
-    </div>
-  )
-}
-
 interface BlockPanelProps {
   block: BuilderBlock
   name: string
@@ -201,6 +164,11 @@ interface BlockPanelProps {
   samples?: ReadonlySet<string>
   /** The page's template fixed the block: it can be edited but not moved or removed. */
   isFixed?: boolean
+  /**
+   * The run of a Playground block in the preview: where it stands, and how to start one. A page
+   * with no frame (the template editor) passes `canRun: false`.
+   */
+  run: { phase: RunPhase | undefined; canRun: boolean; onRun: () => void }
   isReadOnly: boolean
   onSetFields: (values: Record<string, unknown>, isStep?: boolean) => void
   onSetItem: (
@@ -485,7 +453,9 @@ export function BlockPanel(props: BlockPanelProps) {
               samples={props.samples}
               onChange={(name, value) => props.onSetFields({ [name]: value })}
             />
-            {props.island?.kind === 'runtime' ? <RunHere /> : null}
+            {props.island?.kind === 'runtime' ? (
+              <RunHere {...props.run} isReadOnly={props.isReadOnly} />
+            ) : null}
             <MediaInputs
               fields={fields.media ?? []}
               values={block.fields}

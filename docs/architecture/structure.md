@@ -177,15 +177,24 @@ The builder page (issue #49, [the guide](../guide/builder.md)) is `pages/Builder
   key without a modifier in the preview). The regions the rules read are marked in the markup
   with `data-shortcut-region` (`preview`, `panel`), `data-block-key` and `data-option-control`.
 - `utils/builder/` is pure: the document model, the fields of the panel, the palette, the
-  overlay's geometry, the messages, the undo history (with redo), the reading of a refusal and
+  overlay's geometry, the messages, the undo history (with redo), the reading of a refusal,
   `islands.ts`
-  (what the badge and the panel say of a block's island, from `contract/islands.ts`).
+  (what the badge and the panel say of a block's island, from `contract/islands.ts`) and `run.ts`
+  (when a run of a Playground block is sent, and which open run an answer is for).
 - The render mode of an island (issue #56) is state of the page, by block key, never saved:
   `BuilderPage` sends `micelio:renderMode` when the island label's toggle changes it and again
   for each toggled block after the frame's next `ready`, as the amendment of ADR-0019
   (2026-11-04) says.
+- The run of a Playground block (issue #134) is `usePlaygroundRun`: **Run here** (`RunHere.tsx`
+  in the panel) waits for the autosave until the frame shows the saved version, sends
+  `micelio:run` with the block's address and an id, and fills the field of the block's static
+  alternative with the `micelio:runResult` that names an open id, through `fill` of
+  `useBuilderEdits` (one step of the undo history). A `ready` of the frame fails every open run as
+  `runtimeUnavailable`, and a run with no answer within 70 seconds fails, as the amendment of
+  ADR-0019 (2026-11-06) says.
 - `components/PreviewFrame.tsx` gives the page the messages of the frame in view
-  (`onMessage`), posts to it (`post`) and holds the overlay inside its stage.
+  (`onMessage`, with each `ready` of the page's draft), posts to it (`post`) and holds the overlay
+  inside its stage.
 
 A block is addressed by its position among the blocks of the zone at a version (`blocksAt` keeps
 the blocks of each saved version, the ones the catalogue no longer lists included), so a message

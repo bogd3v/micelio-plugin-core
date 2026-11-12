@@ -31,6 +31,9 @@ import {
   type PaletteRow,
 } from '../utils/builder/palette'
 
+// A template has no frame, so a Playground block cannot run here (ADR-0019, amendment of 2026-11-06).
+const NO_RUN = { phase: undefined, canRun: false, onRun: () => undefined }
+
 const Bar = styled.header`
   min-height: 64px;
   box-sizing: border-box;
@@ -401,6 +404,7 @@ function TemplateBuilder() {
                     : undefined
                 }
                 island={islandOf(selectedEntry)}
+                run={NO_RUN}
                 isReadOnly={isReadOnly}
                 onSetFields={setValues}
                 onSetItem={setItemValues}

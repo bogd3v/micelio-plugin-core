@@ -76,8 +76,10 @@ interface PreviewFrameProps {
    */
   isCovered?: boolean
   /**
-   * Gets the messages of phase 2 (`micelio:blocks`, `micelio:selected`, `micelio:hovered`) of the
-   * frame in view, from the site's origin and that frame's window only.
+   * Gets the messages of phase 2 (`micelio:blocks`, `micelio:selected`, `micelio:hovered`,
+   * `micelio:runResult`) of the frame in view, from the site's origin and that frame's window only,
+   * and each `ready` of a frame of the page for this draft: a frame that loaded again ends the runs
+   * the earlier load had.
    */
   onMessage?: (message: PreviewMessage) => void
   /** Drawn over the frame, inside its stage (the builder's overlays). */
@@ -256,6 +258,7 @@ export const PreviewFrame = forwardRef(function PreviewFrame(
       setProtocol({ key, ...state })
       setSilentOrigin(undefined)
       setIsUpdating(false)
+      onBlockMessageRef.current?.(message)
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)

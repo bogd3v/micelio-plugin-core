@@ -139,7 +139,9 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   `GET /micelio/blocks` serves it (`?site=` merges a site's settings);
   `docs/blocks.md` has the reference and how `cost` is measured. Next to it,
   `preview.ts` holds the zod schemas of the messages between the admin and the preview frame
-  (`micelio:renderMode` among them: an island's render mode, never saved)
+  (`micelio:renderMode` among them: an island's render mode, never saved; and `micelio:run` with
+  its answer `micelio:runResult`: the frame runs a Playground block and the output fills its
+  expected output)
   (ADR-0019, section 4) and the generated `preview.schema.json`,
   published as `./preview.schema.json`.
 - `admin/src/` — the admin entry (`index.ts`, exported as `./strapi-admin`),
@@ -155,7 +157,8 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   the cost meter and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them).
   The builder (`pages/BuilderPage.tsx` at `builder/:uid/:documentId`, #49): its panels in
   `components/builder/`, its hooks (`useBuilderDocument`, `useBuilderCatalogue`,
-  `useBuilderFrame`, `useBuilderEdits`, `useBlockLookup`, `usePageSettings`, `useTransition`) and
+  `useBuilderFrame`, `useBuilderEdits`, `useBlockLookup`, `usePageSettings`, `useTransition`,
+  `usePlaygroundRun`) and
   pure helpers in `utils/builder/`; the editorial buttons (`ReviewActions`, #57, their dialogs in `ReviewDialogs`,
   `docs/guide/review.md`) follow Save; the gear next to the title opens `PageSettingsDrawer` (#52,
   `docs/guide/pages.md`); it talks to the

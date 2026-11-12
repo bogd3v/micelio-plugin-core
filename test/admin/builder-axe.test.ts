@@ -10,6 +10,9 @@ import {
   violationsOf,
 } from './builder-session'
 
+// The islands' fixture type: its zone holds the Playground, which the frame runs.
+const SHOWCASE_UID = 'api::showcase.showcase'
+
 const SECTIONS = [
   { __component: 'section.rich-text', body: 'One' },
   {
@@ -89,6 +92,56 @@ describe('the builder is accessible', () => {
       await brochure.getByRole('dialog').waitFor()
       await tabTo(brochure, `(el) => el?.tagName === 'INPUT'`)
       await check('page settings drawer', brochure)
+    }
+    expect(found).toEqual({})
+  })
+
+  it('axe finds 0 violations with a run in progress and with its error shown', async () => {
+    const found: Record<string, unknown[]> = {}
+    const playground = { __component: 'shared.playground', runtime: 'python', code: 'print(1)' }
+    try {
+      for (const theme of ['light', 'dark'] as const) {
+        const check = async (state: string, page: Page) => {
+          const violations = await violationsOf(page)
+          if (violations.length > 0) found[`${theme}: ${state}`] = violations
+        }
+        // A frame that never answers keeps the run in progress.
+        session.site.run = { kind: 'silent' }
+        const page = await session.open(
+          SHOWCASE_UID,
+          await session.seed(SHOWCASE_UID, [playground], 'Run'),
+          theme === 'dark' ? { theme } : {}
+        )
+        await page
+          .getByRole('region', { name: /Page blocks/ })
+          .locator('[data-block-key]', { hasText: 'Playground' })
+          .click()
+        const run = page.getByRole('button', { name: 'Run here and fill expected output' })
+        await eventually(() => run.isEnabled()).toBe(true)
+        await run.click()
+        await eventually(() => page.getByTestId('run-status').textContent()).toBe(
+          'Running in the preview…'
+        )
+        await check('run in progress', page)
+
+        // The frame loads again with an error to answer: the open run fails, and the next one
+        // shows the error a reader would see.
+        session.site.run = { kind: 'error', reason: 'codeError', output: 'NameError: flow' }
+        // A string: the suites' tsconfig has no DOM types.
+        await page
+          .frames()
+          .filter((frame) => frame.url().startsWith(session.site.origin))
+          .at(-1)!
+          .evaluate('location.reload()')
+        await page.getByTestId('run-error').waitFor()
+        await check('run failed as the frame loaded again', page)
+        await eventually(() => run.isEnabled()).toBe(true)
+        await run.click()
+        await page.getByTestId('run-error-output').waitFor()
+        await check('run error with its output', page)
+      }
+    } finally {
+      session.site.run = { kind: 'answer' }
     }
     expect(found).toEqual({})
   })

@@ -173,7 +173,22 @@ poster and a Playground with no expected output. The commands run on the stack o
    Click **static** again: `mode: 'dynamic'`.
 
 6. Select the Playground. **Expected output \*** is marked required and says so. **Run here and
-   fill expected output** is disabled, with its reason.
+   fill expected output** is enabled once the preview has loaded. Click it: the panel says
+   "Running in the preview…". With a frontend that runs it (`FRONTEND_IMAGE` with
+   bogd3v/micelio#880), **Expected output** fills with what the code prints and the toast says
+   "Expected output filled from the run", with **Undo**; the toolbar says _Saved_ after the pause.
+   Change the code and click it before the pause: "Saving the page before the run…" comes first,
+   and the output is that of the changed code. A frontend without bogd3v/micelio#880 never
+   answers: after 70 seconds the panel says "The preview did not answer within 70 seconds" and
+   the field is as it was. To see the message, run this in the frame's console context (as in
+   step 5) before you click; it logs `{ requestId, address }` and nothing else:
+
+   ```js
+   addEventListener('message', (event) => {
+     if (event.data?.type === 'micelio:run') console.log(event.data.payload)
+   })
+   ```
+
 7. Send the page to review as the admin route does (the password is the one you chose; nothing is
    written to a file):
 

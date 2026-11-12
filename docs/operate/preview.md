@@ -68,6 +68,11 @@ The page is `/admin/plugins/micelio/preview/<content type uid>/<documentId>` (fo
   bogd3v/micelio#732 (`micelio:blocks`, `micelio:selected`, `micelio:select`, `micelio:patch`, and
   `micelio:renderMode` for an island's static alternative, bogd3v/micelio#735…):
   a frontend without them still previews, and the builder shows no outline over it.
+- To fill a Playground's expected output from the builder, `micelio:run` and its answer
+  `micelio:runResult` (bogd3v/micelio#880): the frame runs the block as the saved draft holds it,
+  in the reader's sandbox, and answers with the output or a reason. The message carries an id and
+  the block's address, never code. A frontend without them never answers, and the builder gives up
+  after 70 seconds.
 
 Never put a token or a grant in a log, a cache key, an error or a `Referer`.
 
