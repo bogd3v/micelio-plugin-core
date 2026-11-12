@@ -59,25 +59,87 @@ export function writeBlocks(blocks: BuilderBlock[]): RawComponent[] {
   }))
 }
 
-/** Puts the Strapi ids a save answered on the blocks it was made of, matching by position and component. */
+/**
+ * Puts the ids a save answered on the blocks it was made of, matching by position and component:
+ * Strapi's numeric `id`, and the `blockId` and `itemId` the server generated.
+ *
+ * @remarks
+ * The builder must hold the instance ids the server made: a block added in the session and moved
+ * before the next save would otherwise go out without its `blockId`, and the server would give it a
+ * new one. An id the block or item already has is never replaced. Items are matched by position
+ * within their block, and only while the block still has as many items as the save sent.
+ */
 export function adoptIds(
   saved: BuilderBlock[],
   answered: unknown,
   current: BuilderBlock[]
 ): BuilderBlock[] {
+  const raws = new Map<string, Record<string, unknown>>()
   const ids = new Map<string, number>()
   if (Array.isArray(answered)) {
     saved.forEach((block, position) => {
       const raw: unknown = answered[position]
-      if (isRecord(raw) && raw.__component === block.component && typeof raw.id === 'number') {
-        ids.set(block.key, raw.id)
+      if (isRecord(raw) && raw.__component === block.component) {
+        raws.set(block.key, raw)
+        if (typeof raw.id === 'number') ids.set(block.key, raw.id)
       }
     })
   }
   return current.map((block) => {
+    const raw = raws.get(block.key)
+    if (!raw) return block
     const id = ids.get(block.key)
-    return id === undefined || block.id !== undefined ? block : { ...block, id }
+    const fields = adoptInstanceIds(
+      block.fields,
+      raw,
+      saved.find(({ key }) => key === block.key)?.fields ?? {}
+    )
+    const withId = id === undefined || block.id !== undefined ? block : { ...block, id }
+    return fields === block.fields ? withId : { ...withId, fields }
   })
+}
+
+// The `blockId` of the answered block and the `itemId` of its items, where the fields have none.
+function adoptInstanceIds(
+  fields: Record<string, unknown>,
+  raw: Record<string, unknown>,
+  sent: Record<string, unknown>
+): Record<string, unknown> {
+  let next = fields
+  const set = (name: string, value: unknown) => {
+    if (next === fields) next = { ...fields }
+    next[name] = value
+  }
+  if (typeof raw.blockId === 'string' && !(typeof fields.blockId === 'string' && fields.blockId)) {
+    set('blockId', raw.blockId)
+  }
+  for (const [name, answeredItems] of Object.entries(raw)) {
+    const items = fields[name]
+    const sentItems = sent[name]
+    if (
+      !Array.isArray(answeredItems) ||
+      !Array.isArray(items) ||
+      !Array.isArray(sentItems) ||
+      items.length !== sentItems.length ||
+      answeredItems.length !== sentItems.length
+    ) {
+      continue
+    }
+    const adopted = items.map((item: unknown, index) => {
+      const answer: unknown = answeredItems[index]
+      if (
+        !isRecord(item) ||
+        !isRecord(answer) ||
+        typeof answer.itemId !== 'string' ||
+        (typeof item.itemId === 'string' && item.itemId)
+      ) {
+        return item
+      }
+      return { ...item, itemId: answer.itemId }
+    })
+    if (adopted.some((item, index) => item !== items[index])) set(name, adopted)
+  }
+  return next
 }
 
 /** The blocks with `block` inserted so that it lands at `position` (0 is the top), clamped to the ends. */
@@ -113,8 +175,9 @@ export function removeKey(blocks: BuilderBlock[], key: string): BuilderBlock[] {
 }
 
 /**
- * A copy of a block for a duplicate: a new key and no Strapi ids, its own or its items'. Media and
- * relations keep the id they are made of.
+ * A copy of a block for a duplicate: a new key and no Strapi ids, its own or its items', and no
+ * `blockId` or `itemId`: the copy is another block, and the server gives it ids of its own. Media
+ * and relations keep the id they are made of.
  *
  * @param schemas - The component schemas, by UID: they say which attributes are components.
  */
@@ -122,8 +185,32 @@ export function duplicate(block: BuilderBlock, schemas: ComponentSchemas): Build
   return {
     key: newKey(),
     component: block.component,
-    fields: cleanFields(block.component, block.fields, undefined, schemas),
+    fields: withoutInstanceIds(
+      cleanFields(block.component, block.fields, undefined, schemas),
+      block.component,
+      schemas,
+      'blockId'
+    ),
   }
+}
+
+/** The fields of a block without its `blockId`, and without the `itemId` of its items, nested ones too. */
+function withoutInstanceIds(
+  fields: Record<string, unknown>,
+  component: string,
+  schemas: ComponentSchemas,
+  own: 'blockId' | 'itemId'
+): Record<string, unknown> {
+  const next = Object.fromEntries(Object.entries(fields).filter(([name]) => name !== own))
+  for (const [name, attribute] of Object.entries(schemas[component]?.attributes ?? {})) {
+    const inner = attribute.component
+    const value = next[name]
+    if (attribute.type !== 'component' || !inner || value === undefined || value === null) continue
+    const strip = (row: unknown) =>
+      isRecord(row) ? withoutInstanceIds(row, inner, schemas, 'itemId') : row
+    next[name] = Array.isArray(value) ? value.map(strip) : strip(value)
+  }
+  return next
 }
 
 /** The blocks with `fields` laid over those of the block called `key`. */

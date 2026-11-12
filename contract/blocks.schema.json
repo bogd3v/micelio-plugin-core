@@ -6,6 +6,9 @@
     "hero": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": { "type": "string", "x-strapi": { "type": "string" } },
         "text": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "text" } }, { "type": "null" }]
@@ -108,6 +111,9 @@
     "feature-grid": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -123,6 +129,12 @@
               "items": {
                 "type": "object",
                 "properties": {
+                  "itemId": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
                   "icon": {
                     "anyOf": [
                       {
@@ -193,6 +205,9 @@
     "media-showcase": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -259,6 +274,9 @@
     "stats": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -271,6 +289,12 @@
               "items": {
                 "type": "object",
                 "properties": {
+                  "itemId": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
                   "value": { "type": "string", "x-strapi": { "type": "string" } },
                   "label": { "type": "string", "x-strapi": { "type": "string" } }
                 },
@@ -327,6 +351,9 @@
     "logo-cloud": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -338,6 +365,12 @@
               "items": {
                 "type": "object",
                 "properties": {
+                  "itemId": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
                   "image": {
                     "type": "object",
                     "properties": { "url": { "type": "string" }, "mime": { "type": "string" } },
@@ -399,6 +432,9 @@
     "testimonials": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -410,6 +446,12 @@
               "items": {
                 "type": "object",
                 "properties": {
+                  "itemId": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
                   "quote": { "type": "string", "x-strapi": { "type": "text" } },
                   "author": { "type": "string", "x-strapi": { "type": "string" } },
                   "role": {
@@ -481,6 +523,9 @@
     "pricing": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -495,6 +540,12 @@
               "items": {
                 "type": "object",
                 "properties": {
+                  "itemId": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
                   "name": { "type": "string", "x-strapi": { "type": "string" } },
                   "price": { "type": "string", "x-strapi": { "type": "string" } },
                   "period": {
@@ -573,6 +624,9 @@
     "faq": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -584,6 +638,12 @@
               "items": {
                 "type": "object",
                 "properties": {
+                  "itemId": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
                   "question": { "type": "string", "x-strapi": { "type": "string" } },
                   "answer": {
                     "type": "string",
@@ -626,6 +686,9 @@
     "cta": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": { "type": "string", "x-strapi": { "type": "string" } },
         "text": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "text" } }, { "type": "null" }]
@@ -712,6 +775,9 @@
     "post-list": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -774,6 +840,9 @@
     "newsletter": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -818,6 +887,9 @@
     "rich-text": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "body": {
           "type": "string",
           "x-strapi": { "type": "richtext" },
@@ -841,6 +913,9 @@
     "gallery": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -889,6 +964,9 @@
     "scene": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "model": {
           "type": "object",
           "properties": { "url": { "type": "string" }, "mime": { "type": "string" } },
@@ -934,6 +1012,9 @@
     "prose": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "body": {
           "anyOf": [
             {
@@ -950,6 +1031,9 @@
     "quote": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -984,6 +1068,9 @@
     "media": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "file": {
           "anyOf": [
             {
@@ -1116,6 +1203,9 @@
     "slider": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "items": {
           "anyOf": [
             {
@@ -1123,6 +1213,12 @@
               "items": {
                 "type": "object",
                 "properties": {
+                  "itemId": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
                   "file": {
                     "type": "object",
                     "properties": { "url": { "type": "string" }, "mime": { "type": "string" } },
@@ -1261,6 +1357,9 @@
     "playground": {
       "type": "object",
       "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "runtime": {
           "type": "string",
           "enum": ["python", "sql", "javascript"],

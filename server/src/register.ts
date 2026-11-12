@@ -1,4 +1,5 @@
 import type { Core } from '@strapi/strapi'
+import { blockIdsDocuments } from './block-ids/documents'
 import { blockOptionsDocuments } from './block-options/documents'
 import { blockSettingsDocuments } from './block-settings/documents'
 import { registerComponents } from './components'
@@ -37,6 +38,7 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   strapi.documents.use(siteSectionInstances(strapi))
   strapi.documents.use(siteScopeDocuments(strapi))
   strapi.documents.use(blockOptionsDocuments(strapi))
+  strapi.documents.use(blockIdsDocuments(strapi))
   strapi.documents.use(blockSettingsDocuments(strapi))
   strapi.documents.use(templateFixedDocuments(strapi))
   strapi.documents.use(redirectDocuments(strapi))

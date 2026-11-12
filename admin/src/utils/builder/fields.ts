@@ -73,13 +73,16 @@ export interface MediaFile {
 
 const TEXT_TYPES = new Set(['string', 'text', 'richtext'])
 
+/** The instance ids of a block and of an item (ADR-0018, section 1): the server writes them, editors never see them. */
+const HIDDEN_FIELDS: ReadonlySet<string> = new Set(['blockId', 'itemId'])
+
 /**
  * Sorts the attributes of a component into what the panel edits: options, text and items.
  *
  * @remarks
  * An option is an enumeration the block's contract exposes (`exposed`, with the values the site
  * allows); an enumeration the contract does not expose is left alone, as are relations and
- * every attribute the panel does not edit. The panel shows only what the host stores, so a value
+ * every attribute the panel does not edit, the `blockId` and `itemId` instance ids among them. The panel shows only what the host stores, so a value
  * the host's enumeration lacks is never offered.
  *
  * @param exposed - The block's options as the site merges them, `values` by name.
@@ -91,6 +94,7 @@ export function fieldsOf(
   const fields: BlockFields = { options: [], text: [], items: [] }
   const media: MediaField[] = []
   for (const [name, attribute] of Object.entries(schema?.attributes ?? {})) {
+    if (HIDDEN_FIELDS.has(name)) continue
     if (attribute.type === 'enumeration') {
       const offered = exposed[name]
       if (!offered) continue

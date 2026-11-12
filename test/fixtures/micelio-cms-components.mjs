@@ -27,7 +27,7 @@ for (const category of CATEGORIES) {
   }
 }
 const fixture = { source: { repository: 'bogd3v/micelio-cms', tag, commit }, components }
-const out = new URL(`micelio-cms-${tag}-components.json`, import.meta.url)
+const out = new URL('micelio-cms-components-with-ids.json', import.meta.url)
 const options = await prettier.resolveConfig(out)
 writeFileSync(out, await prettier.format(JSON.stringify(fixture), { ...options, parser: 'json' }))
 console.warn(

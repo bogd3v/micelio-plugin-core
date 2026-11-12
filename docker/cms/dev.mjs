@@ -14,7 +14,7 @@ const PROJECT = join(PLUGIN, 'docker', 'cms')
 const RELOAD_FILE = join(PROJECT, 'reload.txt')
 // The components of micelio-cms the block catalogue is tested against (test/fixtures/). The page
 // fixture lists them all because the frontend populates every section it knows.
-const COMPONENTS_FIXTURE = join(PLUGIN, 'test', 'fixtures', 'micelio-cms-v0.4.0-components.json')
+const COMPONENTS_FIXTURE = join(PLUGIN, 'test', 'fixtures', 'micelio-cms-components-with-ids.json')
 // The catalogue's JSON Schema: its options (`contract/options.ts`) that v0.4.0 does not store yet.
 const CATALOGUE_SCHEMA = join(PLUGIN, 'contract', 'blocks.schema.json')
 // The fixture plugin the suites use (`config/plugins.js` loads it too): its components are the ones
@@ -74,7 +74,7 @@ async function waitForFirstBuild() {
   }
 }
 
-// The fixture is micelio-cms v0.4.0, whose category and tag are `api::` types of the host. The core
+// The fixture holds the micelio-cms v0.4.0 components (with the instance ids), whose category and tag are `api::` types of the host. The core
 // owns them now, under the UIDs micelio-cms 0.5 stores, and `post-list` points at those.
 const TAXONOMY_UIDS = {
   'api::category.category': 'plugin::micelio.category',

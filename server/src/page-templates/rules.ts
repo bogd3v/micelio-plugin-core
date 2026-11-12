@@ -1,5 +1,6 @@
 import { BLOCKS, optionsOf, type Block } from '../../../contract/blocks'
 import { OPTION_NAMES } from '../../../contract/options'
+import { isInstanceId } from '../block-ids/rules'
 import type {
   TemplateBlock,
   TemplateContent,
@@ -70,7 +71,8 @@ export function shapeContent(
   const unexposed = unexposedOptions(component)
   for (const [name, attribute] of Object.entries(attributesOf(component) ?? {})) {
     const value = entry[name]
-    if (value === undefined || value === null || unexposed.has(name)) continue
+    // The instance ids stay with the page: a page made from the template gets its own.
+    if (value === undefined || value === null || unexposed.has(name) || isInstanceId(name)) continue
     const type = attribute.type ?? ''
     if (KEPT_TYPES.has(type)) {
       kept[name] = value
@@ -116,6 +118,7 @@ export function textsOf(attributesOf: AttributesOf, component: string, stored: u
   const entry = isRecord(stored) ? stored : {}
   return Object.entries(attributesOf(component) ?? {}).flatMap(([name, attribute]) => {
     const value = entry[name]
+    if (isInstanceId(name)) return []
     if (TEXT_TYPES.has(attribute.type ?? '')) {
       return typeof value === 'string' && value.trim() !== '' ? [value.trim()] : []
     }
