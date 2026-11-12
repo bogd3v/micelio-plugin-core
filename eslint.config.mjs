@@ -18,6 +18,8 @@ export default [
     // What Strapi generates in the project of compose.dev.yml (gitignored).
     ignores: [
       'dist/**',
+      // What `npm run build -w @micelio/icons` writes.
+      'packages/*/dist/**',
       'test/strapi/app/build/**',
       'docker/cms/types/**',
       'docker/cms/.strapi/**',

@@ -11,6 +11,10 @@ The plugin started from the scaffold of `strapi-plugin init` (`@strapi/sdk-plugi
 - **Unmodified except for formatting**: `admin/custom.d.ts`, `admin/tsconfig.json`, `admin/tsconfig.build.json`, `admin/src/components/Initializer.tsx`, `server/tsconfig.build.json` and the empty `content-types`, `middlewares` and `policies` indexes of `server/src/`. MIT only.
 - **Modified by Micelio**: the other files of `admin/src/` and `server/src/` that the scaffold created (the entry points, the lifecycle phases, the configuration, the route, controller and service indexes) and `server/tsconfig.json`. Strapi's part stays MIT and Micelio's changes are under the AGPL (`AGPL-3.0-only AND MIT` in `REUSE.toml`).
 
+## Tabler Icons
+
+`packages/icons/` (`@micelio/icons`) ships the glyphs of Tabler Icons 3.51.0 (the version `contract/icons.ts` pins), MIT, Copyright (c) 2020-2026 Paweł Kuna, normalised by `packages/icons/scripts/normalise.ts`. The glyphs are not committed: `npm run build -w @micelio/icons` writes them from the `@tabler/icons` dev dependency, with Tabler's `LICENSE` as the package's `NOTICE`. `packages/icons/index.json`, made from Tabler's names, categories and tags, is `AGPL-3.0-only AND MIT`. The package's own list is [packages/icons/THIRD-PARTY.md](packages/icons/THIRD-PARTY.md).
+
 ## Dependencies
 
 npm packages (`package.json`, `package-lock.json`) are distributed under their own licenses, which each package carries. `npm run lint:licenses` fails when a production dependency has a license that cannot be combined with AGPL-3.0; the allowlist is the one shipped in `@micelio/eslint-config`.

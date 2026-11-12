@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { beforeAll, describe, expect, it } from 'vitest'
 import packageJson from '../package.json'
+import { TABLER_VERSION } from '../contract/icons'
 
 // The package as npm publishes it: packed, unpacked into a node_modules folder, and loaded by
 // both of its entry points the way Strapi loads them (`./strapi-server` with `require`, the admin
@@ -136,5 +137,87 @@ describe('the packed package', () => {
       expect(entry.register).toBeTypeOf('function')
       expect(entry.registerTrads).toBeTypeOf('function')
     }
+  })
+})
+
+describe('the packed icons package', () => {
+  const ICONS_PACK_DIR = path.join(ROOT, '.tmp', `pack-icons-${process.env.VITEST_POOL_ID ?? '1'}`)
+  const ICONS_INSTALLED = path.join(ICONS_PACK_DIR, 'node_modules', '@micelio', 'icons')
+  let files: string[]
+
+  beforeAll(() => {
+    fs.rmSync(ICONS_PACK_DIR, { recursive: true, force: true })
+    fs.mkdirSync(ICONS_INSTALLED, { recursive: true })
+    // `--ignore-scripts`: the global setup has built the glyphs and `dist/`.
+    const output = execFileSync(
+      'npm',
+      [
+        'pack',
+        '-w',
+        '@micelio/icons',
+        '--ignore-scripts',
+        '--json',
+        '--pack-destination',
+        ICONS_PACK_DIR,
+      ],
+      { cwd: ROOT, encoding: 'utf8' }
+    )
+    const [packed] = JSON.parse(output) as PackResult[]
+    files = packed.files.map((file) => file.path)
+    execFileSync('tar', [
+      '-xzf',
+      path.join(ICONS_PACK_DIR, packed.filename),
+      '-C',
+      ICONS_INSTALLED,
+      '--strip-components=1',
+    ])
+  })
+
+  it("the icons package ships LICENSES/MIT.txt and Tabler's notice", () => {
+    expect(files).toEqual(
+      expect.arrayContaining([
+        'LICENSES/MIT.txt',
+        'LICENSES/AGPL-3.0-only.txt',
+        'NOTICE',
+        'THIRD-PARTY.md',
+        'package.json',
+      ])
+    )
+    const notice = fs.readFileSync(path.join(ICONS_INSTALLED, 'NOTICE'), 'utf8')
+    expect(notice).toContain('Copyright (c) 2020-2026 Paweł Kuna')
+    expect(notice).toContain(
+      'The above copyright notice and this permission notice shall be included'
+    )
+    const thirdParty = fs.readFileSync(path.join(ICONS_INSTALLED, 'THIRD-PARTY.md'), 'utf8')
+    expect(thirdParty).toContain(`Tabler Icons`)
+    expect(thirdParty).toContain(`**Version:** ${TABLER_VERSION}`)
+    // The plugin's own list names the pinned version too.
+    expect(fs.readFileSync(path.join(ROOT, 'THIRD-PARTY.md'), 'utf8')).toContain(
+      `Tabler Icons ${TABLER_VERSION}`
+    )
+  })
+
+  it('ships the glyphs, the index and the entry, and none of the build', () => {
+    expect(files).toEqual(
+      expect.arrayContaining([
+        'dist/index.js',
+        'dist/index.d.ts',
+        'index.json',
+        'labels/es.json',
+        'glyphs/outline/map-pin.svg',
+        'glyphs/filled/map-pin.svg',
+      ])
+    )
+    expect(files.filter((file) => /^(scripts|test|src|labels\/core-names)/.test(file))).toEqual([])
+    expect(files.filter((file) => file.startsWith('glyphs/outline/')).length).toBeGreaterThan(5000)
+  })
+
+  it('loads from the tarball and answers a glyph', async () => {
+    const entry = (await import(
+      pathToFileURL(path.join(ICONS_INSTALLED, 'dist/index.js')).href
+    )) as {
+      readGlyph(name: string): Promise<string | undefined>
+    }
+    expect(await entry.readGlyph('map-pin')).toContain('viewBox="0 0 24 24"')
   })
 })
