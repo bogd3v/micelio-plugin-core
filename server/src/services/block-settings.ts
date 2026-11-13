@@ -1,6 +1,7 @@
 import type { Core, UID } from '@strapi/strapi'
 import { BLOCKS, type Block } from '../../../contract/blocks'
 import { blockJsonSchema } from '../../../contract/strapi'
+import { modulesOf } from '../block-settings/check'
 import { BlockSettingError } from '../block-settings/error'
 import { populateOf } from '../block-settings/populate'
 import {
@@ -8,6 +9,7 @@ import {
   blockIdsIn,
   knownPageTypes,
   mergedOptions,
+  moduleOffOf,
   settingOf,
 } from '../block-settings/rules'
 import type { PluginConfig } from '../config'
@@ -49,6 +51,8 @@ export interface BlockSettingsService {
   /**
    * The catalogue as one site sees it, for `GET /micelio/blocks?site=`: the blocks it has not
    * disabled, each with the options a new block starts with and the page types it is allowed in.
+   * A block that needs a module the site has off stays in the answer, marked `offered: false` with
+   * `reason: 'moduleOff'` and the `module`, and no page type; every other block is `offered: true`.
    */
   merged(site: BlockSite): Promise<Record<string, unknown>[]>
 
@@ -195,10 +199,12 @@ export default ({ strapi }: { strapi: Core.Strapi }): BlockSettingsService => {
     async merged(site) {
       const rows = await rowsOf(site)
       const pageTypes = pageTypesOf(site)
+      const modules = await modulesOf(strapi, site.documentId)
       return BLOCKS.flatMap((block) => {
         const setting = settingOf(block.id, rows.get(block.id))
         if (!setting.enabled) return []
         const { schema, ...rest } = block
+        const moduleOff = moduleOffOf(block, modules)
         return [
           {
             ...rest,
@@ -206,7 +212,9 @@ export default ({ strapi }: { strapi: Core.Strapi }): BlockSettingsService => {
             schema: blockJsonSchema(block),
             options: mergedOptions(block, setting),
             label: setting.labels,
-            pageTypes: allowedPageTypesOf(setting, pageTypes),
+            offered: moduleOff === null,
+            ...(moduleOff === null ? {} : { reason: 'moduleOff', module: moduleOff }),
+            pageTypes: moduleOff === null ? allowedPageTypesOf(setting, pageTypes) : [],
           },
         ]
       })
@@ -215,6 +223,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): BlockSettingsService => {
     async view(site) {
       const rows = await rowsOf(site)
       const pageTypes = pageTypesOf(site)
+      const modules = await modulesOf(strapi, site.documentId)
       const used = new Map<string, Set<string>>()
       await scan(site, (page, blocks) => {
         for (const id of blocks) {
@@ -234,6 +243,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): BlockSettingsService => {
             costKb: Math.round(((block.cost.css + block.cost.js) / BYTES_PER_KB) * 10) / 10,
             isIsland: block.cost.island !== null,
             enabled: setting.enabled,
+            moduleOff: moduleOffOf(block, modules),
             allowedPageTypes: setting.allowedPageTypes,
             defaultOptions: setting.defaultOptions,
             labels: setting.labels,

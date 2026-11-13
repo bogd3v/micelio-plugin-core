@@ -2,6 +2,7 @@ import type { Core, UID } from '@strapi/strapi'
 import { BLOCKS } from '../../../contract/blocks'
 import { findBlockOptionViolation } from '../block-options/rules'
 import { BlockOptionError } from '../block-options/error'
+import { modulesOf } from '../block-settings/check'
 import { populateOf } from '../block-settings/populate'
 import { findBlockNotAllowed, knownPageTypes, settingOf } from '../block-settings/rules'
 import { budgetKbOf } from '../budget/rules'
@@ -454,18 +455,22 @@ export default ({ strapi }: { strapi: Core.Strapi }): PageTemplatesService => {
     }
     scan: for (const other of sites) {
       const settings = await settingsOf(other)
+      const modules = await modulesOf(strapi, other.documentId)
       for (const type of types) {
         const found = findBlockNotAllowed(
           template.blocks.map((block) => block.block),
           [],
           settings,
-          type
+          type,
+          modules
         )
         if (!found) continue
         const reason =
-          found.reason === 'disabled'
-            ? `is disabled on ${other.slug}`
-            : `is not allowed on ${type} pages of ${other.slug}`
+          found.reason === 'moduleOff'
+            ? `needs the ${found.module} module, which is off on ${other.slug}`
+            : found.reason === 'disabled'
+              ? `is disabled on ${other.slug}`
+              : `is not allowed on ${type} pages of ${other.slug}`
         scopeCheck = { id: 'scope', ok: false, detail: `The ${found.block} block ${reason}` }
         refuse(
           new TemplateError(400, TEMPLATE_CODES.blockNotAllowed, scopeCheck.detail, {

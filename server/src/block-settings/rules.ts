@@ -1,4 +1,4 @@
-import { BLOCKS, optionsOf, type Block } from '../../../contract/blocks'
+import { BLOCKS, optionsOf, type Block, type SiteModule } from '../../../contract/blocks'
 import { LABEL_LOCALES, LABEL_MAX_LENGTH } from '../constants/blocks'
 import type { BudgetsConfig } from '../config'
 import type { BlockLabels, BlockSetting, MergedOption } from '../types/blocks'
@@ -152,6 +152,8 @@ export function allowedPageTypesOf(
   return setting?.allowedPageTypes ?? [...pageTypes]
 }
 
+const blockOfId = (id: string, blocks: readonly Block[]) => blocks.find((block) => block.id === id)
+
 /** The catalogue block whose component is `uid`, if any. */
 function blockOfComponent(uid: string, blocks: readonly Block[]): Block | undefined {
   return blocks.find((block) => block.schema.component === uid)
@@ -197,6 +199,12 @@ export function blockIdsIn(
   return found
 }
 
+/** The module of `site.modules` the block needs, when the site's `modules` component has it off. */
+export function moduleOffOf(block: Pick<Block, 'module'>, modules: unknown): SiteModule | null {
+  if (!block.module || !isRecord(modules)) return null
+  return modules[block.module] === false ? block.module : null
+}
+
 /** The part of a setting the check of a save reads. */
 export type SettingRule = Pick<BlockSetting, 'enabled' | 'allowedPageTypes'>
 
@@ -212,16 +220,22 @@ export type SettingRule = Pick<BlockSetting, 'enabled' | 'allowedPageTypes'>
  * @param stored - The blocks the document holds now; empty for a new document.
  * @param settings - The site's rules by block `id`.
  * @param pageType - The page type of the document after the save.
+ * @param modules - The site's `modules` component as stored (a key that is `false` is off); a block
+ * that needs a module the site has off is refused with `moduleOff`, whatever its setting.
  */
 export function findBlockNotAllowed(
   sent: readonly string[],
   stored: readonly string[],
   settings: ReadonlyMap<string, SettingRule>,
-  pageType: string
+  pageType: string,
+  modules?: unknown,
+  blocks: readonly Block[] = BLOCKS
 ): BlockNotAllowedViolation | null {
   const count = (ids: readonly string[], id: string) => ids.filter((other) => other === id).length
   for (const id of new Set(sent)) {
     if (count(sent, id) <= count(stored, id)) continue
+    const module = moduleOffOf(blockOfId(id, blocks) ?? {}, modules)
+    if (module) return { block: id, reason: 'moduleOff', module }
     const rule = settings.get(id)
     if (!rule) continue
     if (!rule.enabled) return { block: id, reason: 'disabled' }

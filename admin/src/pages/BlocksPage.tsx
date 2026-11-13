@@ -292,7 +292,7 @@ function Catalogue({ site }: { site: string }) {
                       type="checkbox"
                       role="switch"
                       checked={block.enabled}
-                      disabled={!canManage}
+                      disabled={!canManage || block.moduleOff !== null}
                       aria-label={`${name}: ${t(block.enabled ? 'blocks.enabledOn' : 'blocks.disabledOn', { site })}`}
                       onChange={(event) => void toggle(block.id, event.target.checked)}
                     />
@@ -305,6 +305,15 @@ function Catalogue({ site }: { site: string }) {
                       <Typography variant="pi" textColor="neutral600">
                         <code>{block.component}</code>
                       </Typography>
+                      {block.moduleOff !== null && (
+                        <Typography
+                          variant="pi"
+                          textColor="neutral600"
+                          data-testid={`block-module-off-${block.id}`}
+                        >
+                          {t('blocks.moduleOff', { module: block.moduleOff, site })}
+                        </Typography>
+                      )}
                     </Flex>
                   </Td>
                   <Td>

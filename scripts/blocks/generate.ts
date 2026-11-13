@@ -113,6 +113,11 @@ function blockSection(block: Block, attributes: Record<string, StrapiAttribute>)
           `- **Static alternative needs:** ${island.alternative.map((field) => `\`${field}\``).join(', ')}, filled in before the page is sent to review`,
         ]
       : []),
+    ...(block.module
+      ? [
+          `- **Module:** \`${block.module}\`; not offered on a site that has it off in \`site.modules\``,
+        ]
+      : []),
     `- **Static:** ${block.static}`,
   ]
   return [`### \`${block.id}\``, lines.join('\n'), fieldTable(content)].join('\n\n')

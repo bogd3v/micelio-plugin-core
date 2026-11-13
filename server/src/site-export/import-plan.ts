@@ -232,8 +232,9 @@ function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, wh
 }
 
 // The save of the importer refuses a block the target's site disabled or does not allow on the
-// page's type (`blockNotAllowed`); checking it here refuses the archive before any write. A site the
-// import creates has no settings, and a document the policy leaves alone is not written.
+// page's type, or whose module it has off (`blockNotAllowed`); checking it here refuses the archive
+// before any write. A site the import creates has no settings, but it brings its `modules`, and so
+// does an `update` of an existing one: their pages are checked against the archive's. A document the policy leaves alone is not written.
 async function checkBlocksAllowed(
   strapi: Core.Strapi,
   plan: Plan,
@@ -243,7 +244,7 @@ async function checkBlocksAllowed(
   data: Record<string, unknown>,
   where: string
 ): Promise<void> {
-  if (plan.site.isNew || type.uid === SITE_UID) return
+  if (type.uid === SITE_UID) return
   const isThere = plan.targetHas.has(`${type.name}:${document.documentId}`)
   if (isThere && plan.existing === 'skip') return
   const violation = await findBlockNotAllowedIn(strapi, {
@@ -253,14 +254,21 @@ async function checkBlocksAllowed(
     documentId: document.documentId,
     locale: version.locale ?? undefined,
     data,
+    // The site's modules are the archive's when the import creates the site or rewrites it
+    // (`update`, which writes the site document before the pages); else the stored ones.
+    ...(plan.site.isNew || plan.existing === 'update'
+      ? { modules: plan.staged.contents.get('site')?.documents[0]?.versions[0]?.data.modules }
+      : {}),
   })
   if (!violation) return
   throw new ExportError(
     'exportDocumentInvalid',
     `${where}: the ${violation.block} block ` +
-      (violation.reason === 'disabled'
-        ? 'is disabled on the target site'
-        : `is not allowed on ${violation.pageType} pages of the target site`)
+      (violation.reason === 'moduleOff'
+        ? `needs the ${violation.module} module, which is off on the target site`
+        : violation.reason === 'disabled'
+          ? 'is disabled on the target site'
+          : `is not allowed on ${violation.pageType} pages of the target site`)
   )
 }
 

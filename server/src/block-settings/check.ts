@@ -1,7 +1,9 @@
 import type { Core, UID } from '@strapi/strapi'
 import type { PluginConfig } from '../config'
 import { pageTypeOf } from '../budget/rules'
+import { BLOCKS } from '../../../contract/blocks'
 import { BLOCK_SETTING_UID } from '../constants/blocks'
+import { SITE_UID } from '../constants/site'
 import { BlockNotAllowedError } from './error'
 import type { BlockNotAllowedViolation } from './error'
 import { populateOf } from './populate'
@@ -22,15 +24,31 @@ export interface BlockWrite {
   documentId?: string
   locale?: string
   data: Record<string, unknown>
+  /**
+   * The `modules` the site will have when they are not stored yet (the dry run of an import that
+   * creates the site or rewrites its settings): read from here instead of the database.
+   */
+  modules?: unknown
+}
+
+/** The `modules` component of a site as stored; `undefined` when the site has none. */
+export async function modulesOf(strapi: Core.Strapi, siteDocumentId: string): Promise<unknown> {
+  const site = (await strapi.db.query(SITE_UID as UID.ContentType).findOne({
+    where: { documentId: siteDocumentId },
+    populate: { modules: true },
+  })) as { modules?: unknown } | null
+  return site?.modules
 }
 
 /**
- * Finds the first block a write adds that its site disabled or does not allow on the page's type.
+ * Finds the first block a write adds that its site disabled, does not allow on the page's type, or
+ * has the module off for.
  *
  * @remarks
  * The one check behind the document service middleware and the dry run of an import, so that an
  * archive is refused before anything is written. `null` when the data names no block, the site
- * has no setting, or the write adds nothing the site refuses. See `findBlockNotAllowed` for what
+ * has no setting and no block of the write needs a module the site has off, or the write adds
+ * nothing the site refuses. See `findBlockNotAllowed` for what
  * counts as an addition.
  */
 export async function findBlockNotAllowedIn(
@@ -81,7 +99,14 @@ export async function findBlockNotAllowedIn(
   const rows = (await strapi.db.query(BLOCK_SETTING_UID as UID.ContentType).findMany({
     where: { site: { documentId: write.site.documentId } },
   })) as Record<string, unknown>[]
-  if (rows.length === 0) return null
+  // The site's modules are read only when a block of the write needs one.
+  const needsModule = pages.some((page) =>
+    sentOf(page.data).some((id) => BLOCKS.find((block) => block.id === id)?.module)
+  )
+  if (rows.length === 0 && !needsModule) return null
+  const modules = needsModule
+    ? (write.modules ?? (await modulesOf(strapi, write.site.documentId)))
+    : undefined
   const settings = new Map(
     rows.map((row) => [String(row.block), settingOf(String(row.block), row)] as const)
   )
@@ -96,7 +121,8 @@ export async function findBlockNotAllowedIn(
       sentOf(page.data),
       page.stored ? sentOf(page.stored) : [],
       settings,
-      pageType
+      pageType,
+      modules
     )
     if (violation) return violation
   }

@@ -109,7 +109,8 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   - `block-settings/` is what a site manages of the catalogue (#51):
     `plugin::micelio.block-setting` (hidden, `export: never`), the `blockSettings` service,
     `GET /micelio/blocks?site=` (the merged view the palette reads) and the checks at save:
-    a block the site disabled or does not allow on the page's type is refused with `blockNotAllowed`
+    a block the site disabled, does not allow on the page's type or has the `module` of (a key of
+    `site.modules`, declared by the block in `contract/blocks.ts`) off is refused with `blockNotAllowed`
     on every write path, the dry run of an import included, and a default outside the contract
     with `blockOptionInvalid`. Permissions `plugin::micelio.blocks.read` and `.manage`.
     Details: [docs/architecture/structure.md](docs/architecture/structure.md#block-settings).

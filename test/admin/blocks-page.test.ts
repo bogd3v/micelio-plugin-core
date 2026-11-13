@@ -125,6 +125,8 @@ describe('the Block catalogue page in the admin', () => {
     await createUser('admin-es@example.com', superAdmin.id, 'es')
     // The admin login is rate limited by e-mail: the refusals have an account of their own.
     await createUser('admin-refusals@example.com', superAdmin.id, null)
+    await createUser('admin-modules@example.com', superAdmin.id, null)
+    await createUser('admin-modules-es@example.com', superAdmin.id, 'es')
     const reader = (await roles.create({ name: 'Blocks reader', code: 'blocks-reader' })) as {
       id: number
     }
@@ -384,6 +386,41 @@ describe('the Block catalogue page in the admin', () => {
     await that(drawer.getByText('No page of this site uses this block')).toHaveCount(2)
     await that(drawer.getByRole('button', { name: 'Measure again' })).toBeDisabled()
     expect(site.weight.requests).toEqual([])
+  })
+
+  it('the Block catalogue page shows newsletter with its toggle disabled and the module named when the module is off', async () => {
+    const sites = strapi.documents(SITE_UID as UID.ContentType)
+    const defaultSite = (await sites.findFirst({ filters: { slug: 'default' } })) as {
+      documentId: string
+    }
+    await sites.update({
+      documentId: defaultSite.documentId,
+      data: { modules: { newsletter: false } } as never,
+    })
+    try {
+      const page = await open('admin-modules@example.com')
+      await page.getByRole('heading', { level: 1, name: 'Block catalogue' }).waitFor()
+      await that(page.getByTestId('block-row-newsletter')).toBeVisible()
+      await poll(() => switchOf(page, 'newsletter').isDisabled()).toBe(true)
+      await that(page.getByTestId('block-module-off-newsletter')).toHaveText(
+        'Not offered: the newsletter module is off on default'
+      )
+      // Another block keeps its enabled switch and says nothing about a module.
+      await poll(() => switchOf(page, 'hero').isDisabled()).toBe(false)
+      await that(page.getByTestId('block-module-off-hero')).toHaveCount(0)
+
+      const spanish = await open('admin-modules-es@example.com')
+      await spanish.getByRole('heading', { level: 1, name: 'Catálogo de bloques' }).waitFor()
+      await that(spanish.getByTestId('block-module-off-newsletter')).toHaveText(
+        'No se ofrece: el módulo newsletter está desactivado en default'
+      )
+      await expect(violationsOf(spanish)).resolves.toEqual([])
+    } finally {
+      await sites.update({
+        documentId: defaultSite.documentId,
+        data: { modules: { newsletter: true } } as never,
+      })
+    }
   })
 
   it('has no accessibility violation, with the drawer open, in English and in Spanish', async () => {
