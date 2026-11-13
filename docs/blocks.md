@@ -9,7 +9,7 @@ The first catalogue is the 19 blocks of ADR-0018, section 6, read from `micelio-
 | File                          | What it is                                                                                                            |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `contract/blocks.ts`          | The catalogue, the source of truth. Its fields are written with the builders of `contract/fields.ts` (zod)            |
-| `contract/options.ts`         | The presentation options vocabulary: the eight names and their values                                                 |
+| `contract/options.ts`         | The presentation options vocabulary: the nine names and their values                                                  |
 | `contract/blocks.schema.json` | Generated: the JSON Schema of each block's content as the content API answers it, published as `./blocks.schema.json` |
 | `docs/blocks.md`              | This file. The reference below the marker is generated; the rest is written by hand                                   |
 | `GET /micelio/blocks`         | The catalogue for the admin panel, with each block's JSON Schema ([`docs/api.md`](api.md))                            |
@@ -25,18 +25,19 @@ A change to the catalogue follows ADR-0018, section 2: a new block, option, opti
 
 ## Presentation options
 
-A block's `options` are a closed set of presentation values (ADR-0018, section 1). `variant` is the block's own set. The rest come from one vocabulary, `contract/options.ts`: eight names with short value sets, each with a default (in bold below) that keeps today's content valid. A block declares which names it exposes (the reference below lists them per block) and offers all of a name's values, less the two withheld below. The vocabulary is the only place a value is written; a theme styles each value and may restyle it, and how it does so is in `docs/themes/` of `micelio`.
+A block's `options` are a closed set of presentation values (ADR-0018, section 1). `variant` is the block's own set. The rest come from one vocabulary, `contract/options.ts`: nine names with short value sets, each with a default (in bold below) that keeps today's content valid. A block declares which names it exposes (the reference below lists them per block) and offers all of a name's values, less the two withheld below. The vocabulary is the only place a value is written; a theme styles each value and may restyle it, and how it does so is in `docs/themes/` of `micelio`.
 
-| Option    | Values, in the artboard's order (default in bold) | Exposed by                                                                  |
-| --------- | ------------------------------------------------- | --------------------------------------------------------------------------- |
-| `layout`  | **`centered`**, `split`, `stacked`                | `hero`, `cta`, `testimonials`                                               |
-| `width`   | **`prose`**, `wide`, `full`                       | `rich-text`, `gallery`, `media`, `quote`                                    |
-| `columns` | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`                            |
-| `density` | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list` |
-| `align`   | **`start`**, `center` (there is no `end`)         | `quote` and the fourteen page sections                                      |
-| `tone`    | **`default`**, `raised`, `accent`                 | the fourteen page sections                                                  |
-| `ratio`   | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                         |
-| `height`  | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                               |
+| Option      | Values, in the artboard's order (default in bold) | Exposed by                                                                  |
+| ----------- | ------------------------------------------------- | --------------------------------------------------------------------------- |
+| `layout`    | **`centered`**, `split`, `stacked`                | `hero`, `cta`, `testimonials`                                               |
+| `width`     | **`prose`**, `wide`, `full`                       | `rich-text`, `gallery`, `media`, `quote`                                    |
+| `columns`   | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`                            |
+| `density`   | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list` |
+| `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the fourteen page sections                                      |
+| `tone`      | **`default`**, `raised`, `accent`                 | the fourteen page sections                                                  |
+| `ratio`     | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                         |
+| `height`    | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                               |
+| `iconStyle` | **`outline`**, `filled`                           | none yet                                                                    |
 
 `tone` and `align` are on the fourteen page sections (`page.sections`). A `scene` offers them only in its `inline` variant: its `background` variant paints its own poster, and a save that sets either on it (a `scene` with no `variant` takes `background`) is refused with `blockOptionInvalid` unless the value is the option's default, the only value allowed (the content API stores both on a `scene`). The builder leaves both out of a new `background` scene, so a site's default of either never reaches it.
 

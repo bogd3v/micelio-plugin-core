@@ -1,5 +1,5 @@
 // The presentation options vocabulary (ADR-0018, section 1; the Options vocabulary artboard): the
-// eight names a block may expose and the closed set of values of each. `contract/blocks.ts` says which
+// nine names a block may expose and the closed set of values of each. `contract/blocks.ts` says which
 // block exposes which; the reference in `docs/blocks.md` and the generated schema follow. Adding a name
 // or a value is a MINOR of the block contract, removing or renaming one a MAJOR (ADR-0018, section 2).
 
@@ -29,6 +29,12 @@ export const OPTIONS = {
   ratio: { values: ['16:9', '4:3', '1:1', 'auto'], default: '16:9' },
   /** How tall it is; `full` is one viewport. An island keeps its static alternative at the same height. */
   height: { values: ['s', 'm', 'l', 'full'], default: 'm' },
+  /**
+   * The drawing of the block's icons, for all of them (ADR-0021, section 1); a name without a filled
+   * drawing stays `outline`. No block offers it yet: the builder does not show it until the theme
+   * contract renders it (ADR-0018, section 1).
+   */
+  iconStyle: { values: ['outline', 'filled'], default: 'outline' },
 } as const satisfies Record<string, VocabularyOption>
 
 /** The name of a presentation option of the vocabulary. */

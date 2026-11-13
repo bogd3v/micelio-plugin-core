@@ -17,7 +17,7 @@ function block(id: string): Block {
 }
 
 describe('the options vocabulary', () => {
-  it('has the eight names of the artboard, and no others', () => {
+  it('has the nine names, and no others', () => {
     expect([...OPTION_NAMES]).toEqual([
       'layout',
       'width',
@@ -27,6 +27,7 @@ describe('the options vocabulary', () => {
       'tone',
       'ratio',
       'height',
+      'iconStyle',
     ])
   })
 
@@ -42,7 +43,17 @@ describe('the options vocabulary', () => {
       tone: [['default', 'raised', 'accent'], 'default'],
       ratio: [['16:9', '4:3', '1:1', 'auto'], '16:9'],
       height: [['s', 'm', 'l', 'full'], 'm'],
+      iconStyle: [['outline', 'filled'], 'outline'],
     })
+  })
+
+  it('the vocabulary has iconStyle with outline and filled, default outline', () => {
+    expect(OPTIONS.iconStyle.values).toEqual(['outline', 'filled'])
+    expect(OPTIONS.iconStyle.default).toBe('outline')
+  })
+
+  it('no block offers iconStyle yet', () => {
+    expect(BLOCKS.filter((entry) => entry.options.iconStyle)).toEqual([])
   })
 
   it.each(Object.entries(OPTIONS))('%s is a closed set holding its default', (_, option) => {
