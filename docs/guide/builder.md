@@ -50,6 +50,8 @@ The address is `/admin/plugins/micelio/builder/<content type>/<documentId>`.
   Select an item to edit it: the panel shows where you are
   (_Feature grid › Item 2_), and `Esc` goes up one level.
   Links are edited in the Content Manager's form.
+  An icon field shows a row with the glyph, its label and its name; select it to search the
+  catalogue and pick one ([Picking an icon](icons.md)).
   A media field (a Gallery's images, an item's icon) shows each file with its thumbnail, name and
   size, **Replace** and **Remove**; a field that takes several files adds, removes and reorders
   them. **Choose a file** and **Replace** open Strapi's own Media Library, the one the Content

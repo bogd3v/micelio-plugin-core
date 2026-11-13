@@ -14,6 +14,8 @@ import { startPreviewSite, type PreviewSite } from '../strapi/preview-site'
 export const LANDING_UID = 'api::landing.landing'
 /** The same, with page settings: it has the gear and the drawer. */
 export const BROCHURE_UID = 'api::brochure.brochure'
+/** A page with a field `micelio.icon` of its own, in a component and in a block of its zone. */
+export const EMBLEM_UID = 'api::emblem.emblem'
 const PASSWORD = 'Password1234'
 export const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']
 
@@ -41,6 +43,8 @@ export interface OpenOptions {
   /** The `navigator.platform` the page reads, for the symbols of the sheet. */
   platform?: string
   viewport?: { width: number; height: number }
+  /** The interface language of the admin who opens the page: Strapi's `preferedLanguage`. */
+  language?: 'es'
 }
 
 /**
@@ -123,6 +127,7 @@ export function useBuilderSession(): BuilderSession {
         password: PASSWORD,
         roles: [superAdminId],
         isActive: true,
+        ...(options.language ? { preferedLanguage: options.language } : {}),
       })
       const context = await browser.newContext({
         viewport: options.viewport ?? { width: 1280, height: 900 },
@@ -148,7 +153,7 @@ export function useBuilderSession(): BuilderSession {
       await page.getByRole('button', { name: 'Login' }).click()
       await page.waitForURL(/\/admin(?!\/auth)/)
       await page.goto(`${base}/admin/plugins/micelio/builder/${uid}/${documentId}?locale=en`)
-      await page.getByRole('region', { name: /Page blocks/ }).waitFor()
+      await page.getByRole('region', { name: /Page blocks|Bloques de la página/ }).waitFor()
       return page
     },
   }

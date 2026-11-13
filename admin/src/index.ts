@@ -1,6 +1,7 @@
 // The admin entry point Strapi loads through the `./strapi-admin` export. It registers the plugin,
 // its pages and its translations.
 import type { StrapiApp } from '@strapi/strapi/admin'
+import type { ComponentType } from 'react'
 
 import { Initializer } from './components/Initializer'
 import { MicelioIcon } from './components/MicelioIcon'
@@ -29,6 +30,24 @@ const plugin: StrapiApp['appPlugins'][string] = {
       // For sibling plugins: `app.getPlugin('micelio').apis.registerPage(id, loader)`, and
       // `registerSitePanel(panel, loader)` for the panel of a site section.
       apis: { registerPage, registerSitePanel },
+    })
+    // The picker of `plugin::micelio.icon` (ADR-0021, section 5); the input is loaded when a form needs it.
+    app.customFields.register({
+      name: 'icon',
+      pluginId: PLUGIN_ID,
+      type: 'string',
+      icon: MicelioIcon,
+      intlLabel: { id: getTranslation('icon.customField.label'), defaultMessage: 'Icon' },
+      intlDescription: {
+        id: getTranslation('icon.customField.description'),
+        defaultMessage: 'A name of the icon catalogue, picked from a list.',
+      },
+      components: {
+        Input: async () => {
+          const module = await import('./components/IconField')
+          return { default: module.IconField as unknown as ComponentType }
+        },
+      },
     })
   },
 

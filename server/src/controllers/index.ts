@@ -9,6 +9,7 @@ import pageTemplates from './page-templates'
 import preview from './preview'
 import redirects from './redirects'
 import extensions from './extensions'
+import icons from './icons'
 import status from './status'
 import transfers from './transfers'
 import transitions from './transitions'
@@ -28,4 +29,5 @@ export default {
   extensions,
   transfers,
   about,
+  icons,
 }

@@ -9,6 +9,7 @@ import {
   missingRequired,
   startingFields,
 } from '../admin/src/utils/builder/fields'
+import { GRID_COLUMNS, moveInGrid } from '../admin/src/utils/icons'
 import {
   GAP_HEIGHT,
   gapsOf,
@@ -404,5 +405,49 @@ describe('the note of an over-budget palette row', () => {
     expect(noteIn(-79.19999999999999, 'es')).toMatch(
       /^Esta página está 79,2 kB por encima de su presupuesto\./
     )
+  })
+})
+
+describe('the icon fields of the panel', () => {
+  const card = {
+    uid: 'fixture.icon-card',
+    attributes: {
+      title: { type: 'string' },
+      icon: { type: 'string', customField: 'plugin::micelio.icon', required: true },
+      other: { type: 'string', customField: 'plugin::another.field' },
+    },
+  }
+
+  it('lists a field micelio.icon as an icon, never as text', () => {
+    const fields = fieldsOf(card, {})
+    expect(fields.icons).toEqual([{ name: 'icon', required: true }])
+    expect(fields.text.map(({ name }) => name)).toEqual(['title', 'other'])
+    expect(fieldsOf({ uid: 'x', attributes: { title: { type: 'string' } } }, {}).icons).toBe(
+      undefined
+    )
+  })
+
+  it('counts a required icon that is empty or none as missing', () => {
+    const fields = fieldsOf(card, {})
+    expect(missingRequired(fields, { icon: null })).toEqual(['icon'])
+    expect(missingRequired(fields, { icon: '' })).toEqual(['icon'])
+    expect(missingRequired(fields, {})).toEqual(['icon'])
+    expect(missingRequired(fields, { icon: 'bolt' })).toEqual([])
+  })
+})
+
+describe('the keys of the icon picker grid', () => {
+  it('moves by one, by a row, to the ends, and leaves upwards from the first row', () => {
+    expect(GRID_COLUMNS).toBe(6)
+    expect(moveInGrid('ArrowRight', 0, 20)).toBe(1)
+    expect(moveInGrid('ArrowRight', 19, 20)).toBe(19)
+    expect(moveInGrid('ArrowLeft', 0, 20)).toBe(0)
+    expect(moveInGrid('ArrowDown', 2, 20)).toBe(8)
+    expect(moveInGrid('ArrowDown', 17, 20)).toBe(19)
+    expect(moveInGrid('ArrowUp', 8, 20)).toBe(2)
+    expect(moveInGrid('ArrowUp', 5, 20)).toBe(-1)
+    expect(moveInGrid('Home', 7, 20)).toBe(0)
+    expect(moveInGrid('End', 7, 20)).toBe(19)
+    expect(moveInGrid('a', 7, 20)).toBeUndefined()
   })
 })

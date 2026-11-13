@@ -7,6 +7,7 @@ import budget from './budget'
 import extensions from './extensions'
 import hooks from './hooks'
 import hostCheck from './host-check'
+import icons from './icons'
 import pageTemplates from './page-templates'
 import preview from './preview'
 import siteExport from './site-export'
@@ -21,6 +22,7 @@ export default {
   transitions,
   hostCheck,
   hooks,
+  icons,
   extensions,
   status,
   preview,

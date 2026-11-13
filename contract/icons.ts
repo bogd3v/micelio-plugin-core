@@ -68,7 +68,9 @@ export function resolveIconName(
   name: string,
   catalogue: Pick<IconCatalogue, 'names' | 'aliases'> = ICONS
 ): string | undefined {
-  const resolved = Object.hasOwn(catalogue.aliases, name) ? catalogue.aliases[name] : name
+  const resolved = Object.prototype.hasOwnProperty.call(catalogue.aliases, name)
+    ? catalogue.aliases[name]
+    : name
   return catalogue.names.includes(resolved) ? resolved : undefined
 }
 

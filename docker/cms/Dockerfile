@@ -5,10 +5,13 @@ FROM node:${NODE_VERSION}-slim
 
 WORKDIR /plugin
 COPY package.json package-lock.json ./
+# `@micelio/icons` (a workspace the plugin depends on) and the licence texts its build copies.
+COPY packages/icons ./packages/icons
+COPY LICENSES ./LICENSES
 # The plugin's own dev dependencies include Strapi and the admin's packages; `pg` is the driver the
 # project adds.
 # umask 0000: the service runs as the host user (compose.dev.yml), who needs to write dist/ and the caches.
-RUN umask 0000 && npm ci --no-audit --no-fund && npm install --no-save --no-audit --no-fund pg@^8 && chmod 777 /plugin
+RUN umask 0000 && npm ci --no-audit --no-fund && npm install --no-save --no-audit --no-fund pg@^8 && npm run build --silent -w @micelio/icons && chmod 777 /plugin
 
 ENV HOME=/tmp
 WORKDIR /plugin/docker/cms
