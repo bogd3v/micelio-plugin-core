@@ -2,7 +2,7 @@ import { useFetchClient } from '@strapi/strapi/admin'
 import { useEffect, useRef, useState } from 'react'
 
 import type { ComponentSchema } from '../utils/builder/fields'
-import type { CatalogueEntry } from '../utils/builder/palette'
+import { offeredEntries, type CatalogueEntry } from '../utils/builder/palette'
 import { statusOf } from '../utils/fetchError'
 import { ZONE } from '../utils/builder/model'
 
@@ -75,14 +75,16 @@ export function useBuilderCatalogue(
             { uid: component, attributes: own },
           ])
         )
+        // A block whose module the site has off is not offered: it stays out of the palette.
+        const offered = offeredEntries(blocks.data.data)
         if (isCurrent) {
           setResource({
             kind: 'ready',
             catalogue: {
-              entries: blocks.data.data,
+              entries: offered,
               zoneComponents:
                 uid === undefined
-                  ? blocks.data.data.map((entry) => entry.component)
+                  ? offered.map((entry) => entry.component)
                   : (attributes[ZONE]?.components ?? []),
               schemas,
             },

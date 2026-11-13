@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { BLOCKS, ISLAND_KINDS, blockContentSchema, type Block } from '../contract/blocks'
+import {
+  BLOCKS,
+  ISLAND_KINDS,
+  SITE_MODULES,
+  blockContentSchema,
+  type Block,
+} from '../contract/blocks'
 import { OPTION_NAMES } from '../contract/options'
 import { strapiComponents, type StrapiAttributes } from '../contract/strapi'
+import modulesComponent from '../server/src/components/site/modules.json'
 import fixture from './fixtures/micelio-cms-components-with-ids.json'
 
 // The first catalogue, as ADR-0018, section 6, lists it: id, component and `variant`, default first.
@@ -82,6 +89,16 @@ describe('the block catalogue', () => {
 
   it.each(BLOCKS.map((block) => [block.id, block] as const))('%s is a valid entry', (_, block) => {
     expect(ENTRY.safeParse(block).error?.issues ?? []).toEqual([])
+  })
+
+  it("a block entry's module is a key of site.modules, and newsletter declares newsletter", () => {
+    const keys = Object.keys(modulesComponent.attributes)
+    expect([...SITE_MODULES].toSorted()).toEqual(keys.toSorted())
+    for (const block of BLOCKS) {
+      if (block.module !== undefined) expect(keys).toContain(block.module)
+    }
+    expect(blockOf('newsletter').module).toBe('newsletter')
+    expect(BLOCKS.filter((block) => block.module).map((block) => block.id)).toEqual(['newsletter'])
   })
 
   it.each(CATALOGUE)('%s offers the variants of the ADR, default first', (id, _, variants) => {

@@ -332,6 +332,7 @@
   "blocks.enabledOn": "Activado en {site}",
   "blocks.disabledOn": "Desactivado en {site}",
   "blocks.nowhere": "Ningún tipo de página",
+  "blocks.moduleOff": "No se ofrece: el módulo {module} está desactivado en {site}",
   "blocks.optionCount": "{count, plural, one {# opción} other {# opciones}}",
   "blocks.kind.island": "Isla",
   "blocks.kind.static": "Estático",

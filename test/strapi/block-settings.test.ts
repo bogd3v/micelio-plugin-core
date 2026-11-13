@@ -4,10 +4,11 @@ import type { AddressInfo } from 'node:net'
 import type { Core, UID } from '@strapi/strapi'
 import { SITE_UID } from '../../server/src/constants/site'
 import { cleanupStrapi, setupStrapi } from './harness'
-import { exportArchive } from './site-archive'
+import { exportArchive, rewrite, tar, untar } from './site-archive'
 
 const LANDING = 'api::landing.landing' as UID.ContentType
 const STORY = 'api::story.story' as UID.ContentType
+const BULLETIN = 'api::bulletin.bulletin' as UID.ContentType
 const SETTING = 'plugin::micelio.block-setting' as UID.ContentType
 const PASSWORD = 'Password1234'
 type Grant = string | { action: string; subject: string; properties: Record<string, unknown> }
@@ -748,6 +749,211 @@ describe('the block catalogue of a site', () => {
         await admin('root@example.com', '/block-settings/feature-grid/usage?site=other')
       ).json()) as { data: unknown[] }
       expect(other.data).toEqual([])
+    })
+  })
+
+  // The module a block needs (#196): a site that has it off is not offered the block and cannot add it.
+  describe('a block that needs a module the site has off', () => {
+    const prose = { __component: 'section.rich-text', body: 'Hello' }
+    const newsletter = { __component: 'section.newsletter', title: 'Join', buttonLabel: 'Go' }
+    const send = (method: string, path: string, sections: unknown[], site: string) =>
+      fetch(`${base}/api/bulletins${path}?status=draft&site=${site}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ data: { title: 'A bulletin', sections } }),
+      })
+    const modulesOf = (modules: Record<string, boolean>) =>
+      strapi.documents(SITE_UID as UID.ContentType).update({
+        documentId: sites.get('quiet')!,
+        data: { modules } as never,
+      })
+
+    beforeAll(async () => {
+      const quiet = await strapi.documents(SITE_UID as UID.ContentType).create({
+        data: { name: 'Quiet', slug: 'quiet', modules: { newsletter: false } } as never,
+      })
+      sites.set('quiet', quiet.documentId)
+    })
+    afterAll(async () => {
+      await strapi.db.query(BULLETIN).deleteMany({})
+    })
+
+    it('a site with the newsletter module off does not offer newsletter in GET /micelio/blocks, with the reason moduleOff', async () => {
+      const entry = (await merged('quiet')).find(({ id }) => id === 'newsletter') as unknown as {
+        offered: boolean
+        reason: string
+        module: string
+        pageTypes: string[]
+      }
+      expect(entry).toMatchObject({
+        offered: false,
+        reason: 'moduleOff',
+        module: 'newsletter',
+        pageTypes: [],
+      })
+      // Another block of the same site, and the same block on a site with the module on, are offered.
+      const others = await merged('quiet')
+      expect(others.find(({ id }) => id === 'hero')).toMatchObject({ offered: true })
+      expect((await merged('other')).find(({ id }) => id === 'newsletter')).toMatchObject({
+        offered: true,
+        pageTypes: expect.arrayContaining(['landing']),
+      })
+      // The Block catalogue page names the module.
+      const view = (await (
+        await admin('root@example.com', '/block-settings?site=quiet')
+      ).json()) as { data: { blocks: { id: string; moduleOff: string | null }[] } }
+      const rows = new Map(view.data.blocks.map((block) => [block.id, block.moduleOff]))
+      expect(rows.get('newsletter')).toBe('newsletter')
+      expect(rows.get('hero')).toBeNull()
+    })
+
+    it('inserting newsletter on a site with the module off is refused with blockNotAllowed naming the module, and is accepted on a site with it on', async () => {
+      const refused = await problem(await send('POST', '', [newsletter], 'quiet'))
+      expect(refused).toMatchObject({
+        code: 'blockNotAllowed',
+        block: 'newsletter',
+        reason: 'moduleOff',
+        module: 'newsletter',
+      })
+      expect(refused.detail).toContain('newsletter module')
+      expect(await strapi.db.query(BULLETIN).count({})).toBe(0)
+      expect((await send('POST', '', [newsletter], 'other')).status).toBe(201)
+      // The refusal holds for the document service too, with no setting row stored.
+      await expect(
+        strapi.documents(BULLETIN).create({
+          locale: 'en',
+          data: { title: 'Direct', sections: [newsletter], site: sites.get('quiet')! } as never,
+        })
+      ).rejects.toThrow('newsletter module')
+    })
+
+    it('the dry run of an import that creates the site refuses an archive whose pages hold newsletter on a module that is off there, and the same archive imports with the module on', async () => {
+      // The landing fixture does not list the newsletter block: add it to its zone for this case.
+      const zone = (
+        strapi.contentType(LANDING).attributes as unknown as {
+          sections: { components: string[] }
+        }
+      ).sections.components
+      zone.push('section.newsletter')
+      const sitesService = strapi.documents(SITE_UID as UID.ContentType)
+      try {
+        const carried = await sitesService.create({
+          data: { name: 'Carried', slug: 'carried', modules: {} } as never,
+        })
+        await strapi.documents(LANDING).create({
+          locale: 'en',
+          data: { title: 'Carried', sections: [newsletter], site: carried.documentId } as never,
+        })
+        await sitesService.update({
+          documentId: carried.documentId,
+          data: { modules: { newsletter: false } } as never,
+        })
+        const archive = await exportArchive(strapi, { site: 'carried' })
+        await strapi.db.query(LANDING).deleteMany({ where: { site: { slug: 'carried' } } })
+        await sitesService.delete({ documentId: carried.documentId })
+
+        const service = strapi.plugin('micelio').service('siteExport')
+        for (const run of [
+          () => service.preview(Readable.from([archive])),
+          () => service.import(Readable.from([archive])),
+        ]) {
+          await expect(run()).rejects.toThrow(
+            /newsletter block needs the newsletter module, which is off on the target site/
+          )
+        }
+        expect(await sitesService.findFirst({ filters: { slug: 'carried' } })).toBeNull()
+
+        // The same archive with the module on in it imports.
+        const files = untar(archive)
+        rewrite<{ documents: { versions: { data: Record<string, unknown> }[] }[] }>(
+          files,
+          'content/site.json',
+          (content) => {
+            for (const version of content.documents[0]!.versions) {
+              version.data.modules = { newsletter: true }
+            }
+            return content
+          }
+        )
+        await service.import(Readable.from([tar(files)]))
+        expect(await strapi.db.query(LANDING).count({ where: { site: { slug: 'carried' } } })).toBe(
+          1
+        )
+      } finally {
+        zone.splice(zone.indexOf('section.newsletter'), 1)
+        await strapi.db.query(LANDING).deleteMany({})
+        const left = await strapi
+          .documents(SITE_UID as UID.ContentType)
+          .findFirst({ filters: { slug: 'carried' } })
+        if (left)
+          await strapi
+            .documents(SITE_UID as UID.ContentType)
+            .delete({ documentId: left.documentId })
+      }
+    })
+
+    it('the dry run of an update import checks the pages against the modules the archive writes to an existing site, and a skip import against the stored ones', async () => {
+      const zone = (
+        strapi.contentType(LANDING).attributes as unknown as {
+          sections: { components: string[] }
+        }
+      ).sections.components
+      zone.push('section.newsletter')
+      const sitesService = strapi.documents(SITE_UID as UID.ContentType)
+      try {
+        const carried = await sitesService.create({
+          data: { name: 'Carried', slug: 'carried', modules: {} } as never,
+        })
+        await strapi.documents(LANDING).create({
+          locale: 'en',
+          data: { title: 'Carried', sections: [newsletter], site: carried.documentId } as never,
+        })
+        await sitesService.update({
+          documentId: carried.documentId,
+          data: { modules: { newsletter: false } } as never,
+        })
+        const archive = await exportArchive(strapi, { site: 'carried' })
+        // The target now: the same site, with the module on and no page.
+        await strapi.db.query(LANDING).deleteMany({ where: { site: { slug: 'carried' } } })
+        await sitesService.update({
+          documentId: carried.documentId,
+          data: { modules: { newsletter: true } } as never,
+        })
+
+        const service = strapi.plugin('micelio').service('siteExport')
+        const refusal =
+          /newsletter block needs the newsletter module, which is off on the target site/
+        // `update` writes the archive's modules (off) before the pages: apply would refuse them.
+        await expect(service.preview(Readable.from([archive]))).rejects.toThrow(refusal)
+        await expect(service.import(Readable.from([archive]))).rejects.toThrow(refusal)
+        // `skip` leaves the stored site alone, so the module stays on and the page is accepted.
+        await expect(
+          service.preview(Readable.from([archive]), { existing: 'skip' })
+        ).resolves.toBeDefined()
+      } finally {
+        zone.splice(zone.indexOf('section.newsletter'), 1)
+        await strapi.db.query(LANDING).deleteMany({})
+        const left = await strapi
+          .documents(SITE_UID as UID.ContentType)
+          .findFirst({ filters: { slug: 'carried' } })
+        if (left) await sitesService.delete({ documentId: left.documentId })
+      }
+    })
+
+    it('a page that already holds newsletter saves a change to another block after the module is turned off', async () => {
+      await modulesOf({ newsletter: true })
+      const created = await strapi.documents(BULLETIN).create({
+        locale: 'en',
+        data: { title: 'Holder', sections: [newsletter], site: sites.get('quiet')! } as never,
+      })
+      await modulesOf({ newsletter: false })
+      const response = await send('PUT', `/${created.documentId}`, [newsletter, prose], 'quiet')
+      expect(response.status).toBe(200)
+      // Adding a second newsletter is still refused.
+      const again = await problem(
+        await send('PUT', `/${created.documentId}`, [newsletter, newsletter], 'quiet')
+      )
+      expect(again).toMatchObject({ code: 'blockNotAllowed', reason: 'moduleOff' })
     })
   })
 })

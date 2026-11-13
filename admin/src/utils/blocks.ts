@@ -13,6 +13,8 @@ export interface CatalogueBlock {
   costKb: number
   isIsland: boolean
   enabled: boolean
+  /** The module the block needs when the site has it off: the block is not offered, whatever its toggle says; `null` otherwise. */
+  moduleOff: string | null
   /** The page types the block is allowed in; `null` takes the core's default, every page type. */
   allowedPageTypes: string[] | null
   /** What the site stored, by option name. */

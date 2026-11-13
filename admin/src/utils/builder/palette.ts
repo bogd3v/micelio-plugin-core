@@ -15,6 +15,8 @@ export interface CatalogueEntry {
   label: Partial<Record<string, string>>
   /** The page types the block may be inserted in. */
   pageTypes: string[]
+  /** `false` when the site has off the module the block needs (`reason: 'moduleOff'`): the palette leaves it out. */
+  offered?: boolean
   cost: {
     css: number
     js: number
@@ -28,6 +30,14 @@ export interface CatalogueEntry {
       alternative: readonly string[]
     } | null
   }
+}
+
+/**
+ * The entries of the merged view the palette lists: a block whose module the site has off
+ * (`offered: false`) stays out, every other entry stays.
+ */
+export function offeredEntries<T extends Pick<CatalogueEntry, 'offered'>>(entries: T[]): T[] {
+  return entries.filter((entry) => entry.offered !== false)
 }
 
 /** Why a row of the palette is not a plain one. */

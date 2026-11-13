@@ -67,6 +67,20 @@ interface BlockCost {
   island: BlockIsland | null
 }
 
+/** The keys of the `modules` component of a site (`server/src/components/site/modules.json`). */
+export const SITE_MODULES = [
+  'newsletter',
+  'comments',
+  'accounts',
+  'drafts',
+  'fediverse',
+  'search',
+  'support',
+] as const
+
+/** A module a site turns on or off. */
+export type SiteModule = (typeof SITE_MODULES)[number]
+
 /** A block of the catalogue: `{ id, schema, options, cost, static }` (ADR-0018, section 1). */
 export interface Block {
   /** Stable and kebab-case: stored content, themes and the visual editor refer to the block by it. */
@@ -81,6 +95,12 @@ export interface Block {
    */
   options: BlockOptions
   cost: BlockCost
+  /**
+   * The module of `site.modules` the block needs (`newsletter`, `comments`, `accounts`, `drafts`,
+   * `fediverse`, `search` or `support`). A site that has it off is not offered the block and cannot
+   * add it to a page (`moduleOff`); a page that already holds it keeps rendering.
+   */
+  module?: SiteModule
   /** What the block renders with no JavaScript: before hydration, and always in static builds. */
   static: string
 }
@@ -353,6 +373,7 @@ export const BLOCKS: readonly Block[] = [
       variant: variant('inline', 'card'),
       ...presentation('newsletter', 'section', 'align', 'tone'),
     },
+    module: 'newsletter',
     cost: { css: 763, js: 1822, island: null },
     static:
       'In static builds, the static form (`MycNewsletterStatic`). In dynamic mode the form submits ' +

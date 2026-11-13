@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_section_newsletters",
+  "info": {
+    "displayName": "Newsletter",
+    "icon": "message",
+    "description": "The `newsletter` block, the one that needs a site module, for the block settings suite"
+  },
+  "options": {},
+  "attributes": {
+    "title": { "type": "string" },
+    "buttonLabel": { "type": "string" }
+  }
+}

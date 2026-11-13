@@ -22,7 +22,7 @@ const BLOCK_OPTION_STATUS = 400
  * has answers a problem detail with the code `unknownSite`. A save the catalogue refuses for an
  * option a block does not allow answers `blockOptionInvalid`, naming the block, the option and the
  * values it allows, and one that adds a block the site disabled or does not allow on the page's type
- * answers `blockNotAllowed`, naming the block and why. A zone with more background Scenes than a
+ * answers `blockNotAllowed`, naming the block and why (the module, when the site has off the one the block needs). A zone with more background Scenes than a
  * page may hold answers `sceneBackgroundLimit`, naming the block, the count and the limit.
  */
 const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
@@ -50,7 +50,7 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
       await next()
     } catch (error) {
       if (error instanceof BlockNotAllowedError) {
-        const { block, reason, pageType } = error.violation
+        const { block, reason, pageType, module } = error.violation
         sendProblem(ctx, {
           type: 'about:blank',
           title: 'Bad Request',
@@ -60,6 +60,7 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
           block,
           reason,
           ...(pageType === undefined ? {} : { pageType }),
+          ...(module === undefined ? {} : { module }),
         })
         return
       }

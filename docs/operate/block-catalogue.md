@@ -28,6 +28,11 @@ Pick the site in the **Site** select; every setting is for that site alone.
 - **On** is the switch of the row. A disabled block is hidden from the palette of the site and
   cannot be added to a page: the API answers `blockNotAllowed`. **Pages that already use it keep
   rendering** and can still be saved; only adding another is refused.
+- A block that needs a **module** the site has off (today `newsletter`, which needs the
+  `newsletter` module of the site's Modules) shows its switch disabled and the sentence "Not
+  offered: the newsletter module is off on <site>". It is not in the palette and the API answers
+  `blockNotAllowed`; turn the module on in **Content Manager → Site**, Modules, to offer it. Pages that already use it keep
+  rendering and saving.
 - **Page types where it is allowed** (`landing`, `standard`, `long-read`, and any page type the
   budgets define for the site). Unticking one stops the block being added to pages of that type.
   The core allows every page type; ticking them all stores nothing, so a page type added later is

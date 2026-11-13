@@ -153,7 +153,8 @@ A save whose blocks carry an option the catalogue does not allow (`create` or `u
 
 `allowed` is empty when the block does not expose the option. Where a route has no `site-scope` middleware (the Content Manager's, for one), Strapi answers its own `ValidationError` with the same members in `error.details`.
 
-A save that adds a block the site disabled, or does not allow on the page's type, answers `400`
+A save that adds a block the site disabled, does not allow on the page's type, or needs a module
+the site has off, answers `400`
 with the code `blockNotAllowed`; it writes nothing:
 
 ```json
@@ -168,7 +169,11 @@ with the code `blockNotAllowed`; it writes nothing:
 }
 ```
 
-`reason` is `disabled`, or `pageType` with the page's `pageType` beside it. Like
+`reason` is `disabled`, `pageType` with the page's `pageType` beside it, or `moduleOff` with the
+`module` beside it: the block needs a module of `site.modules` that the site has off (the detail
+reads "The newsletter block needs the newsletter module, which is off on this site"). The module
+check does not depend on a stored setting: it refuses the block on every path that writes, like the
+others, and a page that already holds the block keeps saving. Like
 `blockOptionInvalid`, it is the problem detail where the route has the `site-scope` middleware and
 Strapi's `ValidationError` (the code in `error.details`) where it has not.
 
@@ -538,7 +543,7 @@ empty list. A page's `title` is the first of its `title`, `name` and `slug` fiel
 may read; when it may read none, the title is the page's `documentId`. The `used` count of the view does not depend on the caller.
 
 `GET /micelio/blocks` answers `{ "data": [{ id, group, component, schema, options, cost,
-static }] }`:
+static, module? }] }`:
 one entry per block of the catalogue, in its order. `schema` is the block's JSON Schema, the one
 under `$defs` in `contract/blocks.schema.json`; [`docs/blocks.md`](blocks.md) describes the fields
 and the reference of every block.
@@ -555,7 +560,13 @@ changes:
   set none;
 - `pageTypes` lists the page types the block may be inserted in: the site's choice, else every
   page type the site knows (the keys of `budgets.pageTypes`, and the site's own under
-  `budgets.sites`).
+  `budgets.sites`);
+- `offered` is `true` for a block the site's editors may insert. A block with a `module` (a key of
+  `site.modules`, such as `newsletter`) whose module the site has off stays in the answer with
+  `offered: false`, `reason: "moduleOff"`, the `module` and an empty `pageTypes`, so a client can say
+  why it is missing; the palette leaves it out. The same block is `offered: true` on a site that has
+  the module on (the view is keyed by site). A module is off when the site's `modules` component
+  holds `false` for it.
 
 An unknown `site` answers `unknownSite`. The answer is `Cache-Control: private, no-store`, since a
 role change or a toggle must show at once. The plugin applies no default itself: a block saved
@@ -591,7 +602,7 @@ editor.
 
 ### What a disabled block does
 
-A disabled block, or one outside the page types a site allows, cannot be **added** to a page. Every
+A disabled block, one outside the page types a site allows, or one whose module the site has off cannot be **added** to a page. Every
 path that writes content is checked, because they all go through the document service: the content
 API, the Content Manager, other plugins, the Content Manager's duplicate and the import of a site
 archive. The save is refused with `blockNotAllowed` (below) and writes nothing; the dry run of an
@@ -602,7 +613,8 @@ reordered, and keeps rendering: the check compares the save with the stored draf
 draft already holds is not an addition. A second block of a kind the draft holds once is. A
 duplicate carries every attribute of its source that the request does not replace, so it is checked
 in full: the source's draft with the request laid over it, whether or not the request names blocks.
-A page moved to another site (a `site` the page does not have) is new there, so all of its blocks
+A block whose `module` the site has off (`moduleOff`) follows the same rule: a page that already
+holds it keeps saving and rendering, and only adding another is refused. A page moved to another site (a `site` the page does not have) is new there, so all of its blocks
 are checked against that site's settings. Moving a page to another page type is not checked: only
 the blocks a save adds are. The page type is the page's `pageType` when the budgets list it, else
 `standard` (`docs/operate/budgets.md`), after the save.

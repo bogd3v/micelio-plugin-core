@@ -56,8 +56,10 @@ through the server.
 site's defaults over the core's (`mergedOptions`), finds the catalogue blocks in the data of a
 document wherever they sit (`blockIdsIn`: dynamic zones, component attributes and the parts
 nested in a component) and decides which of them a save may not add (`findBlockNotAllowed`: an
-addition is more of a block than the stored draft holds). `check.ts` reads the site's settings and
-the stored draft for one write and is the one check behind both `documents.ts`, the document
+addition is more of a block than the stored draft holds, of a block the site disabled, does not
+allow on the page's type, or whose `module` in `contract/blocks.ts` the site's `modules` has off:
+`moduleOffOf`). `check.ts` reads the site's settings, its `modules` (only when a block of the write
+declares a `module`) and the stored draft for one write and is the one check behind both `documents.ts`, the document
 service middleware on `create`, `update` and `clone`, and the dry run of an import
 (`site-export/import-plan.ts`), so an archive is refused before anything is written. The same
 middleware validates the writes to `plugin::micelio.block-setting`. `error.ts` has

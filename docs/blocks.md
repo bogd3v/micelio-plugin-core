@@ -1,6 +1,6 @@
 # Block catalogue
 
-The blocks a page is made of, as a contract ([ADR-0018](https://github.com/bogd3v/micelio/blob/main/docs/adr/0018-blocks-as-a-contract.md)): each block has a stable `id`, the `schema` of the Strapi component that stores its content, its presentation `options`, its `cost` and its `static` alternative. The catalogue is the builder's palette and the theme creator's reference.
+The blocks a page is made of, as a contract ([ADR-0018](https://github.com/bogd3v/micelio/blob/main/docs/adr/0018-blocks-as-a-contract.md)): each block has a stable `id`, the `schema` of the Strapi component that stores its content, its presentation `options`, its `cost` and its `static` alternative, and optionally the `module` of `site.modules` it needs. The catalogue is the builder's palette and the theme creator's reference.
 
 The first catalogue is the 19 blocks of ADR-0018, section 6, read from `micelio-cms` `v0.4.0`. It changes no block's content: the components stay in `micelio-cms` until the cut-over of release line 0.7. The presentation options of the vocabulary ([below](#presentation-options)) are the one addition.
 
@@ -60,6 +60,16 @@ Adding an option to a block, or a value to an option, changes the block's finger
 Every block has a `blockId` and every repeatable item an `itemId` (ADR-0018, section 1; the catalogue `id` names a kind of block, these name one instance of it). `id` is reserved by Strapi, hence the names. Both are opaque strings (a UUID when the plugin makes one) and optional in the schema, so content saved before them stays valid; `micelio-cms` fills the stored content in a boot migration.
 
 **Generation at save.** On `create`, `update` and `clone` of any type with a dynamic zone, the plugin gives a block of the data that has no `blockId` one that is unique in its zone, and an item that has no `itemId` one that is unique in its parent block. On `update` the ids stored in the draft win over what the save writes: an edit that sends another id at a block's or item's place keeps the stored one, a save that omits them keeps them, and a reorder moves each id with its block. An id that no stored entry holds is kept only when it is unique, so an import or a duplicate restores the ids it carries. A component that does not declare the field is left alone. A page template keeps neither id, so a page made from one gets its own. The builder hides both fields: editors never see them, its duplicate of a block carries neither id, and it takes in the ids a save answers, so a block added in a session keeps its id when it is moved and saved again.
+
+## Modules
+
+A block may declare `module`, one of the keys of the site's `modules` component (`newsletter`,
+`comments`, `accounts`, `drafts`, `fediverse`, `search`, `support`); today only `newsletter`
+declares one. A site that has the module off is not offered the block (`GET /micelio/blocks?site=`
+marks it `offered: false` with the reason `moduleOff`) and a save that adds it is refused with
+`blockNotAllowed` naming the module; pages that already hold it keep rendering and saving
+([`docs/api.md`](api.md#the-merged-view)). `module` is optional, so adding it to a block is a MINOR
+(ADR-0018, section 2). The reference below lists it as **Module** on the blocks that declare it.
 
 ## Islands
 
@@ -364,6 +374,7 @@ The measurement of 2026-10-23, in gzip bytes:
   - `align`: `start`, `center`; default `start`
   - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 763 B of CSS and 1822 B of JS, gzip
+- **Module:** `newsletter`; not offered on a site that has it off in `site.modules`
 - **Static:** In static builds, the static form (`MycNewsletterStatic`). In dynamic mode the form submits only once hydrated (a known limitation, `docs/blocks.md`). Nothing when the `newsletter` module is off.
 
 | Field         | Type   | Required | Details |

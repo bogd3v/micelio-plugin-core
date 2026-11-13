@@ -24,6 +24,7 @@ import {
   highlight,
   matches,
   nameOf,
+  offeredEntries,
   pushRecent,
   stateOf,
   type CatalogueEntry,
@@ -133,6 +134,15 @@ describe('the palette', () => {
     expect(nameOf(entry('feature-grid'), 'en')).toBe('Feature grid')
     expect(nameOf(entry('hero', { label: { es: 'Portada' } }), 'es-ES')).toBe('Portada')
     expect(nameOf(entry('hero', { label: { en: 'Hero' } }), 'es')).toBe('Hero')
+  })
+
+  it('leaves out a block whose module the site has off and keeps every other entry', () => {
+    const entries = [
+      entry('newsletter', { offered: false }),
+      entry('hero', { offered: true }),
+      entry('faq'),
+    ]
+    expect(offeredEntries(entries).map(({ id }) => id)).toEqual(['hero', 'faq'])
   })
 
   it('weighs a block in kB with one decimal, an island’s on-demand script apart', () => {
