@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { nodeFileTrace } from '@vercel/nft'
 import { beforeAll, describe, expect, it } from 'vitest'
 import packageJson from '../package.json'
 import { TABLER_VERSION } from '../contract/icons'
@@ -219,5 +220,36 @@ describe('the packed icons package', () => {
       readGlyph(name: string): Promise<string | undefined>
     }
     expect(await entry.readGlyph('map-pin')).toContain('viewBox="0 0 24 24"')
+  })
+
+  it('loads from the tarball and answers the index, the Spanish labels and a filled glyph', async () => {
+    const entry = (await import(
+      pathToFileURL(path.join(ICONS_INSTALLED, 'dist/index.js')).href
+    )) as {
+      loadIndex(): Promise<{ version: string }>
+      loadSpanishLabels(): Promise<{ names: Record<string, string> }>
+      readGlyph(name: string, style?: 'outline' | 'filled'): Promise<string | undefined>
+    }
+    expect((await entry.loadIndex()).version).toBe(TABLER_VERSION)
+    expect((await entry.loadSpanishLabels()).names.bolt).toEqual(expect.any(String))
+    expect(await entry.readGlyph('map-pin', 'filled')).toContain('fill="currentColor"')
+  })
+
+  it('a file trace of the installed dist/index.js lists index.json, labels/es.json and every glyph of the tarball', async () => {
+    // What Nitro's tracer (`@vercel/nft`) copies into a production build: it follows only
+    // `new URL(<literal>, import.meta.url)`, so a read through a helper or a base URL is missing.
+    const { fileList } = await nodeFileTrace([path.join(ICONS_INSTALLED, 'dist/index.js')], {
+      base: ICONS_PACK_DIR,
+    })
+    const traced = [...fileList].map((file) =>
+      path.relative(ICONS_INSTALLED, path.join(ICONS_PACK_DIR, file)).split(path.sep).join('/')
+    )
+    expect(traced).toEqual(expect.arrayContaining(['index.json', 'labels/es.json']))
+    for (const style of ['outline', 'filled']) {
+      const shipped = files.filter((file) => new RegExp(`^glyphs/${style}/.+\\.svg$`).test(file))
+      const seen = traced.filter((file) => new RegExp(`^glyphs/${style}/.+\\.svg$`).test(file))
+      expect(shipped.length).toBeGreaterThan(0)
+      expect(seen.sort()).toEqual(shipped.sort())
+    }
   })
 })

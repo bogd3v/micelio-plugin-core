@@ -1,6 +1,6 @@
 {
   "name": "@micelio/icons",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The Tabler icon set the Micelio block contract pins, normalised: glyphs, index and Spanish labels.",
   "type": "module",
   "license": "AGPL-3.0-only AND MIT",
