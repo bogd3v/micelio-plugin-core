@@ -23,6 +23,12 @@ again the next time the page is saved. A save that names none of the title, the 
 and a dynamic zone, and a transition, derive nothing: the checks before review read what the draft
 holds, so a page saved before the plugin is refused until its fields are filled (below).
 
+A save that stores no description, because no paragraph of 50 characters is there to derive one
+from, is not refused, even when the host's `seo` component requires a description. On such a host
+a page that has no `seo` component yet is saved without one (the meta title waits for a description
+too), so a page type without the editorial workflow can be saved and published without one; an
+editorial page is refused when it leaves `draft`, with `metaDescriptionMissing` (below).
+
 The tab of a page in `draft` saves the defaults it shows when it opens, so what its checks list is what the server holds. A page in any other state is not saved by opening the tab (a save would move a scheduled page back to `draft`): it shows the defaults, and they are saved with your next edit.
 
 ## Counters never hold a save

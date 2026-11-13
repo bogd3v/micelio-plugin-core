@@ -1,7 +1,7 @@
 import { errors } from '@strapi/utils'
 import type { Core, Modules, UID } from '@strapi/strapi'
 import { structuredDataProblem } from '../../../contract/seo'
-import { SEO_ATTRIBUTE, STRUCTURED_DATA_INVALID } from '../constants/seo'
+import { SEO_ATTRIBUTE, SEO_COMPONENT_UID, STRUCTURED_DATA_INVALID } from '../constants/seo'
 import { SITE_UID } from '../constants/site'
 import { hasPageSettings } from '../page-settings'
 import { derivedFor, fileOf, readSeoDraft, zonesOf, type SeoDraft } from './read'
@@ -20,6 +20,13 @@ function documentIdOf(value: unknown): string | undefined {
   return Array.isArray(own.connect) ? documentIdOf(own.connect[0]) : undefined
 }
 
+/** Whether the host's `shared.seo` requires `metaDescription`, so a component without one is refused when the page is published. */
+function requiresDescription(strapi: Core.Strapi): boolean {
+  const component = strapi.components[SEO_COMPONENT_UID as UID.Component]
+  const attributes = component?.attributes as Record<string, { required?: boolean }> | undefined
+  return attributes?.metaDescription?.required === true
+}
+
 /**
  * The document service middleware of the SEO fields: it fills the empty meta title, meta description
  * and social image of a page from the page itself, and refuses hand-written structured data that is
@@ -34,6 +41,14 @@ function documentIdOf(value: unknown): string | undefined {
  * an edit overrides the default; a field the editor empties is derived again at the next save.
  * The existing `seo` component is updated in place (its `id` is added to the data), so the fields
  * the write does not name keep their values.
+ *
+ * When the host's `shared.seo` requires `metaDescription`, the page has no `seo` component yet, the
+ * write does not name one and no meta description can be derived (no paragraph of 50 characters),
+ * the middleware creates none: a component that holds a title and no description would be stored by
+ * the draft and refused when the page is published (Strapi checks `required` only on the published
+ * copy). A host that does not require it gets the meta title, as before. The page is refused when
+ * it leaves `draft` in the editorial workflow, with `metaDescriptionMissing`. A write that names
+ * `seo` is sent as written, and an existing component is updated in place as always.
  *
  * @throws ValidationError (400) with the code `structuredDataInvalid` for structured data that is
  * not a JSON-LD object or a list of them.
@@ -106,9 +121,20 @@ export function seoDocuments(strapi: Core.Strapi): Modules.Documents.Middleware.
       effective.siteName = text(site?.name) || text(site?.slug)
     }
     const derived = await derivedFor(strapi, effective)
+    // No component yet and nothing to derive a description from: a new component would hold a title
+    // alone, which the draft stores and a host whose component requires the description refuses when
+    // the page is published. A host that does not require it keeps the title, as before.
+    const wouldCreateWithoutDescription =
+      !(SEO_ATTRIBUTE in data) &&
+      effective.seo.id === undefined &&
+      !derived.metaDescription &&
+      requiresDescription(strapi)
     // The component the draft has is updated in place: a `seo` without its `id` would replace it,
     // and the fields the write does not name would be lost.
-    if (SEO_ATTRIBUTE in data || Object.keys(derived).length > 0) {
+    if (
+      !wouldCreateWithoutDescription &&
+      (SEO_ATTRIBUTE in data || Object.keys(derived).length > 0)
+    ) {
       data[SEO_ATTRIBUTE] = {
         ...(effective.seo.id !== undefined && own.id === undefined ? { id: effective.seo.id } : {}),
         ...own,

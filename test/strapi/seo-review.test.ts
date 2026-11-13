@@ -9,6 +9,7 @@ import { solidPng } from './png'
 
 const LEAFLET = 'api::leaflet.leaflet' as UID.ContentType
 const BROCHURE = 'api::brochure.brochure' as UID.ContentType
+const HANDOUT = 'api::handout.handout' as UID.ContentType
 const FLYER = 'api::flyer.flyer' as UID.ContentType
 const PASSWORD = 'Password1234'
 const DESCRIPTION =
@@ -377,6 +378,126 @@ describe('the SEO fields at save and at send to review', () => {
         data: { pageType: 'landing' } as never,
       })
       expect((await seoOf(documentId))?.metaTitle).toBeNull()
+    })
+  })
+
+  // `handout` has the shape of micelio-cms's page: page settings, no `withEditorial`, so it is published
+  // straight from `create` with `status: 'published'` (issue #223).
+  const handouts = () => strapi.documents(HANDOUT)
+  let handoutCount = 0
+
+  async function newHandout(
+    data: Record<string, unknown> = {},
+    status: 'draft' | 'published' = 'draft'
+  ): Promise<string> {
+    handoutCount += 1
+    const created = await handouts().create({
+      locale: 'en',
+      status,
+      data: {
+        title: `Handout ${handoutCount}`,
+        slug: `handout-${handoutCount}`,
+        site,
+        sections: [],
+        ...data,
+      } as never,
+    } as never)
+    return created.documentId
+  }
+
+  async function handoutSeo(documentId: string, status: 'draft' | 'published' = 'draft') {
+    const found = (await handouts().findOne({
+      documentId,
+      locale: 'en',
+      status,
+      populate: { seo: { populate: ['metaImage'] } },
+    } as never)) as unknown as { seo: Seo | null }
+    return found.seo
+  }
+
+  it('keeps the meta title of a page with no description when the host requires none', async () => {
+    const documentId = await newHandout()
+    const seo = await handoutSeo(documentId)
+    expect(seo?.metaTitle).toBe(`Handout ${handoutCount} · Demo site`)
+    expect(seo?.metaDescription ?? null).toBeNull()
+  })
+
+  // A host whose `seo` component requires the description (issue #223): `metaDescription` is `required`
+  // with `minLength` 50, as micelio-cms 0.7 declares it. The test app's `shared.seo` requires nothing
+  // (the other suites save pages without one), so this block sets the constraint on the loaded
+  // component while it runs, the way `liftSeoLimits` takes the limits off, and puts it back after.
+  describe('a page type whose seo component requires the description', () => {
+    type Attributes = Record<string, Record<string, unknown>>
+    let restore: (() => void)[] = []
+
+    beforeAll(() => {
+      const component = (
+        strapi.components as unknown as Record<
+          string,
+          { attributes?: Attributes; __schema__?: { attributes?: Attributes } }
+        >
+      )['shared.seo']!
+      restore = [component.attributes, component.__schema__?.attributes].flatMap((attributes) => {
+        if (!attributes?.metaDescription) return []
+        const before = attributes.metaDescription
+        attributes.metaDescription = { ...before, required: true, minLength: 50 }
+        return [() => void (attributes.metaDescription = before)]
+      })
+    })
+
+    afterAll(() => {
+      for (const undo of restore.reverse()) undo()
+    })
+
+    it('saves a new page with no description to derive, and stores none', async () => {
+      const documentId = await newLeaflet({ sections: [] })
+      // No component is stored: one with a title and no description cannot be published later.
+      expect(await seoOf(documentId)).toBeNull()
+    })
+
+    it('saves a later edit of a page that has no seo component yet, and stores none', async () => {
+      const documentId = await newLeaflet({ sections: [] })
+      await leaflets().update({ documentId, locale: 'en', data: { title: 'Renamed' } as never })
+      await leaflets().update({ documentId, locale: 'en', data: { sections: [] } as never })
+      expect(await seoOf(documentId)).toBeNull()
+    })
+
+    it('a page with no description is still refused when it leaves draft, with metaDescriptionMissing', async () => {
+      const documentId = await newLeaflet({ sections: [] })
+      const answer = await move(documentId, 'in_review')
+      expect(answer.status).toBe(409)
+      expect(answer.body.code).toBe('seoInvalid')
+      expect(answer.body.problems?.map((problem) => problem.code)).toContain(
+        'metaDescriptionMissing'
+      )
+    })
+
+    it('publishes a new page with no description to derive, and stores no seo component', async () => {
+      const documentId = await newHandout({}, 'published')
+      expect(await handoutSeo(documentId, 'published')).toBeNull()
+      expect(await handoutSeo(documentId)).toBeNull()
+    })
+
+    it('publishes a draft that has no seo component', async () => {
+      const documentId = await newHandout()
+      expect(await handoutSeo(documentId)).toBeNull()
+      await expect(handouts().publish({ documentId, locale: 'en' } as never)).resolves.toBeTruthy()
+      expect(await handoutSeo(documentId, 'published')).toBeNull()
+    })
+
+    it('derives the description when the page has a paragraph for it', async () => {
+      const documentId = await newLeaflet()
+      expect((await seoOf(documentId))?.metaDescription).toBe(DESCRIPTION)
+    })
+
+    it('keeps the stored description when a later save has no paragraph to derive one from', async () => {
+      const documentId = await newLeaflet()
+      await leaflets().update({
+        documentId,
+        locale: 'en',
+        data: { sections: [], title: 'Edited' } as never,
+      })
+      expect((await seoOf(documentId))?.metaDescription).toBe(DESCRIPTION)
     })
   })
 
