@@ -33,10 +33,12 @@ A block's `options` are a closed set of presentation values (ADR-0018, section 1
 | `width`   | **`prose`**, `wide`, `full`                       | `rich-text`, `gallery`, `media`, `quote`                                    |
 | `columns` | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`                            |
 | `density` | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list` |
-| `align`   | **`start`**, `center` (there is no `end`)         | `quote`, `cta`, `stats`, `newsletter`                                       |
-| `tone`    | **`default`**, `raised`, `accent`                 | `hero`, `cta`, `newsletter`, `stats`                                        |
+| `align`   | **`start`**, `center` (there is no `end`)         | `quote` and the fourteen page sections                                      |
+| `tone`    | **`default`**, `raised`, `accent`                 | the fourteen page sections                                                  |
 | `ratio`   | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                         |
 | `height`  | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                               |
+
+`tone` and `align` are on the fourteen page sections (`page.sections`). A `scene` offers them only in its `inline` variant: its `background` variant paints its own poster, and a save that sets either on it (a `scene` with no `variant` takes `background`) is refused with `blockOptionInvalid` unless the value is the option's default, the only value allowed (the content API stores both on a `scene`). The builder leaves both out of a new `background` scene, so a site's default of either never reaches it.
 
 Two values are withheld: `width: full` from the article blocks (`media`, `quote`) and `columns: 6` from every block but `logo-cloud`; the reference lists the values each block offers.
 
@@ -174,27 +176,27 @@ The measurement of 2026-10-23, in gzip bytes:
 
 ## Blocks
 
-| id               | Component                | `variant` (default first)         | Other options              | CSS (B gzip) | JS (B gzip) | Island                 |
-| ---------------- | ------------------------ | --------------------------------- | -------------------------- | ------------ | ----------- | ---------------------- |
-| `hero`           | `section.hero`           | `centered`, `split`, `full-bleed` | `layout`, `tone`, `height` | 737          | 1556        | No                     |
-| `feature-grid`   | `section.feature-grid`   | `grid`, `list`, `bento`           | `columns`, `density`       | 643          | 1350        | No                     |
-| `media-showcase` | `section.media-showcase` | `left`, `right`, `stacked`        | `ratio`                    | 214          | 1423        | No                     |
-| `stats`          | `section.stats`          | `row`, `cards`                    | `columns`, `align`, `tone` | 527          | 540         | No                     |
-| `logo-cloud`     | `section.logo-cloud`     | `row`, `marquee`                  | `columns`, `density`       | 497          | 1446        | No                     |
-| `testimonials`   | `section.testimonials`   | `single`, `grid`                  | `layout`, `density`        | 599          | 1482        | No                     |
-| `pricing`        | `section.pricing`        | `cards`, `table`                  | `columns`                  | 805          | 1186        | No                     |
-| `faq`            | `section.faq`            | `list`, `two-columns`             | `density`                  | 527          | 525         | No                     |
-| `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`  | 483          | 803         | No                     |
-| `post-list`      | `section.post-list`      | `cards`, `list`                   | `density`                  | 376          | 768         | No                     |
-| `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`            | 763          | 1822        | No                     |
-| `rich-text`      | `section.rich-text`      |                                   | `width`                    | 1940         | 226         | No                     |
-| `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`         | 425          | 1251        | No                     |
-| `scene`          | `section.scene`          | `background`, `inline`            | `height`                   | 601          | 1303        | `scene` (3d)           |
-| `prose`          | `shared.rich-text`       |                                   |                            | 1895         | 610         | No                     |
-| `quote`          | `shared.quote`           |                                   | `width`, `align`           | 293          | 259         | No                     |
-| `media`          | `shared.media`           |                                   | `width`, `ratio`           | 543          | 1400        | No                     |
-| `slider`         | `shared.slider`          |                                   | `ratio`                    | 1545         | 2615        | No                     |
-| `playground`     | `shared.playground`      |                                   | `height`                   | 633          | 1758        | `playground` (runtime) |
+| id               | Component                | `variant` (default first)         | Other options                         | CSS (B gzip) | JS (B gzip) | Island                 |
+| ---------------- | ------------------------ | --------------------------------- | ------------------------------------- | ------------ | ----------- | ---------------------- |
+| `hero`           | `section.hero`           | `centered`, `split`, `full-bleed` | `layout`, `align`, `tone`, `height`   | 737          | 1556        | No                     |
+| `feature-grid`   | `section.feature-grid`   | `grid`, `list`, `bento`           | `columns`, `density`, `align`, `tone` | 643          | 1350        | No                     |
+| `media-showcase` | `section.media-showcase` | `left`, `right`, `stacked`        | `align`, `tone`, `ratio`              | 214          | 1423        | No                     |
+| `stats`          | `section.stats`          | `row`, `cards`                    | `columns`, `align`, `tone`            | 527          | 540         | No                     |
+| `logo-cloud`     | `section.logo-cloud`     | `row`, `marquee`                  | `columns`, `density`, `align`, `tone` | 497          | 1446        | No                     |
+| `testimonials`   | `section.testimonials`   | `single`, `grid`                  | `layout`, `density`, `align`, `tone`  | 599          | 1482        | No                     |
+| `pricing`        | `section.pricing`        | `cards`, `table`                  | `columns`, `align`, `tone`            | 805          | 1186        | No                     |
+| `faq`            | `section.faq`            | `list`, `two-columns`             | `density`, `align`, `tone`            | 527          | 525         | No                     |
+| `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`             | 483          | 803         | No                     |
+| `post-list`      | `section.post-list`      | `cards`, `list`                   | `density`, `align`, `tone`            | 376          | 768         | No                     |
+| `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`                       | 763          | 1822        | No                     |
+| `rich-text`      | `section.rich-text`      |                                   | `width`, `align`, `tone`              | 1940         | 226         | No                     |
+| `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`, `align`, `tone`   | 425          | 1251        | No                     |
+| `scene`          | `section.scene`          | `background`, `inline`            | `align`, `tone`, `height`             | 601          | 1303        | `scene` (3d)           |
+| `prose`          | `shared.rich-text`       |                                   |                                       | 1895         | 610         | No                     |
+| `quote`          | `shared.quote`           |                                   | `width`, `align`                      | 293          | 259         | No                     |
+| `media`          | `shared.media`           |                                   | `width`, `ratio`                      | 543          | 1400        | No                     |
+| `slider`         | `shared.slider`          |                                   | `ratio`                               | 1545         | 2615        | No                     |
+| `playground`     | `shared.playground`      |                                   | `height`                              | 633          | 1758        | `playground` (runtime) |
 
 ### `hero`
 
@@ -202,6 +204,7 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Options:**
   - `variant`: `centered`, `split`, `full-bleed`; default `centered`
   - `layout`: `centered`, `split`, `stacked`; default `centered`
+  - `align`: `start`, `center`; default `start`
   - `tone`: `default`, `raised`, `accent`; default `default`
   - `height`: `s`, `m`, `l`, `full`; default `m`
 - **Cost:** 737 B of CSS and 1556 B of JS, gzip
@@ -223,6 +226,8 @@ The measurement of 2026-10-23, in gzip bytes:
   - `variant`: `grid`, `list`, `bento`; default `grid`
   - `columns`: `2`, `3`, `4`; default `3`
   - `density`: `comfortable`, `compact`; default `comfortable`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 643 B of CSS and 1350 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
@@ -238,6 +243,8 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Component:** `section.media-showcase` (page sections)
 - **Options:**
   - `variant`: `left`, `right`, `stacked`; default `left`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
   - `ratio`: `16:9`, `4:3`, `1:1`, `auto`; default `16:9`
 - **Cost:** 214 B of CSS and 1423 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript, and a video shows its native controls.
@@ -274,6 +281,8 @@ The measurement of 2026-10-23, in gzip bytes:
   - `variant`: `row`, `marquee`; default `row`
   - `columns`: `2`, `3`, `4`, `6`; default `3`
   - `density`: `comfortable`, `compact`; default `comfortable`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 497 B of CSS and 1446 B of JS, gzip
 - **Static:** Itself: the marquee is CSS only, and it stops under reduced motion and when a logo is a link.
 
@@ -290,6 +299,8 @@ The measurement of 2026-10-23, in gzip bytes:
   - `variant`: `single`, `grid`; default `single`
   - `layout`: `centered`, `split`, `stacked`; default `centered`
   - `density`: `comfortable`, `compact`; default `comfortable`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 599 B of CSS and 1482 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
@@ -305,6 +316,8 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Options:**
   - `variant`: `cards`, `table`; default `cards`
   - `columns`: `2`, `3`, `4`; default `3`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 805 B of CSS and 1186 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
@@ -321,6 +334,8 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Options:**
   - `variant`: `list`, `two-columns`; default `list`
   - `density`: `comfortable`, `compact`; default `comfortable`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 527 B of CSS and 525 B of JS, gzip
 - **Static:** Itself: the answers open and close with the native `<details>` element.
 
@@ -355,6 +370,8 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Options:**
   - `variant`: `cards`, `list`; default `cards`
   - `density`: `comfortable`, `compact`; default `comfortable`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 376 B of CSS and 768 B of JS, gzip
 - **Static:** Itself: the posts are rendered with the page.
 
@@ -389,6 +406,8 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Component:** `section.rich-text` (page sections)
 - **Options:**
   - `width`: `prose`, `wide`, `full`; default `prose`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 1940 B of CSS and 226 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
@@ -404,6 +423,8 @@ The measurement of 2026-10-23, in gzip bytes:
   - `variant`: `grid`, `masonry`; default `grid`
   - `width`: `prose`, `wide`, `full`; default `prose`
   - `density`: `comfortable`, `compact`; default `comfortable`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 425 B of CSS and 1251 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
@@ -418,6 +439,8 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Component:** `section.scene` (page sections)
 - **Options:**
   - `variant`: `background`, `inline`; default `background`
+  - `align`: `start`, `center`; default `start`
+  - `tone`: `default`, `raised`, `accent`; default `default`
   - `height`: `s`, `m`, `l`, `full`; default `m`
 - **Cost:** 601 B of CSS and 1303 B of JS, gzip; the `scene` island (budget `scene`) loads 154900 B of JS, gzip, once used
 - **Island:** `3d`; loads 151.3 kB once used, when it scrolls into view

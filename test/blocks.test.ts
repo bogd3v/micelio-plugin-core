@@ -101,6 +101,21 @@ describe('the block catalogue', () => {
     expect(BLOCKS.filter((block) => block.module).map((block) => block.id)).toEqual(['newsletter'])
   })
 
+  it("every page section offers tone and align with the vocabulary's defaults", () => {
+    const sections = BLOCKS.filter((block) => block.group === 'section')
+    expect(sections.map((block) => block.id)).toEqual(CATALOGUE.slice(0, 14).map(([id]) => id))
+    for (const block of sections) {
+      expect(block.options.tone, `${block.id}.tone`).toEqual({
+        values: ['default', 'raised', 'accent'],
+        default: 'default',
+      })
+      expect(block.options.align, `${block.id}.align`).toEqual({
+        values: ['start', 'center'],
+        default: 'start',
+      })
+    }
+  })
+
   it.each(CATALOGUE)('%s offers the variants of the ADR, default first', (id, _, variants) => {
     const variant = blockOf(id).options.variant
     expect(variant?.values ?? []).toEqual(variants)

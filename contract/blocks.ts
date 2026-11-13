@@ -211,7 +211,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('centered', 'split', 'full-bleed'),
-      ...presentation('hero', 'section', 'layout', 'tone', 'height'),
+      ...presentation('hero', 'section', 'layout', 'align', 'tone', 'height'),
     },
     cost: { css: 737, js: 1556, island: null },
     static: ITSELF,
@@ -227,7 +227,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('grid', 'list', 'bento'),
-      ...presentation('feature-grid', 'section', 'columns', 'density'),
+      ...presentation('feature-grid', 'section', 'columns', 'density', 'align', 'tone'),
     },
     cost: { css: 643, js: 1350, island: null },
     static: ITSELF,
@@ -244,7 +244,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('left', 'right', 'stacked'),
-      ...presentation('media-showcase', 'section', 'ratio'),
+      ...presentation('media-showcase', 'section', 'align', 'tone', 'ratio'),
     },
     cost: { css: 214, js: 1423, island: null },
     static: 'Itself: the block needs no JavaScript, and a video shows its native controls.',
@@ -274,7 +274,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('row', 'marquee'),
-      ...presentation('logo-cloud', 'section', 'columns', 'density'),
+      ...presentation('logo-cloud', 'section', 'columns', 'density', 'align', 'tone'),
     },
     cost: { css: 497, js: 1446, island: null },
     static:
@@ -290,7 +290,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('single', 'grid'),
-      ...presentation('testimonials', 'section', 'layout', 'density'),
+      ...presentation('testimonials', 'section', 'layout', 'density', 'align', 'tone'),
     },
     cost: { css: 599, js: 1482, island: null },
     static: ITSELF,
@@ -306,7 +306,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('cards', 'table'),
-      ...presentation('pricing', 'section', 'columns'),
+      ...presentation('pricing', 'section', 'columns', 'align', 'tone'),
     },
     cost: { css: 805, js: 1186, island: null },
     static: ITSELF,
@@ -321,7 +321,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('list', 'two-columns'),
-      ...presentation('faq', 'section', 'density'),
+      ...presentation('faq', 'section', 'density', 'align', 'tone'),
     },
     cost: { css: 527, js: 525, island: null },
     static: 'Itself: the answers open and close with the native `<details>` element.',
@@ -355,7 +355,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('cards', 'list'),
-      ...presentation('post-list', 'section', 'density'),
+      ...presentation('post-list', 'section', 'density', 'align', 'tone'),
     },
     cost: { css: 376, js: 768, island: null },
     static: 'Itself: the posts are rendered with the page.',
@@ -387,7 +387,7 @@ export const BLOCKS: readonly Block[] = [
       blockId: BLOCK_ID,
       body: richtext({ required: true }),
     }),
-    options: { ...presentation('rich-text', 'section', 'width') },
+    options: { ...presentation('rich-text', 'section', 'width', 'align', 'tone') },
     cost: { css: 1940, js: 226, island: null },
     static: ITSELF,
   },
@@ -401,7 +401,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('grid', 'masonry'),
-      ...presentation('gallery', 'section', 'width', 'density'),
+      ...presentation('gallery', 'section', 'width', 'density', 'align', 'tone'),
     },
     cost: { css: 425, js: 1251, island: null },
     static: ITSELF,
@@ -419,7 +419,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('background', 'inline'),
-      ...presentation('scene', 'section', 'height'),
+      ...presentation('scene', 'section', 'align', 'tone', 'height'),
     },
     cost: {
       css: 601,
