@@ -27,6 +27,12 @@ export default (): Core.RouterInput => ({
     },
     {
       method: 'GET',
+      path: '/icons',
+      handler: 'icons.find',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
       path: '/block-settings/sites',
       handler: 'blockSettings.sites',
       config: { policies: ['admin::isAuthenticatedAdmin'] },

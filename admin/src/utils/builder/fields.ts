@@ -1,3 +1,5 @@
+import { ICON_FIELD } from '../icons'
+
 /** An attribute of a component as the Content Manager's API describes it (`/content-manager/components`). */
 export interface ComponentAttribute {
   type: string
@@ -10,6 +12,8 @@ export interface ComponentAttribute {
   multiple?: boolean
   /** A media attribute: `images`, `videos`, `audios` and `files`; empty for any. */
   allowedTypes?: string[]
+  /** A custom field: the UID of the field (`plugin::micelio.icon`). */
+  customField?: string
 }
 
 /** A component's schema, reduced to what the panel reads. */
@@ -49,12 +53,20 @@ export interface MediaField {
   required: boolean
 }
 
+/** A field `micelio.icon` of the panel: the picker edits it. */
+export interface IconField {
+  name: string
+  required: boolean
+}
+
 /** What the panel shows for a block. */
 export interface BlockFields {
   options: OptionField[]
   text: TextField[]
   /** The media attributes; absent for a component that has none. */
   media?: MediaField[]
+  /** The fields `micelio.icon`; absent for a component that has none. */
+  icons?: IconField[]
   items: ItemsField[]
 }
 
@@ -93,9 +105,12 @@ export function fieldsOf(
 ): BlockFields {
   const fields: BlockFields = { options: [], text: [], items: [] }
   const media: MediaField[] = []
+  const icons: IconField[] = []
   for (const [name, attribute] of Object.entries(schema?.attributes ?? {})) {
     if (HIDDEN_FIELDS.has(name)) continue
-    if (attribute.type === 'enumeration') {
+    if (attribute.customField === ICON_FIELD) {
+      icons.push({ name, required: attribute.required === true })
+    } else if (attribute.type === 'enumeration') {
       const offered = exposed[name]
       if (!offered) continue
       const values = offered.filter((value) => attribute.enum?.includes(value))
@@ -122,6 +137,7 @@ export function fieldsOf(
     }
   }
   if (media.length > 0) fields.media = media
+  if (icons.length > 0) fields.icons = icons
   return fields
 }
 
@@ -149,12 +165,20 @@ export function missingRequired(
       ({ name, required }) => required && !skip.includes(name) && filesOf(values, name).length === 0
     )
     .map(({ name }) => name)
+  const icons = (fields.icons ?? [])
+    .filter(
+      ({ name, required }) =>
+        required &&
+        !skip.includes(name) &&
+        !(typeof values[name] === 'string' && values[name] !== '')
+    )
+    .map(({ name }) => name)
   const items = fields.items
     .filter(
       ({ name, required }) => required && !skip.includes(name) && itemsOf(values, name).length === 0
     )
     .map(({ name }) => name)
-  return [...text, ...media, ...items]
+  return [...text, ...media, ...icons, ...items]
 }
 
 /**

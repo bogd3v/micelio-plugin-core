@@ -7,10 +7,12 @@ import {
   itemsOf,
   missingRequired,
   type BlockFields,
+  type IconField,
   type TextField,
 } from '../../utils/builder/fields'
 import type { BuilderBlock } from '../../utils/builder/model'
 import { weightText, type IslandInfo } from '../../utils/builder/islands'
+import { IconPicker } from '../IconPicker'
 import { Segment, Tool } from './controls'
 import { fieldLabel, Input, labelStyle } from './fieldStyle'
 import { MediaInputs } from './MediaInputs'
@@ -164,6 +166,8 @@ interface BlockPanelProps {
   samples?: ReadonlySet<string>
   /** The page's template fixed the block: it can be edited but not moved or removed. */
   isFixed?: boolean
+  /** The slug of the page's site: the icon picker shows the glyphs that site resolves. */
+  site?: string
   /**
    * The run of a Playground block in the preview: where it stands, and how to start one. A page
    * with no frame (the template editor) passes `canRun: false`.
@@ -272,13 +276,46 @@ function TextInputs(props: {
   )
 }
 
+/** The fields `micelio.icon` of a block or an item: the picker, with the field's label. */
+function IconInputs(props: {
+  fields: IconField[]
+  values: Record<string, unknown>
+  onChange: (name: string, value: string | null) => void
+  isReadOnly: boolean
+  site?: string
+  missing: string[]
+  idPrefix: string
+}) {
+  const { t } = useMessages()
+  return (
+    <>
+      {props.fields.map((field) => {
+        const stored = props.values[field.name]
+        return (
+          <IconPicker
+            key={field.name}
+            id={`${props.idPrefix}-${field.name}`}
+            label={fieldLabel(field.name, t)}
+            value={typeof stored === 'string' && stored !== '' ? stored : null}
+            site={props.site}
+            required={field.required}
+            disabled={props.isReadOnly}
+            error={props.missing.includes(field.name) ? t('builder.panel.required') : undefined}
+            onChange={(value) => props.onChange(field.name, value)}
+          />
+        )
+      })}
+    </>
+  )
+}
+
 /**
  * The panel of the selected block (the Builder artboard): its presentation options from the
  * vocabulary, its text fields, its items one level down, and what it adds to the page.
  *
  * @remarks
  * It edits what the host's component stores and nothing it cannot show as text, as a choice or as
- * files (`MediaInputs`): relations stay in the Content Manager's form. A required field that is empty is
+ * files (`MediaInputs`) or as an icon (`IconInputs`, the picker): relations stay in the Content Manager's form. A required field that is empty is
  * marked, and the save still goes through (a draft may be incomplete; review and publish check).
  */
 export function BlockPanel(props: BlockPanelProps) {
@@ -402,6 +439,15 @@ export function BlockPanel(props: BlockPanelProps) {
                 props.onSetItem(item.field, item.index, { [name]: value }, isStep)
               }
             />
+            <IconInputs
+              fields={currentFields.icons ?? []}
+              values={current ?? {}}
+              idPrefix={`${id}-item`}
+              isReadOnly={props.isReadOnly}
+              site={props.site}
+              missing={missing}
+              onChange={(name, value) => props.onSetItem(item.field, item.index, { [name]: value })}
+            />
           </>
         ) : (
           <>
@@ -440,7 +486,7 @@ export function BlockPanel(props: BlockPanelProps) {
                 </Typography>
               </>
             ) : null}
-            {fields.text.length > 0 || fields.items.length > 0 || fields.media ? (
+            {fields.text.length > 0 || fields.items.length > 0 || fields.media || fields.icons ? (
               <Heading>{t('builder.panel.content')}</Heading>
             ) : null}
             <TextInputs
@@ -464,6 +510,15 @@ export function BlockPanel(props: BlockPanelProps) {
               missing={missing}
               alternative={props.island?.alternative}
               onChange={(name, value, isStep) => props.onSetFields({ [name]: value }, isStep)}
+            />
+            <IconInputs
+              fields={fields.icons ?? []}
+              values={block.fields}
+              idPrefix={`${id}-field`}
+              isReadOnly={props.isReadOnly}
+              site={props.site}
+              missing={missing}
+              onChange={(name, value) => props.onSetFields({ [name]: value })}
             />
             {fields.items.map((group) => {
               const list = itemsOf(block.fields, group.name)

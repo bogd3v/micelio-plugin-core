@@ -644,6 +644,37 @@ stack's `page` is site-scoped and holds every block, so it shows what the page d
 11. Set the language of your profile to Español and reload: the page, the drawer and the counts
     are in Spanish.
 
+## Try the icon field
+
+The custom field `micelio.icon` ([docs/guide/icons.md](../guide/icons.md)) is on the stack's **Note**
+(`docker/cms/src/api/note/`). The image holds `@micelio/icons`, with its glyphs built, so a change to
+`packages/icons/` needs a new image: `npm run dev:docker -- down`, then `npm run dev:docker`.
+
+1. Create the first admin, as above. In Content Manager → Note, create a note: the **icon** field is
+   a dashed row with **Choose an icon** (an optional icon left empty renders nothing).
+2. Select the row: a dialog opens under it with the search focused, the chips (**All**, five
+   categories, **More**), a list of glyphs six to a row, and a footer that reads
+   _5,233 of 5,233_ and _Tabler 3.51.0_ (the list shows the first 120; **Show more icons** adds more).
+3. Type `rayo`: _Bolt_ is in the list though the admin is in English (the Spanish label is searched
+   too). Type `thunder` (one of Tabler's tags): the same glyph. Pick it with the mouse. The field
+   shows the glyph, **Bolt** and `bolt`. **Save**, reload: it is still there.
+4. Press `Enter` on the field: the dialog opens on the search. `↓` enters the list, the arrows move
+   (`↑` from the first row returns to the search), `Enter` picks, `Esc` closes and keeps the old
+   icon, with the focus back on the row.
+5. Press **Remove the icon** (the × in the row) and **Save**: the field is the dashed row again and
+   the entry stores `null`.
+6. Set the language of your profile to Español and reload: the field, the dialog and the count
+   (_5.233 de 5.233_) are in Spanish. `rayo` finds _Rayo_; a name with no Spanish label, such as
+   `abacus`, shows and matches its English label.
+7. Send a value that is not in the catalogue. Create a **Full access** token in Settings → API
+   Tokens, and with the `documentId` of the default site:
+   `curl -s -X POST 'localhost:1337/api/notes' -H "Authorization: Bearer <token>" -H 'Content-Type: application/json' -d '{"data":{"title":"x","icon":"not-an-icon","site":"<documentId>"}}'` answers `400` with
+   `application/problem+json`, `"code":"iconInvalid"` and `"field":"icon"`. With `"icon":"bolt"` it
+   is `201`.
+8. The route the picker reads: `curl -s 'localhost:1337/micelio/icons?site=default&q=rayo&locale=es' -H "Authorization: Bearer <admin jwt>"`
+   answers the entry `bolt` with `"label":"Rayo"` and `"source":"core"`; an unknown `site` is `404`
+   `unknownSite`. The admin's own token is the one the browser sends (the **Network** tab shows it).
+
 ## Try export and import
 
 The plugin's **Export and import** and **About Micelio** pages, in the admin at `http://localhost:1337/admin/plugins/micelio/_export-import` and `.../about`.

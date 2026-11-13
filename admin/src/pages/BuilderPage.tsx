@@ -640,6 +640,7 @@ function Builder() {
                 island={islandOf(selectedEntry)}
                 samples={samples}
                 isFixed={lockedKeys.has(selectedBlock.key)}
+                site={doc?.site}
                 run={{
                   phase: playgroundRun.phaseOf(selectedBlock.key),
                   canRun: playgroundRun.canRun,

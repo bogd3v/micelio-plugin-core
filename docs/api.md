@@ -184,6 +184,20 @@ an import. A Scene that sets no `variant` takes its default, `background`, and i
 problem detail where the route has the `site-scope` middleware and Strapi's `ValidationError` (the
 code in `error.details`) where it has not.
 
+A save whose field `micelio.icon` (the custom field `plugin::micelio.icon`, a string) holds a value that is neither a pinned name of the icon catalogue (`contract/icons.ts`) nor one of its aliases answers `400` with the code `iconInvalid`, naming the `field` and its `path` from the root of the data; it writes nothing. `null` is the empty state and is accepted; an empty string, a number or an unknown name is refused. An alias is accepted and stored as written. It is checked on `create`, `update` and `clone`, in the type's own fields, in its components and in the blocks of its dynamic zones, and only for what the save writes. Like `blockOptionInvalid`, it is the problem detail where the route has the `site-scope` middleware and Strapi's `ValidationError` (the code in `error.details`) where it has not:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "The field sections.1.icon holds \"flash-light\", which is not a name of the icon catalogue",
+  "code": "iconInvalid",
+  "field": "icon",
+  "path": "sections.1.icon"
+}
+```
+
 ## Sites
 
 - `hosts` is a list of host names, stored in lower case: no scheme, port or path. Two sites cannot share a host name.
@@ -618,6 +632,45 @@ holds it keeps saving and rendering, and only adding another is refused. A page 
 are checked against that site's settings. Moving a page to another page type is not checked: only
 the blocks a save adds are. The page type is the page's `pageType` when the budgets list it, else
 `standard` (`docs/operate/budgets.md`), after the save.
+
+## Icons
+
+`GET /micelio/icons` is an admin API route, for the icon picker of the admin ([docs/guide/icons.md](guide/icons.md)) and for any tool that shows the catalogue. It needs any admin user. It answers the sprite entries a site resolves: for each name of the pinned set the glyph its active theme redraws, else the core's drawing (ADR-0021, section 5). No theme redraws a glyph in step 1, so every entry is the core's (`source: "core"`).
+
+| Query      | Meaning                                                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `site`     | The slug of a site; an unknown one answers `404` with the code `unknownSite`. Without it the entries are the core's own.             |
+| `q`        | Words to find: every word must be in the name, a label (English or Spanish), the category (either language) or an alias. Best first. |
+| `name`     | One name, or an alias, resolved: the entry a stored value shows.                                                                     |
+| `category` | One category, by its English name.                                                                                                   |
+| `locale`   | `es` for the Spanish labels, else `en`. The search matches both languages; a name with no Spanish label answers its English one.     |
+| `limit`    | At most this many entries: 120 by default, 500 at most.                                                                              |
+| `offset`   | Matches to skip.                                                                                                                     |
+
+```json
+{
+  "data": {
+    "set": "tabler",
+    "version": "3.51.0",
+    "total": 5233,
+    "count": 1,
+    "categories": [{ "name": "Design", "label": "Diseño" }],
+    "entries": [
+      {
+        "name": "bolt",
+        "label": "Rayo",
+        "category": "Design",
+        "aliases": ["lightning", "flash"],
+        "filled": true,
+        "source": "core",
+        "glyph": "<svg …>…</svg>"
+      }
+    ]
+  }
+}
+```
+
+`total` is every name of the catalogue and `count` the names the query matches, whatever `limit` is. `glyph` is the normalised SVG of [`@micelio/icons`](icons.md#a-glyph), drawn with `currentColor`. The answer is `Cache-Control: private, no-store`.
 
 ## Status
 

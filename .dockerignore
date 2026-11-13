@@ -3,3 +3,9 @@
 !package-lock.json
 !docker
 !docker/cms
+# `@micelio/icons`, which the plugin reads the icon catalogue from: built into the image, glyphs included.
+!packages/icons
+packages/icons/glyphs
+packages/icons/dist
+packages/icons/node_modules
+!LICENSES

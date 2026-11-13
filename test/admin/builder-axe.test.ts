@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Page } from 'playwright'
 import {
   BROCHURE_UID,
+  EMBLEM_UID,
   LANDING_UID,
   eventually,
   shown,
@@ -142,6 +143,41 @@ describe('the builder is accessible', () => {
       }
     } finally {
       session.site.run = { kind: 'answer' }
+    }
+    expect(found).toEqual({})
+  })
+
+  it('axe finds 0 violations with the icon picker closed, empty and open', async () => {
+    const found: Record<string, unknown[]> = {}
+    for (const theme of ['light', 'dark'] as const) {
+      const check = async (state: string, page: Page) => {
+        const violations = await violationsOf(page)
+        if (violations.length > 0) found[`${theme}: ${state}`] = violations
+      }
+      const documentId = await session.seed(
+        EMBLEM_UID,
+        [{ __component: 'fixture.icon-card', title: 'Card', icon: 'bolt' }],
+        'Icons'
+      )
+      const page = await session.open(EMBLEM_UID, documentId, theme === 'dark' ? { theme } : {})
+      await page.locator('[data-block-key]').first().click()
+      await page.getByRole('button', { name: /Bolt/ }).waitFor()
+      await check('icon picked', page)
+      await page.getByRole('button', { name: 'Remove the icon' }).click()
+      await page.getByRole('button', { name: /Choose an icon/ }).waitFor()
+      await check('icon none', page)
+      await page.getByRole('button', { name: /Choose an icon/ }).click()
+      const dialog = page.getByRole('dialog', { name: 'Choose an icon' })
+      await dialog.getByRole('option', { name: 'Abacus', exact: true }).waitFor()
+      await check('picker open', page)
+      await dialog.getByRole('button', { name: 'More', exact: true }).click()
+      await dialog.getByRole('searchbox').fill('rayo')
+      await dialog.getByRole('option', { name: 'Bolt', exact: true }).waitFor()
+      await page.keyboard.press('ArrowDown')
+      await check('picker with a search, a glyph focused and every category shown', page)
+      await dialog.getByRole('option', { name: 'Bolt', exact: true }).click()
+      await dialog.waitFor({ state: 'detached' })
+      await check('icon picked again', page)
     }
     expect(found).toEqual({})
   })

@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_fixture_icon_cards",
+  "info": {
+    "displayName": "Icon card",
+    "icon": "star",
+    "description": "A title and an icon of the catalogue, for the suites of the `micelio.icon` field"
+  },
+  "options": {},
+  "attributes": {
+    "blockId": { "type": "string" },
+    "title": { "type": "string" },
+    "icon": { "type": "customField", "customField": "plugin::micelio.icon" }
+  }
+}

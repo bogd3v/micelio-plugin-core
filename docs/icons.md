@@ -1,6 +1,6 @@
 # Icons
 
-An icon is a **name** of one set, [Tabler Icons](https://tabler.io/icons), at the version the block contract pins (ADR-0021 of `micelio`). A block stores `map-pin`, never a file. This page is how the set is pinned, raised and aliased, and how a Spanish label is added. What a theme may redraw, the sprite and the picker are other issues of the same plan.
+An icon is a **name** of one set, [Tabler Icons](https://tabler.io/icons), at the version the block contract pins (ADR-0021 of `micelio`). A block stores `map-pin`, never a file. This page is how the set is pinned, raised and aliased, and how a Spanish label is added. What a theme may redraw and the sprite are other issues of the same plan; the field and the picker that store and choose a name are [the custom field `micelio.icon`](#the-custom-field).
 
 ## What lives where
 
@@ -25,7 +25,15 @@ An icon is a **name** of one set, [Tabler Icons](https://tabler.io/icons), at th
 
 ## The index and the search
 
-`index.json` lists every name with its English label (the name in sentence case: `map-pin` is `Map pin`), Tabler's category, its aliases (Tabler's tags, and the names it replaced) and whether a filled glyph exists. The core bundles the index, not the glyphs. `searchIcons` matches every word of a query against the name, both labels, both category names and the aliases, ignoring case and accents; an exact name comes first.
+`index.json` lists every name with its English label (the name in sentence case: `map-pin` is `Map pin`), Tabler's category, its aliases (Tabler's tags, and the names it replaced) and whether a filled glyph exists. The core reads the index, the Spanish labels and the glyphs from `@micelio/icons` at run time (a dependency of the plugin). `searchIcons` matches every word of a query against the name, both labels, both category names and the aliases, ignoring case and accents; an exact name comes first.
+
+## The custom field
+
+The plugin registers the custom field `micelio.icon` (`plugin::micelio.icon`, a string) on the server (`server/src/icons/register.ts`) and in the admin (`admin/src/index.ts`, the input is `admin/src/components/IconField.tsx`). A host or a distribution puts it in a schema as `{ "type": "customField", "customField": "plugin::micelio.icon" }`, in a type, a component or a block. The editor's side is [Picking an icon](guide/icons.md).
+
+- **What it stores**: the name as the editor picked it, or `null` for none. It is never rewritten: an alias stays stored as it is and renders the glyph it points to.
+- **The check at save**: the document service middleware `server/src/icons/documents.ts` refuses, on `create`, `update` and `clone`, a value that is not a name of `contract/icons.ts` or one of its aliases (`iconInvalid`, `docs/api.md`, "Errors"). The names it checks against are `strapi.plugin('micelio').service('icons').catalogue`, a copy of the pin.
+- **The route**: `GET /micelio/icons?site=` (`docs/api.md`, "Icons") answers the entries of the sprite a site resolves, read from `@micelio/icons` (the plugin depends on it: `index.json`, the Spanish labels and the glyphs). `sourceOf` in `server/src/icons/read.ts` is where a theme's own glyph will win over the core's in step 2; in step 1 every entry is the core's.
 
 ## Pin, raise, alias
 
@@ -38,7 +46,7 @@ An icon is a **name** of one set, [Tabler Icons](https://tabler.io/icons), at th
 
 ## Releasing the package
 
-The Release workflow publishes the plugin only: `.github/workflows/release.yml` lists no workspace, because the reusable workflow of `micelio-engineering` fails on a version that is already on npm, which would stop every plugin release after the first. So `@micelio/icons` is published by the maintainer, by hand, whenever its `version` is raised (the first time, `0.1.0`): from a clean checkout of `main`, `npm ci`, then `npm publish -w @micelio/icons --access public --provenance=false` (`prepack` builds the glyphs, `NOTICE` and `LICENSES/`). The package's `publishConfig` asks for provenance, which npm signs only from a CI run, so a hand publish has none and says so in its release notes. Its SBOM is made by hand too, the way the Release workflow makes the plugin's: `npm sbom --sbom-format spdx -w @micelio/icons > sbom-icons.spdx.json`, attached to a GitHub release of its own, tagged `icons-v<version>` so that it never collides with the plugin's `v<version>` tags (`gh release create icons-v0.1.0 sbom-icons.spdx.json --target main --title "@micelio/icons 0.1.0" --notes "Published by hand: no provenance."`, from the commit that was published; "Releases" in `README.md` describes the plugin's, which the workflow attaches). Provenance and the SBOM come back with the follow-up. Making the reusable workflow skip a workspace version already published is a follow-up in `micelio-engineering`.
+The Release workflow publishes the plugin only: `.github/workflows/release.yml` lists no workspace, because the reusable workflow of `micelio-engineering` fails on a version that is already on npm, which would stop every plugin release after the first. So `@micelio/icons` is published by the maintainer, by hand, whenever its `version` is raised (the first time, `0.1.0`): from a clean checkout of `main`, `npm ci`, then `npm publish -w @micelio/icons --access public --provenance=false` (`prepack` builds the glyphs, `NOTICE` and `LICENSES/`). The package's `publishConfig` asks for provenance, which npm signs only from a CI run, so a hand publish has none and says so in its release notes. Its SBOM is made by hand too, the way the Release workflow makes the plugin's: `npm sbom --sbom-format spdx -w @micelio/icons > sbom-icons.spdx.json`, attached to a GitHub release of its own, tagged `icons-v<version>` so that it never collides with the plugin's `v<version>` tags (`gh release create icons-v0.1.0 sbom-icons.spdx.json --target main --title "@micelio/icons 0.1.0" --notes "Published by hand: no provenance."`, from the commit that was published; "Releases" in `README.md` describes the plugin's, which the workflow attaches). Provenance and the SBOM come back with the follow-up. **Order.** The plugin depends on `@micelio/icons` at run time, so `@micelio/icons@<version>` is published before the plugin release whose `dependencies` name it: a plugin published first cannot be installed. npm's staged publishing holds a first publish until the maintainer approves it on npmjs.com (a placeholder `0.0.0-stage` appears meanwhile); wait for the approval and check `npm view @micelio/icons version` before tagging the plugin. Making the reusable workflow skip a workspace version already published is a follow-up in `micelio-engineering`.
 
 ## A Spanish label
 

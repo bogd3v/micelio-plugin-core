@@ -7,6 +7,8 @@ import { documentVersionDocuments } from './document-version/documents'
 import { editorialGuard } from './editorial/guard'
 import { siteSectionInstances } from './extensions/site-sections'
 import { hooksOf } from './hooks'
+import { iconDocuments } from './icons/documents'
+import { registerIconField } from './icons/register'
 import { renameLegacyUids } from './migrations/rename-legacy-uids'
 import { templateFixedDocuments } from './page-templates/documents'
 import { redirectDocuments } from './page-settings/documents'
@@ -20,6 +22,7 @@ import { siteRules } from './sites/rules'
 /** Register phase: runs before the database is ready. */
 const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   registerComponents(strapi)
+  registerIconField(strapi)
   registerPreviewShortcut(strapi)
   liftSeoLimits(strapi)
   // Before any plugin bootstraps: users-permissions deletes the permissions of an action that no
@@ -40,6 +43,7 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   strapi.documents.use(blockOptionsDocuments(strapi))
   strapi.documents.use(blockIdsDocuments(strapi))
   strapi.documents.use(blockSettingsDocuments(strapi))
+  strapi.documents.use(iconDocuments(strapi))
   strapi.documents.use(templateFixedDocuments(strapi))
   strapi.documents.use(redirectDocuments(strapi))
   strapi.documents.use(seoDocuments(strapi))

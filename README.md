@@ -28,7 +28,8 @@ social tab ([docs/guide/seo.md](docs/guide/seo.md)); islands and the presentatio
 blocks ([docs/blocks.md](docs/blocks.md)); the Sites, Export and import and About pages
 ([docs/operate/transfer-page.md](docs/operate/transfer-page.md),
 [docs/operate/about-page.md](docs/operate/about-page.md)); and the carbon estimate beside the cost
-meter ([docs/operate/budgets.md](docs/operate/budgets.md)). The other capabilities arrive with the
+meter ([docs/operate/budgets.md](docs/operate/budgets.md)). In the release after `0.4.0` it adds the custom field
+`micelio.icon` and its picker ([docs/guide/icons.md](docs/guide/icons.md)). The other capabilities arrive with the
 issues of the first milestone. Until then, install nothing from it on a site.
 
 This repository is an npm workspace: it also holds `@micelio/icons` (`packages/icons/`), the Tabler
@@ -79,7 +80,7 @@ module.exports = {
 
 ## Releases
 
-The Release workflow (`.github/workflows/release.yml`) is started by the maintainer from the Actions tab. It defaults to a dry run that prints the version and the notes and names the package it would publish (`@micelio/strapi-plugin-core`), and changes nothing. A pull request title with a conventional prefix decides the version (section 7 of the standard). Publishing needs a `release` environment (Settings → Environments) with the maintainer as required reviewer and deployments limited to `main`, which gate the publish job, and the `NPM_TOKEN` secret of an npm account that can publish under `@micelio`. `NPM_TOKEN` is a secret of the `release` environment, not a repository secret: only the publish job runs in that environment, after the approval, and fails before it publishes anything if the token is not set; the plan job never reads it, so a dry run works without it. A repository secret of the same name keeps working, but every workflow of the repository can read it. Set it with `gh secret set NPM_TOKEN --env release -R bogd3v/micelio-plugin-core`.
+The Release workflow (`.github/workflows/release.yml`) is started by the maintainer from the Actions tab. It defaults to a dry run that prints the version and the notes and names the package it would publish (`@micelio/strapi-plugin-core`), and changes nothing. A pull request title with a conventional prefix decides the version (section 7 of the standard). Publishing needs a `release` environment (Settings → Environments) with the maintainer as required reviewer and deployments limited to `main`, which gate the publish job, and the `NPM_TOKEN` secret of an npm account that can publish under `@micelio`. `NPM_TOKEN` is a secret of the `release` environment, not a repository secret: only the publish job runs in that environment, after the approval, and fails before it publishes anything if the token is not set; the plan job never reads it, so a dry run works without it. A repository secret of the same name keeps working, but every workflow of the repository can read it. Set it with `gh secret set NPM_TOKEN --env release -R bogd3v/micelio-plugin-core`. The plugin depends on `@micelio/icons` at run time, which this workflow does not publish: `@micelio/icons@<version>` is published, by hand, before the plugin release whose `dependencies` name it ([docs/icons.md](docs/icons.md), "Releasing the package").
 
 The first release is `v0.1.0`, the `version` in `package.json`: with no earlier tag there is no bump, so no `chore(release)` pull request comes before it. To cut it:
 

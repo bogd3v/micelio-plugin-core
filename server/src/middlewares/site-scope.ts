@@ -2,7 +2,9 @@ import type { Core } from '@strapi/strapi'
 import { BlockOptionError, BLOCK_OPTION_INVALID } from '../block-options/error'
 import { BlockNotAllowedError } from '../block-settings/error'
 import { BLOCK_NOT_ALLOWED, SCENE_BACKGROUND_LIMIT_CODE } from '../constants/blocks'
+import { ICON_INVALID } from '../constants/icons'
 import { SITE_UID } from '../constants/site'
+import { IconInvalidError } from '../icons/error'
 import type { SiteScopeState } from '../site-scope'
 import { SceneBackgroundLimitError } from '../islands/error'
 import { TEMPLATE_CODES } from '../constants/page-templates'
@@ -21,7 +23,8 @@ const BLOCK_OPTION_STATUS = 400
  * default one. The parameter is removed before Strapi validates the query. A slug that no site
  * has answers a problem detail with the code `unknownSite`. A save the catalogue refuses for an
  * option a block does not allow answers `blockOptionInvalid`, naming the block, the option and the
- * values it allows, and one that adds a block the site disabled or does not allow on the page's type
+ * values it allows, a value of a `micelio.icon` field that is not a name of the icon catalogue
+ * answers `iconInvalid`, naming the field and its path, and one that adds a block the site disabled or does not allow on the page's type
  * answers `blockNotAllowed`, naming the block and why (the module, when the site has off the one the block needs). A zone with more background Scenes than a
  * page may hold answers `sceneBackgroundLimit`, naming the block, the count and the limit.
  */
@@ -61,6 +64,19 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
           reason,
           ...(pageType === undefined ? {} : { pageType }),
           ...(module === undefined ? {} : { module }),
+        })
+        return
+      }
+      if (error instanceof IconInvalidError) {
+        const { field, path } = error.violation
+        sendProblem(ctx, {
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: BLOCK_OPTION_STATUS,
+          detail: error.message,
+          code: ICON_INVALID,
+          field,
+          path,
         })
         return
       }
