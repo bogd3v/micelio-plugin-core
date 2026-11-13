@@ -39,7 +39,8 @@ at `register` (`liftSeoLimits`): Strapi enforces it on a draft too, and the coun
 hold a save. `documents.ts` is the document service middleware on `create` and `update` of a page
 type with page settings and a `seo` component: it fills the empty fields from the page
 (`read.ts` reads the draft with the media of each block populated) and adds the `id` of the
-stored component to the data, so the fields a write does not name are kept, and refuses structured
+stored component to the data, so the fields a write does not name are kept (it creates no component
+when the host requires the description and none can be derived), and refuses structured
 data that is not JSON-LD (`structuredDataInvalid`). `check.ts` is what `performTransition` runs
 on a move out of `draft` (`seoInvalid`, and the warning `descriptionRepeatsTitle`).
 
