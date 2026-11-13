@@ -82,6 +82,17 @@
             { "type": "null" }
           ]
         },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
         "tone": {
           "anyOf": [
             {
@@ -197,6 +208,28 @@
             },
             { "type": "null" }
           ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -251,6 +284,28 @@
           "enum": ["left", "right", "stacked"],
           "x-strapi": { "type": "enumeration" },
           "default": "left"
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         },
         "ratio": {
           "anyOf": [
@@ -424,6 +479,28 @@
             },
             { "type": "null" }
           ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -512,6 +589,28 @@
               "enum": ["comfortable", "compact"],
               "x-strapi": { "type": "enumeration" },
               "default": "comfortable"
+            },
+            { "type": "null" }
+          ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
             },
             { "type": "null" }
           ]
@@ -616,6 +715,28 @@
             },
             { "type": "null" }
           ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["variant"],
@@ -675,6 +796,28 @@
               "enum": ["comfortable", "compact"],
               "x-strapi": { "type": "enumeration" },
               "default": "comfortable"
+            },
+            { "type": "null" }
+          ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
             },
             { "type": "null" }
           ]
@@ -832,6 +975,28 @@
             },
             { "type": "null" }
           ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["count", "variant"],
@@ -905,6 +1070,28 @@
             },
             { "type": "null" }
           ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["body"],
@@ -956,6 +1143,28 @@
             },
             { "type": "null" }
           ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         }
       },
       "required": ["images", "variant"],
@@ -993,6 +1202,28 @@
           "enum": ["background", "inline"],
           "x-strapi": { "type": "enumeration" },
           "default": "background"
+        },
+        "align": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["start", "center"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "start"
+            },
+            { "type": "null" }
+          ]
+        },
+        "tone": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["default", "raised", "accent"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "default"
+            },
+            { "type": "null" }
+          ]
         },
         "height": {
           "anyOf": [

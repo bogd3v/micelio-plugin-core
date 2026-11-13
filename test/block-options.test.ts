@@ -7,6 +7,9 @@ import { catalogueFingerprint, diffFingerprints } from '../server/src/utils/bloc
 
 const featureGrid = block('feature-grid')
 
+// The fourteen components of `page.sections`: each offers `tone` and `align`.
+const PAGE_SECTIONS = BLOCKS.filter((entry) => entry.group === 'section').map((entry) => entry.id)
+
 function block(id: string): Block {
   const found = BLOCKS.find((entry) => entry.id === id)
   if (!found) throw new Error(`no block ${id}`)
@@ -86,8 +89,8 @@ describe('the options of the catalogue', () => {
     ['width', ['rich-text', 'media', 'quote', 'gallery']],
     ['columns', ['feature-grid', 'stats', 'pricing', 'logo-cloud']],
     ['density', ['feature-grid', 'gallery', 'logo-cloud', 'testimonials', 'faq', 'post-list']],
-    ['align', ['quote', 'cta', 'stats', 'newsletter']],
-    ['tone', ['hero', 'cta', 'newsletter', 'stats']],
+    ['align', ['quote', ...PAGE_SECTIONS]],
+    ['tone', PAGE_SECTIONS],
     ['ratio', ['media', 'slider', 'media-showcase']],
     ['height', ['scene', 'playground', 'hero']],
   ])('%s is exposed by the blocks of the artboard and no others', (name, ids) => {
@@ -194,6 +197,40 @@ describe('findBlockOptionViolation', () => {
     })
     expect(
       findBlockOptionViolation([{ __component: 'section.rich-text', width: 'full' }])
+    ).toBeNull()
+  })
+
+  it('refuses tone or align on a scene of variant background', () => {
+    for (const option of ['tone', 'align']) {
+      const value = option === 'tone' ? 'raised' : 'center'
+      for (const variant of ['background', undefined]) {
+        expect(
+          findBlockOptionViolation([{ __component: 'section.scene', variant, [option]: value }])
+        ).toEqual({
+          block: 'scene',
+          option,
+          value,
+          allowed: [option === 'tone' ? 'default' : 'start'],
+        })
+      }
+      expect(
+        findBlockOptionViolation([
+          { __component: 'section.scene', variant: 'inline', [option]: value },
+        ])
+      ).toBeNull()
+    }
+    expect(
+      findBlockOptionViolation([
+        { __component: 'section.scene', variant: 'background', tone: null },
+      ])
+    ).toBeNull()
+  })
+
+  it('accepts the defaults of tone and align on a scene of variant background', () => {
+    expect(
+      findBlockOptionViolation([
+        { __component: 'section.scene', variant: 'background', tone: 'default', align: 'start' },
+      ])
     ).toBeNull()
   })
 

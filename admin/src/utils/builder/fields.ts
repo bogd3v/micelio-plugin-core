@@ -201,13 +201,24 @@ export function filesOf(values: Record<string, unknown>, name: string): MediaFil
     )
 }
 
-/** What a new block starts with: the site's default of each option the host stores. */
+/**
+ * What a new block starts with: the site's default of each option the host stores. A `scene` that
+ * starts in its `background` variant gets no `tone` or `align`: the variant paints its own poster
+ * and the server refuses either there unless it is the core's default.
+ */
 export function startingFields(
   schema: ComponentSchema | undefined,
-  defaults: Record<string, string>
+  defaults: Record<string, string>,
+  component?: string
 ): Record<string, unknown> {
   const fields: Record<string, unknown> = {}
+  const variant = schema?.attributes.variant
+  const background =
+    component === 'section.scene' &&
+    (defaults.variant ?? (typeof variant?.default === 'string' ? variant.default : undefined)) ===
+      'background'
   for (const [name, attribute] of Object.entries(schema?.attributes ?? {})) {
+    if (background && (name === 'tone' || name === 'align')) continue
     const value = defaults[name]
     if (
       attribute.type === 'enumeration' &&

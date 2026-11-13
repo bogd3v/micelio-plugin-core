@@ -128,7 +128,7 @@ export function useBuilderEdits(ctx: EditContext): BuilderEdits {
     const block: BuilderBlock = {
       key: newKey(),
       component: entry.component,
-      fields: startingFields(catalogue?.schemas[entry.component], defaults),
+      fields: startingFields(catalogue?.schemas[entry.component], defaults, entry.component),
     }
     edit(insertAt(blocks, position, block))
     select({ key: block.key, item: undefined })

@@ -105,6 +105,31 @@ describe('the fields of the panel', () => {
     expect(startingFields(grid, { columns: '9' })).toEqual({})
   })
 
+  it('leaves tone and align out of a new scene that starts in its background variant', () => {
+    const scene = {
+      attributes: {
+        variant: { type: 'enumeration', enum: ['background', 'inline'], default: 'background' },
+        tone: { type: 'enumeration', enum: ['default', 'raised', 'accent'] },
+        align: { type: 'enumeration', enum: ['start', 'center'] },
+      },
+    } as unknown as Parameters<typeof startingFields>[0]
+    const site = { variant: 'background', tone: 'raised', align: 'center' }
+    expect(startingFields(scene, site, 'section.scene')).toEqual({ variant: 'background' })
+    // The variant of the schema counts when the defaults name none.
+    expect(startingFields(scene, { tone: 'raised' }, 'section.scene')).toEqual({})
+    // Inline keeps them, and so does any other block.
+    expect(startingFields(scene, { ...site, variant: 'inline' }, 'section.scene')).toEqual({
+      variant: 'inline',
+      tone: 'raised',
+      align: 'center',
+    })
+    expect(startingFields(scene, site, 'section.hero')).toEqual({
+      variant: 'background',
+      tone: 'raised',
+      align: 'center',
+    })
+  })
+
   it('lists the items of a field and tolerates anything else', () => {
     expect(itemsOf({ items: [{ title: 'a' }, 1, null] }, 'items')).toEqual([{ title: 'a' }])
     expect(itemsOf({}, 'items')).toEqual([])
