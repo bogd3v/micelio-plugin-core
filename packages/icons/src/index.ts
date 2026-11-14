@@ -1,30 +1,42 @@
 // `@micelio/icons`: the Tabler set the block contract pins (`contract/icons.ts` of
 // `@micelio/strapi-plugin-core`), normalised. The index and the Spanish labels are read once; a
 // glyph is read from disk when it is asked for, never all at once.
+//
+// Every read names its file inline, as `new URL(<literal>, import.meta.url)` relative to this
+// module: a file tracer (`@vercel/nft`, the one Nitro uses) follows only that shape, so a host's
+// server build copies `index.json`, `labels/es.json` and `glyphs/*/*.svg` (the template literal of
+// `readGlyph` is a glob to it) next to `dist/`. Do not move a path into a variable or a helper
+// that takes a name (`readJson` takes the URL): the tracer cannot resolve it and a bundled server then has no data. The folder
+// comes from `folderOf`, not from a ternary in `readGlyph`: the tracer reads a `const` ternary as
+// two known values, gives up on the template and emits no glyph (`test/package.test.ts` checks it).
 import { readFile } from 'node:fs/promises'
 import type { GlyphStyle, IconIndex, SpanishLabels } from './types.js'
 
 export type { GlyphStyle, IconEntry, IconIndex, Locale, SpanishLabels } from './types.js'
 export { categoryLabelOf, fold, labelOf, searchIcons } from './search.js'
 
-const PACKAGE = new URL('../', import.meta.url)
 let index: Promise<IconIndex> | undefined
 let spanish: Promise<SpanishLabels> | undefined
 
-async function readJson<T>(file: string): Promise<T> {
-  return JSON.parse(await readFile(new URL(file, PACKAGE), 'utf8')) as T
+// Takes the URL, never a name: the caller writes the literal, where the tracer reads it.
+async function readJson<T>(file: URL): Promise<T> {
+  return JSON.parse(await readFile(file, 'utf8')) as T
 }
 
 /** The index of the catalogue: every name with its labels, category and aliases. */
 export function loadIndex(): Promise<IconIndex> {
-  index ??= readJson<IconIndex>('index.json')
+  index ??= readJson<IconIndex>(new URL('../index.json', import.meta.url))
   return index
 }
 
 /** The Spanish labels: every category and the names the core uses. */
 export function loadSpanishLabels(): Promise<SpanishLabels> {
-  spanish ??= readJson<SpanishLabels>('labels/es.json')
+  spanish ??= readJson<SpanishLabels>(new URL('../labels/es.json', import.meta.url))
   return spanish
+}
+
+function folderOf(style: GlyphStyle, filled: boolean): GlyphStyle {
+  return style === 'filled' && filled ? 'filled' : 'outline'
 }
 
 /**
@@ -40,6 +52,6 @@ export async function readGlyph(
   const resolved = Object.hasOwn(aliases, name) ? aliases[name] : name
   const entry = icons.find((icon) => icon.name === resolved)
   if (!entry) return undefined
-  const folder = style === 'filled' && entry.filled ? 'filled' : 'outline'
-  return readFile(new URL(`glyphs/${folder}/${resolved}.svg`, PACKAGE), 'utf8')
+  const folder = folderOf(style, entry.filled)
+  return readFile(new URL(`../glyphs/${folder}/${resolved}.svg`, import.meta.url), 'utf8')
 }

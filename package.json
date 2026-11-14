@@ -84,7 +84,7 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run lint:licenses && npm run lint:ee && npm run lint:standard && npm run lint:reference"
   },
   "dependencies": {
-    "@micelio/icons": "0.1.0",
+    "@micelio/icons": "0.1.1",
     "zod": "^4.6.7"
   },
   "peerDependencies": {
@@ -114,6 +114,7 @@
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "@vercel/nft": "1.11.1",
     "better-sqlite3": "12.11.1",
     "eslint": "^10.12.0",
     "jiti": "^2.7.0",

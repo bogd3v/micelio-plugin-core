@@ -15,13 +15,13 @@ An icon is a **name** of one set, [Tabler Icons](https://tabler.io/icons), at th
 | The normaliser                                                              | `packages/icons/scripts/normalise.ts`                       | Not shipped                                             |
 | The glyphs: `glyphs/outline/<name>.svg` and `glyphs/filled/<name>.svg`      | Written by `npm run build -w @micelio/icons`, not committed | `@micelio/icons/glyphs/*`                               |
 
-`@micelio/icons` is a workspace of this repository (`packages/icons/`, version `0.1.0`, `AGPL-3.0-only AND MIT`); the plugin stays at the root. The set comes from the `@tabler/icons` dev dependency of the package, at an exact version, and from nowhere else: nothing is loaded from a CDN or an icon API, at build or at run time.
+`@micelio/icons` is a workspace of this repository (`packages/icons/`, version `0.1.1`, `AGPL-3.0-only AND MIT`); the plugin stays at the root. The set comes from the `@tabler/icons` dev dependency of the package, at an exact version, and from nowhere else: nothing is loaded from a CDN or an icon API, at build or at run time.
 
 ## A glyph
 
 `packages/icons/scripts/normalise.ts` turns a Tabler file into the glyph the package ships (ADR-0021, section 2): `viewBox="0 0 24 24"`, no `width`, `height`, `class`, `id`, `style` or colour literal, no `stroke-width` (the theme sets it in CSS; Tabler draws at `2`), and the bounding-box path Tabler puts first, which paints nothing, dropped. The outline root is `fill="none" stroke="currentColor"` with round caps and joins; the filled alternate Tabler ships for about a thousand names is `fill="currentColor"`. A file with an element the normaliser does not know, or another `viewBox`, fails the build instead of shipping.
 
-`import { readGlyph } from '@micelio/icons'` reads one glyph from disk when it is asked for; `style: 'filled'` falls back to the outline for a name that has no filled alternate, and a name that is an alias answers the glyph it points to.
+`import { readGlyph } from '@micelio/icons'` reads one glyph from disk when it is asked for; `style: 'filled'` falls back to the outline for a name that has no filled alternate, and a name that is an alias answers the glyph it points to. Each read names its file inline (`new URL('../index.json', import.meta.url)`, the same for `labels/es.json`, and a template literal for the glyph), because a file tracer follows only that shape: a server build that traces `dist/index.js` (Nitro, with `@vercel/nft`) copies `index.json`, `labels/es.json` and every glyph under `glyphs/` next to the package, and `test/package.test.ts` checks it.
 
 ## The index and the search
 
