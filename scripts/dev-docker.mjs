@@ -65,6 +65,20 @@ function stack() {
   }
 }
 
+/**
+ * The id the containers run as: HOST_UID or HOST_GID when the user set it (a rootless Docker needs
+ * 0), else the host's id, else 1000. A value that is not a non-negative integer stops the script.
+ */
+function hostId(name, fromHost) {
+  const value = process.env[name]
+  if (value === undefined || value === '') return String(fromHost ?? 1000)
+  if (!/^\d+$/.test(value)) {
+    console.error(`${name} must be a non-negative integer, not "${value}".`)
+    process.exit(1)
+  }
+  return value
+}
+
 function docker(args, { project }) {
   const result = spawnSync('docker', [...COMPOSE, ...args], {
     cwd: ROOT,
@@ -73,8 +87,8 @@ function docker(args, { project }) {
       ...process.env,
       COMPOSE_PROJECT_NAME: project,
       NODE_VERSION: nodeVersion(),
-      HOST_UID: String(process.getuid?.() ?? 1000),
-      HOST_GID: String(process.getgid?.() ?? 1000),
+      HOST_UID: hostId('HOST_UID', process.getuid?.()),
+      HOST_GID: hostId('HOST_GID', process.getgid?.()),
     },
   })
   if (result.error) {
