@@ -163,7 +163,7 @@ describe('the status page in the admin', () => {
     }
     // Again, now that the sites have a frontend: the boot's run saw none.
     await strapi.plugin('micelio').service('hostCheck').run()
-    frontend = await startFrontend('0.6.3', Number(new URL(blogOrigin).port))
+    frontend = await startFrontend(`${packageJson.micelio}.3`, Number(new URL(blogOrigin).port))
     const superAdmin = (await strapi.db.query('admin::role').findOne({
       where: { code: 'strapi-super-admin' },
     })) as { id: number }
@@ -228,7 +228,7 @@ describe('the status page in the admin', () => {
     expect(text).toContain('Frontend release line')
     // One frontend answers its health endpoint, the other is not available, not an error.
     expect(text).toContain(frontend.origin)
-    expect(text).toContain('0.6.3')
+    expect(text).toContain(`${packageJson.micelio}.3`)
     expect(text).toContain('Not available')
     // The sites and their host names.
     expect(text).toContain('blog.example.com')
@@ -295,7 +295,7 @@ describe('the status page in the admin', () => {
       `${frontend.origin} is not reachable`
     )
     await page.getByRole('button', { name: 'Run host check' }).click()
-    await releaseLine.getByText(`${frontend.origin} runs 0.6.3`).waitFor()
+    await releaseLine.getByText(`${frontend.origin} runs ${packageJson.micelio}.3`).waitFor()
     await page.getByRole('button', { name: 'Run host check' }).waitFor()
     // The verdict is announced, since the table changes where the focus is not.
     await expect(page.getByRole('status').allTextContents()).resolves.toContainEqual(
@@ -338,7 +338,9 @@ describe('the status page in the admin', () => {
         .getByRole('list', { name: 'Summary' })
         .getByRole('listitem')
         .filter({ hasText: 'Frontend' })
-      await expect(frontendCard.textContent()).resolves.toBe('Frontend0.6.3healthy')
+      await expect(frontendCard.textContent()).resolves.toBe(
+        `Frontend${packageJson.micelio}.3healthy`
+      )
       await again.context().close()
     } finally {
       await sitesService.update({
