@@ -8,6 +8,8 @@
   "options": {},
   "attributes": {
     "blockId": { "type": "string" },
+    "eyebrow": { "type": "string" },
+    "anchor": { "type": "string" },
     "variant": {
       "type": "enumeration",
       "enum": ["background", "inline"],

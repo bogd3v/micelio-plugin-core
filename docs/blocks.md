@@ -64,6 +64,12 @@ Every block has a `blockId` and every repeatable item an `itemId` (ADR-0018, sec
 
 **Generation at save.** On `create`, `update` and `clone` of any type with a dynamic zone, the plugin gives a block of the data that has no `blockId` one that is unique in its zone, and an item that has no `itemId` one that is unique in its parent block. On `update` the ids stored in the draft win over what the save writes: an edit that sends another id at a block's or item's place keeps the stored one, a save that omits them keeps them, and a reorder moves each id with its block. An id that no stored entry holds is kept only when it is unique, so an import or a duplicate restores the ids it carries. A component that does not declare the field is left alone. A page template keeps neither id, so a page made from one gets its own. The builder hides both fields: editors never see them, its duplicate of a block carries neither id, and it takes in the ids a save answers, so a block added in a session keeps its id when it is moved and saved again.
 
+## Eyebrow and anchor
+
+The twelve sections whose renderer uses `SectionHead` (`hero`, `feature-grid`, `stats`, `logo-cloud`, `testimonials`, `pricing`, `faq`, `cta`, `post-list`, `newsletter`, `gallery`, `scene`) have two optional strings next to `blockId`: `eyebrow`, a short line above the heading, and `anchor`, the id a link or a table of contents points at the section by. The anchor is explicit and never derived from the title, so an edited title breaks no link. Adding them is a MINOR of the contract; a section without them renders as before.
+
+**Validation at save.** On `create`, `update` and `clone` the plugin refuses a save whose `anchor` is not a kebab-case slug (lowercase letters and digits joined by single hyphens), or that an earlier block of the page already uses, with `sectionAnchorInvalid` ([`docs/api.md`](api.md#errors)): the problem detail names the zone and position of the block. An absent, `null` or empty anchor is no anchor. Stored content is not re-checked.
+
 ## Modules
 
 A block may declare `module`, one of the keys of the site's `modules` component (`newsletter`,
@@ -214,6 +220,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field           | Type                   | Required | Details |
 | --------------- | ---------------------- | -------- | ------- |
 | `blockId`       | string                 | No       |         |
+| `eyebrow`       | string                 | No       |         |
+| `anchor`        | string                 | No       |         |
 | `title`         | string                 | Yes      |         |
 | `text`          | text                   | No       |         |
 | `primaryLink`   | `section.link`         | No       |         |
@@ -235,6 +243,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field     | Type                               | Required | Details               |
 | --------- | ---------------------------------- | -------- | --------------------- |
 | `blockId` | string                             | No       |                       |
+| `eyebrow` | string                             | No       |                       |
+| `anchor`  | string                             | No       |                       |
 | `title`   | string                             | No       |                       |
 | `text`    | text                               | No       |                       |
 | `items`   | `section.feature-item`, repeatable | No       | at least 3; at most 6 |
@@ -272,6 +282,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field     | Type                       | Required | Details               |
 | --------- | -------------------------- | -------- | --------------------- |
 | `blockId` | string                     | No       |                       |
+| `eyebrow` | string                     | No       |                       |
+| `anchor`  | string                     | No       |                       |
 | `title`   | string                     | No       |                       |
 | `items`   | `section.stat`, repeatable | No       | at least 2; at most 4 |
 
@@ -290,6 +302,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field     | Type                       | Required | Details    |
 | --------- | -------------------------- | -------- | ---------- |
 | `blockId` | string                     | No       |            |
+| `eyebrow` | string                     | No       |            |
+| `anchor`  | string                     | No       |            |
 | `title`   | string                     | No       |            |
 | `logos`   | `section.logo`, repeatable | No       | at least 1 |
 
@@ -308,6 +322,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field     | Type                              | Required | Details    |
 | --------- | --------------------------------- | -------- | ---------- |
 | `blockId` | string                            | No       |            |
+| `eyebrow` | string                            | No       |            |
+| `anchor`  | string                            | No       |            |
 | `title`   | string                            | No       |            |
 | `items`   | `section.testimonial`, repeatable | No       | at least 1 |
 
@@ -325,6 +341,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field     | Type                       | Required | Details    |
 | --------- | -------------------------- | -------- | ---------- |
 | `blockId` | string                     | No       |            |
+| `eyebrow` | string                     | No       |            |
+| `anchor`  | string                     | No       |            |
 | `title`   | string                     | No       |            |
 | `text`    | text                       | No       |            |
 | `plans`   | `section.plan`, repeatable | No       | at least 1 |
@@ -343,6 +361,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field     | Type                           | Required | Details    |
 | --------- | ------------------------------ | -------- | ---------- |
 | `blockId` | string                         | No       |            |
+| `eyebrow` | string                         | No       |            |
+| `anchor`  | string                         | No       |            |
 | `title`   | string                         | No       |            |
 | `items`   | `section.faq-item`, repeatable | No       | at least 1 |
 
@@ -360,6 +380,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field           | Type           | Required | Details |
 | --------------- | -------------- | -------- | ------- |
 | `blockId`       | string         | No       |         |
+| `eyebrow`       | string         | No       |         |
+| `anchor`        | string         | No       |         |
 | `title`         | string         | Yes      |         |
 | `text`          | text           | No       |         |
 | `primaryLink`   | `section.link` | No       |         |
@@ -379,6 +401,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field      | Type                                 | Required | Details                             |
 | ---------- | ------------------------------------ | -------- | ----------------------------------- |
 | `blockId`  | string                               | No       |                                     |
+| `eyebrow`  | string                               | No       |                                     |
+| `anchor`   | string                               | No       |                                     |
 | `title`    | string                               | No       |                                     |
 | `category` | relation to `api::category.category` | No       |                                     |
 | `tag`      | relation to `api::tag.tag`           | No       |                                     |
@@ -398,6 +422,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field         | Type   | Required | Details |
 | ------------- | ------ | -------- | ------- |
 | `blockId`     | string | No       |         |
+| `eyebrow`     | string | No       |         |
+| `anchor`      | string | No       |         |
 | `title`       | string | No       |         |
 | `text`        | text   | No       |         |
 | `buttonLabel` | string | No       |         |
@@ -432,6 +458,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field     | Type                    | Required | Details |
 | --------- | ----------------------- | -------- | ------- |
 | `blockId` | string                  | No       |         |
+| `eyebrow` | string                  | No       |         |
+| `anchor`  | string                  | No       |         |
 | `title`   | string                  | No       |         |
 | `images`  | media, several (images) | Yes      |         |
 
@@ -451,6 +479,8 @@ The measurement of 2026-10-23, in gzip bytes:
 | Field     | Type           | Required | Details |
 | --------- | -------------- | -------- | ------- |
 | `blockId` | string         | No       |         |
+| `eyebrow` | string         | No       |         |
+| `anchor`  | string         | No       |         |
 | `model`   | media (files)  | Yes      |         |
 | `poster`  | media (images) | Yes      |         |
 | `alt`     | string         | Yes      |         |

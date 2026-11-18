@@ -1,11 +1,16 @@
 import type { Core } from '@strapi/strapi'
 import { BlockOptionError, BLOCK_OPTION_INVALID } from '../block-options/error'
 import { BlockNotAllowedError } from '../block-settings/error'
-import { BLOCK_NOT_ALLOWED, SCENE_BACKGROUND_LIMIT_CODE } from '../constants/blocks'
+import {
+  BLOCK_NOT_ALLOWED,
+  SCENE_BACKGROUND_LIMIT_CODE,
+  SECTION_ANCHOR_INVALID,
+} from '../constants/blocks'
 import { ICON_INVALID } from '../constants/icons'
 import { SITE_UID } from '../constants/site'
 import { IconInvalidError } from '../icons/error'
 import type { SiteScopeState } from '../site-scope'
+import { SectionAnchorError } from '../section-anchor/error'
 import { SceneBackgroundLimitError } from '../islands/error'
 import { TEMPLATE_CODES } from '../constants/page-templates'
 import { FixedBlockError } from '../page-templates/error'
@@ -26,7 +31,8 @@ const BLOCK_OPTION_STATUS = 400
  * values it allows, a value of a `micelio.icon` field that is not a name of the icon catalogue
  * answers `iconInvalid`, naming the field and its path, and one that adds a block the site disabled or does not allow on the page's type
  * answers `blockNotAllowed`, naming the block and why (the module, when the site has off the one the block needs). A zone with more background Scenes than a
- * page may hold answers `sceneBackgroundLimit`, naming the block, the count and the limit.
+ * page may hold answers `sceneBackgroundLimit`, naming the block, the count and the limit, and a section
+ * anchor that is not a kebab-case slug or is used twice answers `sectionAnchorInvalid`, naming the position.
  */
 const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
   return async (ctx, next) => {
@@ -104,6 +110,17 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
           block,
           count,
           limit,
+        })
+        return
+      }
+      if (error instanceof SectionAnchorError) {
+        sendProblem(ctx, {
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: BLOCK_OPTION_STATUS,
+          detail: error.message,
+          code: SECTION_ANCHOR_INVALID,
+          ...error.violation,
         })
         return
       }

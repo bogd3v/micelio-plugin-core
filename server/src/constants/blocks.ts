@@ -27,3 +27,6 @@ export const SCENE_BACKGROUND_LIMIT_CODE = 'sceneBackgroundLimit'
 
 /** How many `scene` blocks with `variant: background` one dynamic zone may hold. */
 export const SCENE_BACKGROUND_LIMIT = 1
+
+/** The `code` of the problem detail a save with an anchor that is not a kebab-case slug, or used twice in a page, answers. */
+export const SECTION_ANCHOR_INVALID = 'sectionAnchorInvalid'

@@ -9,6 +9,12 @@
         "blockId": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": { "type": "string", "x-strapi": { "type": "string" } },
         "text": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "text" } }, { "type": "null" }]
@@ -123,6 +129,12 @@
       "type": "object",
       "properties": {
         "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
         "title": {
@@ -332,6 +344,12 @@
         "blockId": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -407,6 +425,12 @@
       "type": "object",
       "properties": {
         "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
         "title": {
@@ -510,6 +534,12 @@
       "type": "object",
       "properties": {
         "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
         "title": {
@@ -623,6 +653,12 @@
       "type": "object",
       "properties": {
         "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
         "title": {
@@ -748,6 +784,12 @@
         "blockId": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -830,6 +872,12 @@
       "type": "object",
       "properties": {
         "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
         "title": { "type": "string", "x-strapi": { "type": "string" } },
@@ -921,6 +969,12 @@
         "blockId": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -1006,6 +1060,12 @@
       "type": "object",
       "properties": {
         "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
         "title": {
@@ -1103,6 +1163,12 @@
         "blockId": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
         "title": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
@@ -1174,6 +1240,12 @@
       "type": "object",
       "properties": {
         "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "eyebrow": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "anchor": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
         "model": {

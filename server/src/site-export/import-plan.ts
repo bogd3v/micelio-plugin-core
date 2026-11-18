@@ -3,6 +3,8 @@
 import type { Core, UID } from '@strapi/strapi'
 import { findBlockOptionViolation } from '../block-options/rules'
 import { findBackgroundSceneExcess } from '../islands/rules'
+import { SectionAnchorError } from '../section-anchor/error'
+import { findAnchorViolation } from '../section-anchor/rules'
 import { findBlockNotAllowedIn } from '../block-settings/check'
 import { EDITORIAL_ATTRIBUTE } from '../constants/editorial'
 import { SITE_UID } from '../constants/site'
@@ -209,9 +211,11 @@ export async function validate(strapi: Core.Strapi, plan: Plan): Promise<number>
 // The save of the importer refuses an option the catalogue does not allow (ADR-0018); checking it
 // here refuses the archive before any write instead of halfway through.
 function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, where: string): void {
+  const zones: Record<string, unknown[]> = {}
   for (const [name, attribute] of Object.entries(type.attributes)) {
     const zone = data[name]
     if ((attribute as { type?: string }).type !== 'dynamiczone' || !Array.isArray(zone)) continue
+    zones[name] = zone
     const excess = findBackgroundSceneExcess(zone)
     if (excess) {
       throw new ExportError(
@@ -227,6 +231,14 @@ function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, wh
       'exportDocumentInvalid',
       `${where}.${name}: the ${violation.block} block does not allow that value for ` +
         `${violation.option}${allowed}`
+    )
+  }
+  // The same rule as the save: an anchor that is not a kebab-case slug, or that two blocks of the page share.
+  const anchor = findAnchorViolation(zones)
+  if (anchor) {
+    throw new ExportError(
+      'exportDocumentInvalid',
+      `${where}: ${new SectionAnchorError(anchor).message}`
     )
   }
 }
