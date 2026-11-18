@@ -1,6 +1,8 @@
 import type { Core, Modules, UID } from '@strapi/strapi'
 import { SceneBackgroundLimitError } from '../islands/error'
 import { findBackgroundSceneExcess } from '../islands/rules'
+import { SectionAnchorError } from '../section-anchor/error'
+import { findAnchorViolation } from '../section-anchor/rules'
 import { BlockOptionError } from './error'
 import { findBlockOptionViolation } from './rules'
 
@@ -18,10 +20,11 @@ type Params = Record<string, unknown> & { data?: Record<string, unknown> }
  * data does not name are left alone, so a save that does not touch the blocks cannot fail on them.
  * Stored content is not re-checked: only what is being written.
  *
- * It also refuses a zone with more than one `scene` block of `variant: background`.
+ * It also refuses a zone with more than one `scene` block of `variant: background`, and a section
+ * `anchor` that is not a kebab-case slug or that two blocks of the page share (`sectionAnchorInvalid`).
  *
  * @throws {@link BlockOptionError} with the block, the option and the values it allows, or
- * `SceneBackgroundLimitError`.
+ * `SceneBackgroundLimitError` or {@link SectionAnchorError}.
  */
 export function blockOptionsDocuments(
   strapi: Core.Strapi
@@ -31,6 +34,7 @@ export function blockOptionsDocuments(
     const data = (context.params as Params).data
     if (data) {
       const attributes = strapi.contentType(context.uid as UID.ContentType).attributes
+      const zones: Record<string, unknown[]> = {}
       for (const [name, attribute] of Object.entries(attributes)) {
         const zone = data[name]
         if (attribute.type !== 'dynamiczone' || !Array.isArray(zone)) continue
@@ -38,7 +42,10 @@ export function blockOptionsDocuments(
         if (violation) throw new BlockOptionError(violation)
         const excess = findBackgroundSceneExcess(zone)
         if (excess) throw new SceneBackgroundLimitError(excess)
+        zones[name] = zone
       }
+      const anchor = findAnchorViolation(zones)
+      if (anchor) throw new SectionAnchorError(anchor)
     }
     return next()
   }

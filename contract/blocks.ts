@@ -118,6 +118,13 @@ const ITSELF = 'Itself: the block needs no JavaScript.'
 // builder hides them. Optional in the content API, as they are for a stored row that has none yet.
 const BLOCK_ID = string()
 const ITEM_ID = string()
+/** The short line above a section's heading (`SectionHead`); optional. */
+const EYEBROW = string()
+/**
+ * The id a link or a table of contents points at a section by (`SectionHead`); optional. Explicit,
+ * never derived from the title. At save it must be a kebab-case slug, unique in the page.
+ */
+const ANCHOR = string()
 
 // Parts (ADR-0018, section 6, "Parts and fields"): they are nested in the blocks that use them and
 // are never entries of the catalogue.
@@ -203,6 +210,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.hero', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string({ required: true }),
       text: text(),
       primaryLink: component(link),
@@ -221,6 +230,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.feature-grid', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string(),
       text: text(),
       items: component(featureItem, { repeatable: true, min: 3, max: 6 }),
@@ -254,6 +265,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.stats', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string(),
       items: component(stat, { repeatable: true, min: 2, max: 4 }),
     }),
@@ -269,6 +282,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.logo-cloud', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string(),
       logos: component(logo, { repeatable: true, min: 1 }),
     }),
@@ -285,6 +300,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.testimonials', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string(),
       items: component(testimonial, { repeatable: true, min: 1 }),
     }),
@@ -300,6 +317,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.pricing', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string(),
       text: text(),
       plans: component(plan, { repeatable: true, min: 1 }),
@@ -316,6 +335,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.faq', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string(),
       items: component(faqItem, { repeatable: true, min: 1 }),
     }),
@@ -331,6 +352,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.cta', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string({ required: true }),
       text: text(),
       primaryLink: component(link),
@@ -348,6 +371,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.post-list', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string(),
       category: relation('api::category.category'),
       tag: relation('api::tag.tag'),
@@ -365,6 +390,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.newsletter', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string(),
       text: text(),
       buttonLabel: string(),
@@ -396,6 +423,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.gallery', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       title: string(),
       images: media(['images'], { required: true, multiple: true }),
     }),
@@ -411,6 +440,8 @@ export const BLOCKS: readonly Block[] = [
     group: 'section',
     schema: part('section.scene', {
       blockId: BLOCK_ID,
+      eyebrow: EYEBROW,
+      anchor: ANCHOR,
       model: media(['files'], { required: true }),
       poster: media(['images'], { required: true }),
       alt: string({ required: true }),

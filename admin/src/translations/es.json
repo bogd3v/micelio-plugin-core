@@ -499,6 +499,8 @@
   "builder.toast.files": "Archivos cambiados",
   "builder.toast.undo": "Deshacer",
   "builder.field.title": "Título",
+  "builder.field.eyebrow": "Sobretítulo",
+  "builder.field.anchor": "Ancla",
   "builder.field.text": "Texto",
   "builder.field.body": "Cuerpo",
   "builder.field.alt": "Texto alternativo",

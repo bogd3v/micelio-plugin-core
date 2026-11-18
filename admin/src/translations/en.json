@@ -499,6 +499,8 @@
   "builder.toast.files": "Files changed",
   "builder.toast.undo": "Undo",
   "builder.field.title": "Title",
+  "builder.field.eyebrow": "Eyebrow",
+  "builder.field.anchor": "Anchor",
   "builder.field.text": "Text",
   "builder.field.body": "Body",
   "builder.field.alt": "Alt text",

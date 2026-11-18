@@ -29,6 +29,23 @@ describe('the options of the blocks, in an import', () => {
     return tar(new Map([...files].sort(([a], [b]) => (a < b ? -1 : 1))))
   }
 
+  // The page with one Scene per anchor given (`undefined`: none).
+  const anchored = (anchors: (string | undefined)[]): Buffer => {
+    const files = new Map(exported)
+    rewrite<ContentFile>(files, 'content/landing.json', (content) => {
+      for (const version of content.documents[0]!.versions) {
+        version.data.sections = anchors.map((anchor) => ({
+          __component: 'section.scene',
+          variant: 'inline',
+          alt: 'A scene',
+          anchor,
+        }))
+      }
+      return content
+    })
+    return tar(new Map([...files].sort(([a], [b]) => (a < b ? -1 : 1))))
+  }
+
   // The page with `variants` Scenes, each of the variant named: the archive of a page with islands.
   const scenes = (variants: string[]): Buffer => {
     const files = new Map(exported)
@@ -102,6 +119,33 @@ describe('the options of the blocks, in an import', () => {
 
   it('imports a page with one background Scene and any number of inline ones', async () => {
     await service().import(Readable.from([scenes(['background', 'inline', 'inline'])]), {
+      into: 'default',
+    })
+    expect(await strapi.db.query(LANDING).count()).toBeGreaterThan(0)
+  })
+
+  it('refuses an anchor that is not kebab-case or is used twice, in the dry run and in the import, and writes nothing', async () => {
+    const before = await strapi.db.query(LANDING).count()
+    const cases: [Buffer, string][] = [
+      [anchored(['intro', 'Not Kebab']), 'sections.1'],
+      [anchored(['intro', undefined, 'intro']), 'sections.2'],
+    ]
+    for (const [archive, position] of cases) {
+      for (const run of [
+        () => service().preview(Readable.from([archive]), { into: 'default' }),
+        () => service().import(Readable.from([archive]), { into: 'default' }),
+      ]) {
+        await expect(run()).rejects.toMatchObject({
+          code: 'exportDocumentInvalid',
+          message: expect.stringContaining(`The scene block at ${position}`) as unknown,
+        })
+      }
+    }
+    expect(await strapi.db.query(LANDING).count()).toBe(before)
+  })
+
+  it('imports a page whose anchors are kebab-case and unique', async () => {
+    await service().import(Readable.from([anchored(['intro', 'part-2', undefined])]), {
       into: 'default',
     })
     expect(await strapi.db.query(LANDING).count()).toBeGreaterThan(0)

@@ -1,11 +1,11 @@
 {
   "source": {
     "repository": "bogd3v/micelio-cms",
-    "commit": "4d0cbf0791af0fa52eb0f6c58975bb0f2f2f5786",
+    "commit": "6647bf306659b6f396b89d3e735db585575892d1",
     "derivedFrom": {
       "tag": "v0.4.0",
       "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
-      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag"
+      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3)"
     }
   },
   "components": {
@@ -19,6 +19,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["banner", "card"],
@@ -55,6 +57,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["list", "two-columns"],
@@ -80,6 +84,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["grid", "list", "bento"],
@@ -122,6 +128,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["grid", "masonry"],
@@ -147,6 +155,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["centered", "split", "full-bleed"],
@@ -183,6 +193,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["row", "marquee"],
@@ -250,6 +262,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["inline", "card"],
@@ -285,6 +299,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["cards", "list"],
@@ -311,6 +327,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["cards", "table"],
@@ -345,6 +363,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["background", "inline"],
@@ -392,6 +412,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["row", "cards"],
@@ -434,6 +456,8 @@
       "options": {},
       "attributes": {
         "blockId": { "type": "string" },
+        "eyebrow": { "type": "string" },
+        "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
           "enum": ["single", "grid"],
