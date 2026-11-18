@@ -2,7 +2,7 @@
 
 `@micelio/strapi-plugin-core` is Micelio's core as a Strapi 5 plugin. It will hold what a Micelio site needs from its CMS: several sites per CMS, the block catalogue, the editorial workflow, the hooks other Micelio plugins build on, and a host check that refuses to start in production when the host is missing what Micelio needs ([ADR-0017](https://github.com/bogd3v/micelio/blob/main/docs/adr/0017-distribution-plugins-multisite-editorial.md)).
 
-It is at `0.4.0` and alpha: it holds the `site` type (one row per site,
+It is at `0.5.0` and alpha: it holds the `site` type (one row per site,
 with a default site created on an empty instance), site scoping for content types,
 the editorial workflow,
 the block catalogue ([docs/blocks.md](docs/blocks.md)) and its per-site management
@@ -28,7 +28,7 @@ social tab ([docs/guide/seo.md](docs/guide/seo.md)); islands and the presentatio
 blocks ([docs/blocks.md](docs/blocks.md)); the Sites, Export and import and About pages
 ([docs/operate/transfer-page.md](docs/operate/transfer-page.md),
 [docs/operate/about-page.md](docs/operate/about-page.md)); and the carbon estimate beside the cost
-meter ([docs/operate/budgets.md](docs/operate/budgets.md)). In the release after `0.4.0` it adds the custom field
+meter ([docs/operate/budgets.md](docs/operate/budgets.md)). `0.5.0` adds the custom field
 `micelio.icon` and its picker ([docs/guide/icons.md](docs/guide/icons.md)). The other capabilities arrive with the
 issues of the first milestone. Until then, install nothing from it on a site.
 
@@ -40,7 +40,7 @@ icon set the block contract pins, normalised, with its index and Spanish labels
 
 [`micelio-cms`](https://github.com/bogd3v/micelio-cms) is the **reference distribution**: a Strapi project with the plugins installed and the configuration a plugin cannot set for its host (security middlewares, CSP, uploads provider, database, image and Compose files). It is what hosting runs and what "Micelio 0.6" means. Use it to run a Micelio site. The plugin is for a developer who already runs Strapi and wants Micelio in it.
 
-`micelio` in `package.json` names the release line of Micelio this version supports (`0.7`).
+`micelio` in `package.json` names the release line of Micelio this version supports (`0.9`).
 
 ## Getting started
 
@@ -99,7 +99,7 @@ The first release is `v0.1.0`, the `version` in `package.json`: with no earlier 
 `compatibility` is required to publish. Every release states the release line of the core it supports (`micelio` in `package.json`) and the minimum Node (`engines`):
 
 ```
-- Micelio release line: 0.7
+- Micelio release line: 0.9
 - Node: 22.19 or later
 ```
 
