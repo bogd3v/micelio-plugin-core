@@ -17,7 +17,7 @@ const eventually = <T>(read: () => Promise<T> | T) => expect.poll(read, { timeou
 
 // The seeded page: text, a Scene (the `3d` island) and a Playground (the `runtime` island).
 const SECTIONS = [
-  { __component: 'section.rich-text', body: 'Open source, in plain words.' },
+  { __component: 'shared.rich-text', body: 'Open source, in plain words.' },
   { __component: 'section.scene', variant: 'inline', alt: 'A hypha network', title: 'Hyphae' },
   { __component: 'shared.playground', runtime: 'python', code: 'print(1)' },
 ]
@@ -73,7 +73,7 @@ describe('the islands in the builder', () => {
     await page.getByRole('button', { name: 'Login' }).click()
     await page.waitForURL(/\/admin(?!\/auth)/)
     await page.goto(`${base}/admin/plugins/micelio/builder/${SHOWCASE_UID}/${documentId}`)
-    await page.locator('[data-block="rich-text"]').waitFor()
+    await page.locator('[data-block="prose"]').waitFor()
     await eventually(() => frameOf(page).locator('[data-myc-block]').count()).toBeGreaterThan(0)
     return page
   }
@@ -189,9 +189,7 @@ describe('the islands in the builder', () => {
       page.locator(selector).locator('[data-testid="island-badge"]').getAttribute('data-kind')
     expect(await kindIn('[data-block="scene"]')).toBe('3d')
     expect(await kindIn('[data-block="playground"]')).toBe('runtime')
-    expect(
-      await page.locator('[data-block="rich-text"] [data-testid="island-badge"]').count()
-    ).toBe(0)
+    expect(await page.locator('[data-block="prose"] [data-testid="island-badge"]').count()).toBe(0)
     expect(
       await page
         .locator('[data-block="scene"] [data-testid="island-badge"]')
@@ -207,7 +205,7 @@ describe('the islands in the builder', () => {
     const costOf = (block: string) => page.locator(`[data-block="${block}"]`).textContent()
     expect(await costOf('scene')).toContain('island · 151.3 kB')
     expect(await costOf('playground')).toContain('island · 406.7 kB')
-    expect(await costOf('rich-text')).toMatch(/Rich text\d+(\.\d)? kB$/)
+    expect(await costOf('prose')).toMatch(/Prose\d+(\.\d)? kB$/)
 
     // The block list: the same mark on the two island rows, in the page's order.
     expect(
@@ -261,10 +259,8 @@ describe('the islands in the builder', () => {
     await eventually(() => page.getByTestId('alternative-missing').count()).toBe(0)
 
     // A block that is not an island has none of this.
-    await frameOf(page).locator('[data-section="rich-text"]').click()
-    await eventually(() => page.getByTestId('selection-label').textContent()).toBe(
-      'Rich text · 1 of 3'
-    )
+    await frameOf(page).locator('[data-section="prose"]').click()
+    await eventually(() => page.getByTestId('selection-label').textContent()).toBe('Prose · 1 of 3')
     expect(await page.getByTestId('island-cost').count()).toBe(0)
   })
 
@@ -316,10 +312,10 @@ describe('the islands in the builder', () => {
       frameOf(page).locator('[data-myc-block="scene"]').getAttribute('data-myc-mode')
     ).toBe('static')
     expect(
-      await frameOf(page).locator('[data-myc-block="rich-text"]').getAttribute('data-myc-mode')
+      await frameOf(page).locator('[data-myc-block="prose"]').getAttribute('data-myc-mode')
     ).toBe(null)
     // Once nobody points at it, the badge in its corner says what replaced it.
-    await frameOf(page).locator('[data-section="rich-text"]').click()
+    await frameOf(page).locator('[data-section="prose"]').click()
     await eventually(() => page.getByTestId('island-rest').textContent()).toBe('3D → poster')
 
     // An edit saves the draft and the frame loads it again: the page it loads has the block in its

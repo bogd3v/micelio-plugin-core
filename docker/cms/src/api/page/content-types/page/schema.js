@@ -47,6 +47,8 @@ module.exports = withSiteScope(
             'section.rich-text',
             'section.gallery',
             'section.scene',
+            // The Markdown block of both zones (`prose`); `section.rich-text` above is no block of the catalogue any more and stays until the cut-over.
+            'shared.rich-text',
             // An article block with an island of its own, here so the builder shows both kinds.
             'shared.playground',
           ],

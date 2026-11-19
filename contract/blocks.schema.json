@@ -1109,54 +1109,6 @@
       "required": ["variant"],
       "x-strapi": { "type": "component", "component": "section.newsletter", "repeatable": false }
     },
-    "rich-text": {
-      "type": "object",
-      "properties": {
-        "blockId": {
-          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
-        },
-        "body": {
-          "type": "string",
-          "x-strapi": { "type": "richtext" },
-          "contentMediaType": "text/markdown"
-        },
-        "width": {
-          "anyOf": [
-            {
-              "type": "string",
-              "enum": ["prose", "wide", "full"],
-              "x-strapi": { "type": "enumeration" },
-              "default": "prose"
-            },
-            { "type": "null" }
-          ]
-        },
-        "align": {
-          "anyOf": [
-            {
-              "type": "string",
-              "enum": ["start", "center"],
-              "x-strapi": { "type": "enumeration" },
-              "default": "start"
-            },
-            { "type": "null" }
-          ]
-        },
-        "tone": {
-          "anyOf": [
-            {
-              "type": "string",
-              "enum": ["default", "raised", "accent"],
-              "x-strapi": { "type": "enumeration" },
-              "default": "default"
-            },
-            { "type": "null" }
-          ]
-        }
-      },
-      "required": ["body"],
-      "x-strapi": { "type": "component", "component": "section.rich-text", "repeatable": false }
-    },
     "gallery": {
       "type": "object",
       "properties": {

@@ -15,7 +15,7 @@ import {
 const SHOWCASE_UID = 'api::showcase.showcase'
 
 const SECTIONS = [
-  { __component: 'section.rich-text', body: 'One' },
+  { __component: 'shared.rich-text', body: 'One' },
   {
     __component: 'section.feature-grid',
     title: 'Grid',
@@ -55,7 +55,7 @@ describe('the builder is accessible', () => {
         await session.seed(LANDING_UID, SECTIONS, 'Blocks'),
         options
       )
-      await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid', 'logo-cloud'])
+      await eventually(() => shown(page)).toEqual(['prose', 'feature-grid', 'logo-cloud'])
       await check('blocks, nothing selected', page)
       await page.keyboard.press('2')
       await page.getByRole('heading', { level: 2, name: 'Feature grid' }).waitFor()
@@ -83,7 +83,7 @@ describe('the builder is accessible', () => {
         BROCHURE_UID,
         await session.seed(
           BROCHURE_UID,
-          [{ __component: 'section.rich-text', body: 'Hi' }],
+          [{ __component: 'shared.rich-text', body: 'Hi' }],
           'Settings'
         ),
         options

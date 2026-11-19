@@ -60,7 +60,7 @@ Without it the page still previews, and the builder shows no outline over it.
    The panel on the right shows its fields.
    Change the text: the frame shows it as you type, and about a second later the toolbar says
    _Saved_ and the frame loads the draft once.
-4. Select a block in **Page blocks** and click **Rich text** in the palette:
+4. Select a block in **Page blocks** and click **Prose** in the palette:
    it is inserted after the selection, selected, and saved.
    Press `⌥↑` (`Alt+ArrowUp`) with the new block selected: it moves up in the list and the frame.
 5. Drag a row of the palette into the frame: the gaps between blocks appear,
@@ -76,7 +76,7 @@ Without it the page still previews, and the builder shows no outline over it.
    the cross-fade after a save and the outline appear at once.
 9. Check the Axe result with a block selected (the browser's accessibility tools): no violations.
 10. Set the language of your profile to Español and reload: the page is in Spanish.
-11. Insert a **Rich text** block and leave its text empty: the toolbar says
+11. Insert a **Hero** block and leave its title empty: the toolbar says
     _Not saved: a required field is empty_ and the Content Manager shows no new block.
     Type some text: it saves.
 12. A role that may read the page but not edit it (Roles → _Update_ off on Page) opens the
@@ -377,7 +377,7 @@ through the admin route, as the page settings do.
    "items":[{"title":"Readable","text":"Anyone can read it."},
    {"title":"Changeable","text":"Anyone can fix it."},
    {"title":"Shareable","text":"Anyone can pass it on."}]},
-   {"__component":"section.rich-text","body":"Open source means open to everyone.","width":"prose"},
+   {"__component":"shared.rich-text","body":"Open source means open to everyone."},
    {"__component":"section.cta","title":"Try it","text":"Start with one page.",
    "variant":"banner"}]}'
    EXPLAINER=$(curl -s -g -X POST \
@@ -388,10 +388,10 @@ through the admin route, as the page settings do.
    ```
 
 2. Open the address the last command printed, press the gear and then **Save as template…** in
-   the footer of the drawer. The dialog says "From “What open source is” · 4 blocks · 7.6 kB" and
-   lists Hero, Feature grid, Rich text and Cta with their options. Type the name `Explainer
-landing`, leave **For page types** on Landing, choose **Clear** for Rich text and tick
-   **Fixed** for Hero. The checks read: every option is one the catalogue offers; 7.6 kB of 60 kB
+   the footer of the drawer. The dialog says "From “What open source is” · 4 blocks · 7.9 kB" and
+   lists Hero, Feature grid, Prose and Cta with their options. Type the name `Explainer
+landing`, leave **For page types** on Landing, choose **Clear** for Prose and tick
+   **Fixed** for Hero. The checks read: every option is one the catalogue offers; 7.9 kB of 60 kB
    landing budget (before content); no island; every block is enabled on default; the name is
    unique. Press **Save template**: a notification says it is saved. The server holds it:
 
@@ -399,10 +399,10 @@ landing`, leave **For page types** on Landing, choose **Clear** for Rich text an
    curl -s -H "Authorization: Bearer $ADMIN" \
      'localhost:1337/micelio/templates?site=default&uid=api::page.page' \
      | jq -c '.data[] | {name, version, scope, kb, blocks: [.blocks[] | {block, content, fixed}]}'
-   # {"name":"Explainer landing","version":1,"scope":"site","kb":7.6,"blocks":[
+   # {"name":"Explainer landing","version":1,"scope":"site","kb":7.9,"blocks":[
    #   {"block":"hero","content":"sample","fixed":true},
    #   {"block":"feature-grid","content":"sample","fixed":false},
-   #   {"block":"rich-text","content":"clear","fixed":false},
+   #   {"block":"prose","content":"clear","fixed":false},
    #   {"block":"cta","content":"sample","fixed":false}]}
    ```
 
@@ -411,11 +411,11 @@ landing`, leave **For page types** on Landing, choose **Clear** for Rich text an
 4. In Content Manager → Page press **Create new entry**. The header has an icon, **New page from
    a template…** (the Micelio mark, left of the three dots). Press it and, as Strapi asks
    whether to leave the form, **Confirm**: **New page** opens with the template's card,
-   Explainer landing, selected, with its blocks, its 7.6 kB and its
+   Explainer landing, selected, with its blocks, its 7.9 kB and its
    thumbnail drawn from the structure; and **Empty page**. Type `Open source, explained` in
    **Title of the new page** and press **Create from Explainer landing**. The builder opens on a
    draft with the four blocks. Click the Hero: its Title and Text are grey and italic and say
-   "Sample text from the template: replace it before you publish." The Rich text says _Needs
+   "Sample text from the template: replace it before you publish." The Prose says _Needs
    content_: it was cleared. The page records its template:
 
    ```bash
@@ -449,7 +449,7 @@ landing`, leave **For page types** on Landing, choose **Clear** for Rich text an
 
    In the builder replace the texts the refusal names (the Hero's title and text, the Feature
    grid's title and the title and text of each item, the Cta's title and text) and write a text
-   in Rich text. Publish again after each save: the refusal lists what is left, and when nothing
+   in Prose. Publish again after each save: the refusal lists what is left, and when nothing
    is, the answer is `200`.
 
 6. A template that cannot be CMS-wide. Make a second site, and turn the Cta off there:
@@ -495,11 +495,11 @@ landing`, leave **For page types** on Landing, choose **Clear** for Rich text an
 10. Manage templates and the Template tab (#55). Open **Micelio → Page templates**: Explainer
     landing is listed with its blocks, source and "1 page" or more (the pages of step 4). Select it:
     the panel lists those pages with `v1 · draft`. Press **Edit in builder**: the builder opens
-    with the notice "No preview here" and no frame. Select the Rich text, tick **Fixed**, press
-    **Save as v2**; back on the list the history shows "v2 · … Rich text: now fixed".
+    with the notice "No preview here" and no frame. Select the Prose, tick **Fixed**, press
+    **Save as v2**; back on the list the history shows "v2 · … Prose: now fixed".
 11. In the builder of the page of step 4 open the gear and the **Template** tab: it says the
-    template is now at v2 and lists "Rich text: now fixed". Nothing changed on the page yet. Press
-    **Apply the structure changes**: the tab reads "up to date" and the Rich text is fixed (in
+    template is now at v2 and lists "Prose: now fixed". Nothing changed on the page yet. Press
+    **Apply the structure changes**: the tab reads "up to date" and the Prose is fixed (in
     the builder its remove and move controls are disabled). Press **Detach from template**: the
     lock is gone and the tab says the page was made without a template. In **Page templates**
     press **Retire** on Explainer landing: **New page** no longer lists it; **Restore** brings it
@@ -545,7 +545,7 @@ The stack needs a frontend with the weight route (bogd3v/micelio#730) and its an
 The catalogue's presentation options (`contract/options.ts`: `layout`, `width`, `columns`, `density`, `align`, `tone`, `ratio` and `height`) are stored in the block's component and checked when a page is saved. `docker/cms/dev.mjs` adds the ones `micelio-cms` v0.4.0 does not store yet to the sections' schemas it writes, so the Content Manager shows them. A bad value is refused with `blockOptionInvalid`, as a problem detail on the content API.
 
 1. Create the first admin, as above. In Settings → API Tokens create a token of type **Full access** and keep it out of any file: `read -rs TOKEN && export TOKEN` (paste it, press Enter).
-2. In Content Manager → Page, create a page, add a **Feature grid** section and open it: next to **Variant** it has **Columns** (2, 3, 4), **Density**; a **Rich text** section has **Width** (prose, wide, full); a **Hero** has **Layout**, **Tone** and **Height**, and no **Columns**.
+2. In Content Manager → Page, create a page, add a **Feature grid** section and open it: next to **Variant** it has **Columns** (2, 3, 4), **Density**; a **Gallery** section has **Width** (prose, wide, full); a **Hero** has **Layout**, **Tone** and **Height**, and no **Columns**.
 3. Save with `columns: 3` through the API: it is accepted. (`?status=draft`: a page is editorial, and the content API saves a draft only when asked to.)
 
    ```bash
@@ -569,7 +569,7 @@ The catalogue's presentation options (`contract/options.ts`: `layout`, `width`, 
 
 5. `columns: 6` is for the logo cloud: the same call with `"__component":"section.logo-cloud","columns":6` is `201`. `"__component":"section.cta","align":"end"` is `400` `blockOptionInvalid` with `"allowed":["start","center"]`. `"__component":"section.hero","columns":3` is Strapi's own `400` ("Invalid key columns"): the hero does not expose `columns` and the stack's component does not declare it; the plugin answers `blockOptionInvalid` with `"allowed":[]` where a component declares an option its block does not expose (`npm test` covers it).
 6. In Content Manager → Page, open the first page, change **Columns** to 4 and **Save**: it saves.
-7. Articles never take `width: full`. Send the same call to `localhost:1337/api/articles?status=draft` with `{"data":{"title":"Wide","blocks":[{"__component":"shared.media","width":"full"}]}}`: `400`, `"block":"media"`, `"option":"width"`, `"allowed":["prose","wide"]`. With `"width":"wide"` it is `201`. A **Rich text** section of a page takes `"width":"full"`.
+7. Articles never take `width: full`. Send the same call to `localhost:1337/api/articles?status=draft` with `{"data":{"title":"Wide","blocks":[{"__component":"shared.media","width":"full"}]}}`: `400`, `"block":"media"`, `"option":"width"`, `"allowed":["prose","wide"]`. With `"width":"wide"` it is `201`. A page section that exposes `width`, such as the gallery, takes `"width":"full"` (`npm test` covers it).
 
 ## Try the block catalogue
 
@@ -591,8 +591,8 @@ stack's `page` is site-scoped and holds every block, so it shows what the page d
      -d "{\"data\":{\"title\":\"$1\",\"slug\":\"$1\",\"sections\":[$2]}}"; }
    ```
 
-2. Open the page. The table lists the 19 blocks of the catalogue, all on, and the line above it
-   reads "0 disabled on default · 19 enabled". `PALETTE` lists 19 ids, `hero` among them.
+2. Open the page. The table lists the 18 blocks of the catalogue, all on, and the line above it
+   reads "0 disabled on default · 18 enabled". `PALETTE` lists 18 ids, `hero` among them.
 3. Switch **Hero** off. The row turns grey and the line reads "1 disabled on default · 18
    enabled". `PALETTE` lists 18 ids and no `hero`. **Disabled only** leaves that one row.
 4. Try to add the disabled block:
@@ -643,6 +643,51 @@ stack's `page` is site-scoped and holds every block, so it shows what the page d
     switches work.
 11. Set the language of your profile to Español and reload: the page, the drawer and the counts
     are in Spanish.
+
+## Try the heading levels of a prose block
+
+`prose` (`shared.rich-text`) is the one Markdown block of the catalogue, in a page's `sections` and in an article's `blocks`. A page already has its `h1`, so its body opens at `h2`, has no `h1` and does not skip a level ([`docs/blocks.md`](../blocks.md#prose)). A body that breaks it is refused with `proseHeadingInvalid`, naming the position and the heading. `section.rich-text` is no block of the catalogue any more: the stack keeps it in the page zone and the plugin does not check it.
+
+1. Create the first admin and an API token of type **Full access**, as in [Try the block options](#try-the-block-options): `read -rs TOKEN && export TOKEN`.
+2. A body that opens at `h2` and goes down one level at a time is accepted, in a page and in an article:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST 'localhost:1337/api/pages?status=draft' \
+     -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+     -d '{"data":{"title":"Prose ok","slug":"prose-ok","sections":[{"__component":"shared.rich-text","body":"## One\n\ntext\n\n### One A\n\n## Two"}]}}'
+   # 201
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST 'localhost:1337/api/articles?status=draft' \
+     -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+     -d '{"data":{"title":"Prose ok","slug":"prose-ok","blocks":[{"__component":"shared.rich-text","body":"## One\n\n### One A"}]}}'
+   # 201
+   ```
+
+3. A body that opens with `h1`, or below `h2`, is refused, and no page is created:
+
+   ```bash
+   curl -s -i -X POST 'localhost:1337/api/pages?status=draft' \
+     -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+     -d '{"data":{"title":"Prose h1","slug":"prose-h1","sections":[{"__component":"shared.rich-text","body":"# Title\n\ntext"}]}}'
+   # HTTP/1.1 400, content-type: application/problem+json
+   # "code":"proseHeadingInvalid","reason":"opensWithH1","zone":"sections","position":0,"level":1,"heading":"Title","line":1
+   ```
+
+   `"body":"intro\n\n### Deep"` answers `"reason":"opensBelowH2"` with `"level":3,"heading":"Deep","line":3`.
+
+4. An `h1` after the opening heading, and a skipped level (`h2` to `h4`), are refused too, naming the block's position in the zone:
+
+   ```bash
+   curl -s -X POST 'localhost:1337/api/pages?status=draft' \
+     -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+     -d '{"data":{"title":"Prose skip","slug":"prose-skip","sections":[{"__component":"shared.rich-text","body":"## One"},{"__component":"shared.rich-text","body":"## One\n\n#### Three down"}]}}' | jq -c '.detail, .reason, .position'
+   # "The prose block at sections.1 has the h4 \"Three down\" on line 3 of its body, which skips from h2"
+   # "skipsLevel"
+   # 1
+   ```
+
+   `"body":"## One\n\n# Again"` answers `"reason":"h1"`. A heading inside a fenced code block is not a heading.
+
+5. In Content Manager → Page, add a **Prose** section to a page and type `### Deep` as its first line: **Save** answers Strapi's `ValidationError`, with the code in `error.details`, and nothing is saved.
 
 ## Try the icon field
 

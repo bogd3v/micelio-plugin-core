@@ -41,8 +41,8 @@ describe('the builder with the keyboard only', () => {
       await panel.getByRole('heading', { level: 2 }).waitFor()
     }
 
-    // A rich text block: the panel takes ⌘1, Tab reaches its field.
-    await insert('rich', 'rich-text')
+    // A prose block: the panel takes ⌘1, Tab reaches its field.
+    await insert('prose', 'prose')
     await page.keyboard.press('Control+1')
     await tabTo(page, input)
     await page.keyboard.type('Open source, in plain words.')
@@ -69,7 +69,7 @@ describe('the builder with the keyboard only', () => {
     await page.keyboard.press('Alt+ArrowUp')
     await eventually(() => listed(page)).toEqual([
       expect.stringContaining('Feature grid'),
-      expect.stringContaining('Rich text'),
+      expect.stringContaining('Prose'),
     ])
     await page.keyboard.press('Control+d')
     await eventually(() => listed(page)).toHaveLength(3)
@@ -103,13 +103,13 @@ describe('the builder with the keyboard only', () => {
       status: 'published',
       populate: {
         sections: {
-          on: { 'section.feature-grid': { populate: ['items'] }, 'section.rich-text': true },
+          on: { 'section.feature-grid': { populate: ['items'] }, 'shared.rich-text': true },
         },
       },
     } as never)) as unknown as { sections: { __component: string; [key: string]: unknown }[] }
     expect(published.sections.map(({ __component }) => __component)).toEqual([
       'section.feature-grid',
-      'section.rich-text',
+      'shared.rich-text',
     ])
     expect(published.sections[0]).toMatchObject({
       title: 'Why it works',

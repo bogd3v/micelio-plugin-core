@@ -24,7 +24,7 @@ module.exports = withSiteScope(
         },
         sections: {
           type: 'dynamiczone',
-          components: ['section.rich-text', 'section.cta', 'section.scene'],
+          components: ['section.rich-text', 'section.cta', 'section.scene', 'shared.rich-text'],
           pluginOptions: localized,
         },
       },

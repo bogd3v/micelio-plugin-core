@@ -85,7 +85,7 @@ export type SiteModule = (typeof SITE_MODULES)[number]
 export interface Block {
   /** Stable and kebab-case: stored content, themes and the visual editor refer to the block by it. */
   id: string
-  /** Where the block lives today: a page section or an article and About block. */
+  /** Where the block lives today: a page section, an article and About block, or both. */
   group: BlockGroup
   /** The Strapi component that stores the block's content, with its parts nested. */
   schema: Part
@@ -108,8 +108,8 @@ export interface Block {
 /** The options a block exposes, by name. */
 export type BlockOptions = { variant?: BlockOption } & { [Name in OptionName]?: BlockOption }
 
-/** Where a block can be used today. */
-type BlockGroup = 'section' | 'article'
+/** Where a block can be used today: the page zone, the article zone or both (`prose`). */
+type BlockGroup = 'section' | 'article' | 'both'
 
 /** The text of a `static` alternative for a block that needs no JavaScript. */
 const ITSELF = 'Itself: the block needs no JavaScript.'
@@ -203,7 +203,7 @@ const slide = part('shared.slide', {
   credit: component(imageCredit),
 })
 
-/** The block catalogue: the 19 blocks of ADR-0018, section 6, read only. */
+/** The block catalogue: the blocks of ADR-0018, section 6 (`rich-text` left it for `prose`, micelio-cms#445), read only. */
 export const BLOCKS: readonly Block[] = [
   {
     id: 'hero',
@@ -408,17 +408,6 @@ export const BLOCKS: readonly Block[] = [
       'module is off.',
   },
   {
-    id: 'rich-text',
-    group: 'section',
-    schema: part('section.rich-text', {
-      blockId: BLOCK_ID,
-      body: richtext({ required: true }),
-    }),
-    options: { ...presentation('rich-text', 'section', 'width', 'align', 'tone') },
-    cost: { css: 1940, js: 226, island: null },
-    static: ITSELF,
-  },
-  {
     id: 'gallery',
     group: 'section',
     schema: part('section.gallery', {
@@ -468,7 +457,7 @@ export const BLOCKS: readonly Block[] = [
   },
   {
     id: 'prose',
-    group: 'article',
+    group: 'both',
     schema: part('shared.rich-text', {
       blockId: BLOCK_ID,
       body: richtext(),

@@ -9,7 +9,7 @@ const LEAFLET_UID = 'api::leaflet.leaflet'
 const TITLE = 'Open source, in plain words'
 const BODY =
   'A plain-words guide to what open source is, what it is not, and why it matters to anyone who uses software.'
-const SECTIONS = [{ __component: 'section.rich-text', body: BODY }]
+const SECTIONS = [{ __component: 'shared.rich-text', body: BODY }]
 
 describe('the SEO and social tab of the page settings in the builder', () => {
   const session = useBuilderSession()

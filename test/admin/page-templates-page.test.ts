@@ -48,7 +48,7 @@ describe('page templates page and Template tab', () => {
             density: 'comfortable',
             items: [{ title: 'Fast', text: 'Static first.' }],
           },
-          { __component: 'section.rich-text', body: 'Open source, in plain words.' },
+          { __component: 'shared.rich-text', body: 'Open source, in plain words.' },
         ],
       } as never,
     })
@@ -276,12 +276,12 @@ describe('page templates page and Template tab', () => {
       [1, 'save'],
       [2, 'edit'],
     ])
-    expect(stored.history[1].changes).toEqual([{ kind: 'fixed', block: 'rich-text' }])
+    expect(stored.history[1].changes).toEqual([{ kind: 'fixed', block: 'prose' }])
     expect(await violationsOf(page, 'main')).toEqual([])
 
     // Back on the page, the history lists what changed.
     await page.getByRole('link', { name: 'Back to the page templates' }).click()
-    await page.getByText('Rich text: now fixed').waitFor()
+    await page.getByText('Prose: now fixed').waitFor()
   })
 
   it('moves, duplicates and removes a block of a template with the keys it announces, and no other', async () => {
@@ -326,7 +326,7 @@ describe('page templates page and Template tab', () => {
     // Enter on a palette row inserts it after the selection, as the palette's help line says.
     await page
       .getByRole('complementary', { name: 'Block palette' })
-      .getByRole('button', { name: /Rich text/ })
+      .getByRole('button', { name: /Prose/ })
       .first()
       .focus()
     await page.keyboard.press('Enter')
@@ -403,7 +403,7 @@ describe('page templates page and Template tab', () => {
     await drawer.getByText('Explainer landing').waitFor()
     await drawer.getByText('the template is now at v2', { exact: false }).waitFor()
     await drawer.getByText('What changed in v2').waitFor()
-    await drawer.getByText('New block after Rich text: Rich text').waitFor()
+    await drawer.getByText('New block after Prose: Prose').waitFor()
     await drawer.getByText('Feature grid: no longer fixed').waitFor()
     await drawer.getByText('Fixed blocks on this page').waitFor()
     await drawer.getByText('fixed by template').waitFor()
@@ -426,8 +426,8 @@ describe('page templates page and Template tab', () => {
     })) as unknown as { sections: { __component: string }[]; templateVersion: number }
     expect(after.sections.map(({ __component }) => __component)).toEqual([
       'section.feature-grid',
-      'section.rich-text',
-      'section.rich-text',
+      'shared.rich-text',
+      'shared.rich-text',
     ])
     expect(after.templateVersion).toBe(2)
     // The lock followed the template: the grid is no longer fixed.
@@ -468,7 +468,7 @@ describe('page templates page and Template tab', () => {
     await drawer.getByRole('button', { name: /^Switch template…/ }).click()
     await drawer.getByLabel('Switch to').selectOption({ label: 'Text only' })
     await drawer.getByText('Would drop: Feature grid').waitFor()
-    await drawer.getByText('Keeps 1 block: Rich text').waitFor()
+    await drawer.getByText('Keeps 1 block: Prose').waitFor()
     // Looking changed nothing.
     expect(
       ((await guides().findOne({ documentId, locale: 'en' })) as unknown as { templateId: string })

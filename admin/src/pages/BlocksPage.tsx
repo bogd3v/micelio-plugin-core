@@ -49,7 +49,7 @@ export default function BlocksPage() {
     <Page.Protect permissions={[BLOCKS_READ_PERMISSION]}>
       <Page.Main>
         <Page.Title>{t('blocks.title')}</Page.Title>
-        <Layouts.Header title={t('blocks.title')} subtitle={t('blocks.subtitle', { count: 19 })} />
+        <Layouts.Header title={t('blocks.title')} subtitle={t('blocks.subtitle', { count: 18 })} />
         <Layouts.Content>
           <BlocksContent />
         </Layouts.Content>

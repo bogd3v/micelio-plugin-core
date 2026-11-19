@@ -78,7 +78,11 @@ const round = (value: number) => Math.round(value * 10) / 10
 function report(site: WeightBehaviour, draft: Draft) {
   const zone = draft.blocks ?? draft.sections ?? []
   const blocks = zone.map((block) => {
-    const id = (block.__component ?? 'unknown').split('.').pop() ?? 'unknown'
+    // The block's catalogue id: `shared.rich-text` is `prose`.
+    const id =
+      block.__component === 'shared.rich-text'
+        ? 'prose'
+        : ((block.__component ?? 'unknown').split('.').pop() ?? 'unknown')
     const kb = typeof site.blockKb === 'number' ? site.blockKb : (site.blockKb[id] ?? 0)
     return { id, kb, onDemandKb: site.onDemandKb?.[id] ?? 0 }
   })

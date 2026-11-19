@@ -14,6 +14,13 @@ const DOCS_FILE = new URL('../../docs/blocks.md', import.meta.url)
 const START = '<!-- blocks:reference:start (npm run blocks:generate) -->'
 const END = '<!-- blocks:reference:end -->'
 
+/** Where each group of the catalogue is used, as the reference says it. */
+const GROUP_LABEL: Record<Block['group'], string> = {
+  section: 'page sections',
+  article: 'article and About blocks',
+  both: 'page sections, and article and About blocks',
+}
+
 const isCheck = process.argv.includes('--check')
 const drifted: string[] = []
 
@@ -100,7 +107,7 @@ function blockSection(block: Block, attributes: Record<string, StrapiAttribute>)
   )
   const island = block.cost.island
   const lines = [
-    `- **Component:** \`${block.schema.component}\` (${block.group === 'section' ? 'page sections' : 'article and About blocks'})`,
+    `- **Component:** \`${block.schema.component}\` (${GROUP_LABEL[block.group]})`,
     `- **Options:**${options.length ? '' : ' none'}`,
     ...options.map(
       ([name, option]) =>

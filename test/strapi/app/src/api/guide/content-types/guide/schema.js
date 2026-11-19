@@ -31,6 +31,7 @@ module.exports = withSiteScope(
             'section.feature-grid',
             'section.logo-cloud',
             'shared.media',
+            'shared.rich-text',
           ],
           pluginOptions: localized,
         },

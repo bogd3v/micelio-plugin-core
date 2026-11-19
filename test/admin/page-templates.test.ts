@@ -47,7 +47,7 @@ describe('page templates in the admin', () => {
             density: 'comfortable',
             items: [{ title: 'Fast', text: 'Static first.' }],
           },
-          { __component: 'section.rich-text', body: 'Open source, in plain words.' },
+          { __component: 'shared.rich-text', body: 'Open source, in plain words.' },
         ],
       } as never,
     })
@@ -136,8 +136,8 @@ describe('page templates in the admin', () => {
       true
     )
     await dialog.getByLabel('Name').fill('Explainer landing')
-    await dialog.getByLabel('Content of Rich text').selectOption('clear')
-    await dialog.getByLabel('Rich text is fixed').check()
+    await dialog.getByLabel('Content of Prose').selectOption('clear')
+    await dialog.getByLabel('Prose is fixed').check()
     await dialog.getByText('Name is unique on default').waitFor()
     // The scope is a check of its own: every site of the CMS, then back to this one.
     await dialog.getByRole('radio', { name: 'Every site of this CMS' }).click()
@@ -157,7 +157,7 @@ describe('page templates in the admin', () => {
     expect(stored).toMatchObject({ name: 'Explainer landing', version: 1 })
     expect(stored.blocks.map(({ block, content, fixed }) => ({ block, content, fixed }))).toEqual([
       { block: 'feature-grid', content: 'sample', fixed: false },
-      { block: 'rich-text', content: 'clear', fixed: true },
+      { block: 'prose', content: 'clear', fixed: true },
     ])
   })
 

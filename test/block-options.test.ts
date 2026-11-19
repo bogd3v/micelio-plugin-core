@@ -66,7 +66,7 @@ describe('the options vocabulary', () => {
   })
 
   it('withholds width: full from articles only', () => {
-    expect(valuesFor('width', { id: 'rich-text', group: 'section' })).toContain('full')
+    expect(valuesFor('width', { id: 'gallery', group: 'section' })).toContain('full')
     expect(valuesFor('width', { id: 'media', group: 'article' })).toEqual(['prose', 'wide'])
   })
 
@@ -97,7 +97,7 @@ describe('the options of the catalogue', () => {
   // The artboard's "blocks shown" for each option.
   it.each<[OptionName, string[]]>([
     ['layout', ['hero', 'cta', 'testimonials']],
-    ['width', ['rich-text', 'media', 'quote', 'gallery']],
+    ['width', ['media', 'quote', 'gallery']],
     ['columns', ['feature-grid', 'stats', 'pricing', 'logo-cloud']],
     ['density', ['feature-grid', 'gallery', 'logo-cloud', 'testimonials', 'faq', 'post-list']],
     ['align', ['quote', ...PAGE_SECTIONS]],
@@ -116,7 +116,7 @@ describe('the options of the catalogue', () => {
     const articles = BLOCKS.filter((entry) => entry.group === 'article' && entry.options.width)
     expect(articles.map((entry) => entry.id)).toEqual(['quote', 'media'])
     for (const entry of articles) expect(entry.options.width?.values).not.toContain('full')
-    expect(block('rich-text').options.width?.values).toContain('full')
+    expect(block('gallery').options.width?.values).toContain('full')
   })
 
   it('offers columns: 6 to logo-cloud only', () => {
@@ -206,9 +206,7 @@ describe('findBlockOptionViolation', () => {
       option: 'width',
       allowed: ['prose', 'wide'],
     })
-    expect(
-      findBlockOptionViolation([{ __component: 'section.rich-text', width: 'full' }])
-    ).toBeNull()
+    expect(findBlockOptionViolation([{ __component: 'section.gallery', width: 'full' }])).toBeNull()
   })
 
   it('refuses tone or align on a scene of variant background', () => {
@@ -257,9 +255,9 @@ describe('findBlockOptionViolation', () => {
     expect(findBlockOptionViolation([grid({ variant: 'diagonal' })])).toMatchObject({
       option: 'variant',
     })
-    expect(
-      findBlockOptionViolation([{ __component: 'section.rich-text', variant: 'x' }])
-    ).toMatchObject({ block: 'rich-text', option: 'variant', allowed: [] })
+    expect(findBlockOptionViolation([{ __component: 'shared.quote', variant: 'x' }])).toMatchObject(
+      { block: 'quote', option: 'variant', allowed: [] }
+    )
   })
 
   it('refuses a value that is not a string or a number', () => {

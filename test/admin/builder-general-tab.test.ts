@@ -44,7 +44,7 @@ describe('the General tab of the page settings in the builder', () => {
         slug,
         pageType,
         site: siteDocumentId,
-        sections: [{ __component: 'section.rich-text', body: 'One' }],
+        sections: [{ __component: 'shared.rich-text', body: 'One' }],
       } as never,
     })
     return created.documentId

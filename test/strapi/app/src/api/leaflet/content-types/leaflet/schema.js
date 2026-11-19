@@ -30,7 +30,7 @@ module.exports = withSiteScope(
         },
         sections: {
           type: 'dynamiczone',
-          components: ['section.hero', 'section.rich-text', 'section.scene'],
+          components: ['section.hero', 'section.rich-text', 'section.scene', 'shared.rich-text'],
           pluginOptions: localized,
         },
       },

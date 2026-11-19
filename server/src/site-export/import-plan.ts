@@ -3,6 +3,8 @@
 import type { Core, UID } from '@strapi/strapi'
 import { findBlockOptionViolation } from '../block-options/rules'
 import { findBackgroundSceneExcess } from '../islands/rules'
+import { ProseHeadingError } from '../prose-headings/error'
+import { findProseHeadingViolation } from '../prose-headings/rules'
 import { SectionAnchorError } from '../section-anchor/error'
 import { findAnchorViolation } from '../section-anchor/rules'
 import { findBlockNotAllowedIn } from '../block-settings/check'
@@ -239,6 +241,14 @@ function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, wh
     throw new ExportError(
       'exportDocumentInvalid',
       `${where}: ${new SectionAnchorError(anchor).message}`
+    )
+  }
+  // And the heading rule of a `prose` body.
+  const heading = findProseHeadingViolation(zones)
+  if (heading) {
+    throw new ExportError(
+      'exportDocumentInvalid',
+      `${where}: ${new ProseHeadingError(heading).message}`
     )
   }
 }

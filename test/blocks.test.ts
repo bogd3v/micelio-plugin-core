@@ -25,7 +25,6 @@ const CATALOGUE: [string, string, string[]][] = [
   ['cta', 'section.cta', ['banner', 'card']],
   ['post-list', 'section.post-list', ['cards', 'list']],
   ['newsletter', 'section.newsletter', ['inline', 'card']],
-  ['rich-text', 'section.rich-text', []],
   ['gallery', 'section.gallery', ['grid', 'masonry']],
   ['scene', 'section.scene', ['background', 'inline']],
   ['prose', 'shared.rich-text', []],
@@ -63,7 +62,7 @@ const BYTES = z.int().positive()
 // The shape of an entry (ADR-0018, section 1), beyond what its TypeScript type says.
 const ENTRY = z.object({
   id: z.string().regex(KEBAB_CASE),
-  group: z.enum(['section', 'article']),
+  group: z.enum(['section', 'article', 'both']),
   options: z.object({
     variant: z
       .object({ values: z.array(z.string().regex(KEBAB_CASE)).min(2), default: z.string() })
@@ -81,7 +80,7 @@ const ENTRY = z.object({
 const components = fixture.components as Record<string, { attributes: StrapiAttributes }>
 
 describe('the block catalogue', () => {
-  it('has exactly the 19 blocks of ADR-0018, section 6, in its order', () => {
+  it('has exactly the 18 blocks of the catalogue (ADR-0018, section 6, less `rich-text`), in its order', () => {
     expect(BLOCKS.map((block) => [block.id, block.schema.component])).toEqual(
       CATALOGUE.map(([id, component]) => [id, component])
     )
@@ -103,7 +102,7 @@ describe('the block catalogue', () => {
 
   it("every page section offers tone and align with the vocabulary's defaults", () => {
     const sections = BLOCKS.filter((block) => block.group === 'section')
-    expect(sections.map((block) => block.id)).toEqual(CATALOGUE.slice(0, 14).map(([id]) => id))
+    expect(sections.map((block) => block.id)).toEqual(CATALOGUE.slice(0, 13).map(([id]) => id))
     for (const block of sections) {
       expect(block.options.tone, `${block.id}.tone`).toEqual({
         values: ['default', 'raised', 'accent'],
@@ -159,6 +158,7 @@ describe('the block catalogue', () => {
     }
   })
 
+  // `section.rich-text` is left out with its block; it stays a component of the host until it is retired.
   it('accounts for the 32 components of the fixture', () => {
     const described = new Set(
       BLOCKS.flatMap((block) => Object.keys(strapiComponents(block).components))
@@ -168,7 +168,16 @@ describe('the block catalogue', () => {
       Object.keys(components)
         .filter((uid) => !described.has(uid))
         .sort()
-    ).toEqual([...FIELDS].sort())
+    ).toEqual([...FIELDS, 'section.rich-text'].sort())
+  })
+
+  it('has no entry for rich-text, and puts prose in both zones', () => {
+    expect(BLOCKS.map((block) => block.id)).not.toContain('rich-text')
+    expect(BLOCKS.map((block) => block.schema.component)).not.toContain('section.rich-text')
+    expect(blockOf('prose')).toMatchObject({
+      group: 'both',
+      schema: { component: 'shared.rich-text' },
+    })
   })
 
   it('declares an island for scene and playground only, with their registry id and budget', () => {

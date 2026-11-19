@@ -4,7 +4,8 @@ import type { BlockUsage, MergedOption } from '../../../server/src/types/blocks'
 export interface CatalogueBlock {
   /** The `id` of the block in the catalogue. */
   id: string
-  group: 'section' | 'article'
+  /** Where the block lives: a page's sections, the article and About blocks, or both (`prose`). */
+  group: 'section' | 'article' | 'both'
   /** The Strapi component that stores the block. */
   component: string
   /** The options the block exposes, with the site's defaults. */
@@ -33,8 +34,8 @@ export interface CatalogueView {
 
 export type { BlockUsage }
 
-/** The families of the filter: all blocks, or one of the contract's two groups. */
-export type Family = 'all' | CatalogueBlock['group']
+/** The families of the filter: all blocks, or the page's or the article's (a block of both is in each). */
+export type Family = 'all' | 'section' | 'article'
 
 /** The filters of the page. */
 export interface BlockFilters {
@@ -52,7 +53,7 @@ export function filterBlocks(blocks: CatalogueBlock[], filters: BlockFilters): C
   const needle = filters.search.trim().toLowerCase()
   return blocks.filter(
     (block) =>
-      (filters.family === 'all' || block.group === filters.family) &&
+      (filters.family === 'all' || block.group === filters.family || block.group === 'both') &&
       (!filters.islandsOnly || block.isIsland) &&
       (!filters.disabledOnly || !block.enabled) &&
       (needle === '' ||

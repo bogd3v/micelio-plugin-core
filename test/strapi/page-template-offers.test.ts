@@ -105,7 +105,7 @@ describe('page template offers', () => {
         { title: 'Open', text: 'MIT licensed.' },
       ],
     },
-    { __component: 'section.rich-text', body: 'Open source, in plain words.', width: 'wide' },
+    { __component: 'shared.rich-text', body: 'Open source, in plain words.' },
     { __component: 'section.logo-cloud', title: 'Used by', columns: '6' },
   ]
 
@@ -253,7 +253,7 @@ describe('page template offers', () => {
         data: { ...feature(blocks).data, columns: '2', density: 'comfortable' },
       },
       blocks[1],
-      { ...blocks[1], data: { body: 'A new text.', width: 'wide' } },
+      { ...blocks[1], data: { body: 'A new text.' } },
       blocks[2],
     ])
 
@@ -269,7 +269,7 @@ describe('page template offers', () => {
         from: 'compact',
         to: 'comfortable',
       },
-      { kind: 'added', block: 'rich-text', after: 'rich-text' },
+      { kind: 'added', block: 'prose', after: 'prose' },
     ])
     expect((await read(documentId)).sections).toHaveLength(3)
     expect((await read(documentId)).templateVersion).toBe(1)
@@ -284,8 +284,8 @@ describe('page template offers', () => {
     // Exactly one block more, after the text, holding the template's sample text.
     expect(page.sections.map(({ __component }) => __component)).toEqual([
       'section.feature-grid',
-      'section.rich-text',
-      'section.rich-text',
+      'shared.rich-text',
+      'shared.rich-text',
       'section.logo-cloud',
     ])
     expect(page.sections[2]).toMatchObject({ body: 'A new text.' })
@@ -422,7 +422,7 @@ describe('page template offers', () => {
       })
     // The content API takes no row ids, so any zone it sends drops the fixed blocks.
     expect(held).toHaveLength(3)
-    const without = [{ __component: 'section.rich-text', body: 'Only this.' }]
+    const without = [{ __component: 'shared.rich-text', body: 'Only this.' }]
     const response = await put({ sections: without, templateFixed: [] })
     expect(response.status).toBe(400)
     expect(JSON.stringify(await response.json())).toContain('Invalid key templateFixed')
@@ -523,7 +523,7 @@ describe('page template offers', () => {
           json: {
             uid: GUIDE,
             documentId: await pageWith([
-              { __component: 'section.rich-text', body: 'Another start.' },
+              { __component: 'shared.rich-text', body: 'Another start.' },
               { __component: 'section.scene', title: 'Scene', variant: 'background' },
             ]),
             locale: 'en',
@@ -540,7 +540,7 @@ describe('page template offers', () => {
     const looked = await data<{
       plan: { keeps: string[]; adds: string[]; drops: { block: string }[] }
     }>(await micelio('/templates/switch', { method: 'POST', json: body(true) }))
-    expect(looked.plan.keeps).toEqual(['rich-text'])
+    expect(looked.plan.keeps).toEqual(['prose'])
     expect(looked.plan.adds).toEqual(['scene'])
     expect(looked.plan.drops.map(({ block }) => block)).toEqual(['feature-grid', 'logo-cloud'])
     // A look changes nothing.
@@ -553,7 +553,7 @@ describe('page template offers', () => {
     expect(done.offer).toMatchObject({ version: 1, template: { id: second } })
     const page = await read(documentId)
     expect(page.sections.map(({ __component }) => __component)).toEqual([
-      'section.rich-text',
+      'shared.rich-text',
       'section.scene',
     ])
     // The text the page kept is the page's own, not the template's.

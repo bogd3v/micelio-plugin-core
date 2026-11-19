@@ -22,8 +22,8 @@ const eventually = <T>(read: () => Promise<T> | T) => expect.poll(read, { timeou
 
 // The seeded page: two blocks of text.
 const SECTIONS = [
-  { __component: 'section.rich-text', body: 'Open source, in plain words.' },
-  { __component: 'section.rich-text', body: 'Hyphae connect the trees.' },
+  { __component: 'shared.rich-text', body: 'Open source, in plain words.' },
+  { __component: 'shared.rich-text', body: 'Hyphae connect the trees.' },
 ]
 
 interface Editorial {
@@ -91,7 +91,7 @@ describe('the review flow in the builder', () => {
     await page.getByRole('button', { name: 'Login' }).click()
     await page.waitForURL(/\/admin(?!\/auth)/)
     await page.goto(`${base}/admin/plugins/micelio/builder/${BROCHURE}/${documentId}?locale=en`)
-    await page.locator('[data-block="rich-text"]').waitFor()
+    await page.locator('[data-block="prose"]').waitFor()
     return page
   }
 
@@ -280,10 +280,10 @@ describe('the review flow in the builder', () => {
       await page.getByRole('button', { name: 'Publish', exact: true }).click()
       const alert = page.getByRole('alert').filter({ hasText: 'Not published: over budget' })
       await alert.waitFor()
-      expect(await alert.textContent()).toContain('Heaviest blocks: rich-text')
+      expect(await alert.textContent()).toContain('Heaviest blocks: prose')
       const link = alert.getByRole('link', { name: 'Go to the block' })
       expect(await link.getAttribute('href')).toBe(
-        `/admin/plugins/micelio/builder/${BROCHURE}/${documentId}?locale=en&block=rich-text&position=0`
+        `/admin/plugins/micelio/builder/${BROCHURE}/${documentId}?locale=en&block=prose&position=0`
       )
       expect(await editorialOf(documentId)).toMatchObject({ state: 'in_review' })
       // The link opens the builder with that block selected.

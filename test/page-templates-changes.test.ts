@@ -23,39 +23,39 @@ const entry = (id: string, more: Record<string, unknown> = {}) => ({
 
 describe('what changed between two versions of a template', () => {
   it('lists added, removed, fixed and option changes, matching blocks by occurrence', () => {
-    const before = [block('feature-grid', { columns: '4' }), block('rich-text'), block('rich-text')]
+    const before = [block('feature-grid', { columns: '4' }), block('gallery'), block('gallery')]
     const after = [
       block('feature-grid', { columns: '2' }, true),
-      block('rich-text'),
+      block('gallery'),
       block('logo-cloud'),
     ]
     expect(diffTemplates(before, after)).toEqual([
       { kind: 'fixed', block: 'feature-grid' },
       { kind: 'option', block: 'feature-grid', option: 'columns', from: '4', to: '2' },
-      { kind: 'added', block: 'logo-cloud', after: 'rich-text' },
-      { kind: 'removed', block: 'rich-text' },
+      { kind: 'added', block: 'logo-cloud', after: 'gallery' },
+      { kind: 'removed', block: 'gallery' },
     ])
   })
 })
 
 describe('applying an offer', () => {
-  const base = [block('feature-grid', { columns: '4' }), block('rich-text')]
+  const base = [block('feature-grid', { columns: '4' }), block('gallery')]
   const current = [
     block('feature-grid', { columns: '2' }),
-    block('rich-text'),
+    block('gallery'),
     block('logo-cloud', { title: 'Used by' }),
   ]
 
   it('moves an option only where the page kept the old value', () => {
     const kept = applyOffer(
-      [entry('feature-grid', { columns: '4' }), entry('rich-text')],
+      [entry('feature-grid', { columns: '4' }), entry('gallery')],
       [],
       base,
       current
     )
     expect(kept.zone[0]).toMatchObject({ columns: '2' })
     const edited = applyOffer(
-      [entry('feature-grid', { columns: '3' }), entry('rich-text')],
+      [entry('feature-grid', { columns: '3' }), entry('gallery')],
       [],
       base,
       current
@@ -64,10 +64,10 @@ describe('applying an offer', () => {
   })
 
   it('adds the new block after its predecessor, once, and removes nothing', () => {
-    const zone = [entry('rich-text'), entry('feature-grid', { columns: '4' })]
+    const zone = [entry('gallery'), entry('feature-grid', { columns: '4' })]
     const once = applyOffer(zone, [], base, current)
     expect(once.zone.map(({ __component }) => __component)).toEqual([
-      'section.rich-text',
+      'section.gallery',
       'section.logo-cloud',
       'section.feature-grid',
     ])
@@ -79,11 +79,11 @@ describe('applying an offer', () => {
   })
 
   it('makes the fixed marks follow the template', () => {
-    const fixedNow = [block('feature-grid', {}, true), block('rich-text')]
+    const fixedNow = [block('feature-grid', {}, true), block('gallery')]
     const result = applyOffer(
-      [entry('feature-grid'), entry('rich-text')],
-      [{ block: 'rich-text', nth: 1 }],
-      [block('feature-grid'), block('rich-text', {}, true)],
+      [entry('feature-grid'), entry('gallery')],
+      [{ block: 'gallery', nth: 1 }],
+      [block('feature-grid'), block('gallery', {}, true)],
       fixedNow
     )
     expect(result.fixed).toEqual([{ block: 'feature-grid', nth: 1 }])
@@ -93,23 +93,23 @@ describe('applying an offer', () => {
 describe('switching', () => {
   it('keeps the blocks that fit, adds the rest and lists what is dropped', () => {
     const result = planSwitch(
-      [entry('feature-grid'), entry('rich-text', { body: 'Mine' })],
-      [block('rich-text', { body: 'Theirs' }, true), block('scene')]
+      [entry('feature-grid'), entry('gallery', { body: 'Mine' })],
+      [block('gallery', { body: 'Theirs' }, true), block('scene')]
     )
     expect(result.plan).toEqual({
-      keeps: ['rich-text'],
+      keeps: ['gallery'],
       adds: ['scene'],
       drops: [{ block: 'feature-grid', position: 0 }],
     })
     expect(result.zone[0]).toMatchObject({ body: 'Mine' })
-    expect(result.fixed).toEqual([{ block: 'rich-text', nth: 1 }])
+    expect(result.fixed).toEqual([{ block: 'gallery', nth: 1 }])
   })
 })
 
 describe('a fixed block', () => {
   const stored = [
     entry('feature-grid', { id: 1 }),
-    entry('rich-text', { id: 1 }),
+    entry('gallery', { id: 1 }),
     entry('logo-cloud', { id: 1 }),
   ]
   const marks = [
@@ -157,14 +157,14 @@ describe('a fixed block', () => {
     })
   })
   it('locks nothing the stored zone does not hold', () => {
-    expect(findFixedViolation([entry('rich-text', { id: 1 })], [], marks)).toBeNull()
+    expect(findFixedViolation([entry('gallery', { id: 1 })], [], marks)).toBeNull()
   })
 })
 
 describe('the blocks the builder locks', () => {
   const held = [
     { component: 'section.feature-grid', id: 7 },
-    { component: 'section.rich-text', id: 8 },
+    { component: 'section.gallery', id: 8 },
   ]
   const idOf = ({ component }: { component: string }) => component.replace('section.', '')
   const marks = [{ block: 'feature-grid', nth: 1 }]
@@ -173,13 +173,13 @@ describe('the blocks the builder locks', () => {
     const blocks = [
       { key: 'new', component: 'section.feature-grid' },
       { key: 'a', component: 'section.feature-grid', id: 7 },
-      { key: 'b', component: 'section.rich-text', id: 8 },
+      { key: 'b', component: 'section.gallery', id: 8 },
     ]
     expect([...lockedKeysOf(blocks, held, marks, idOf)]).toEqual(['a'])
   })
   it('keeps the lock on the row when the block moves', () => {
     const blocks = [
-      { key: 'b', component: 'section.rich-text', id: 8 },
+      { key: 'b', component: 'section.gallery', id: 8 },
       { key: 'a', component: 'section.feature-grid', id: 7 },
     ]
     expect([...lockedKeysOf(blocks, held, marks, idOf)]).toEqual(['a'])
