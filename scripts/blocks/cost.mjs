@@ -75,10 +75,6 @@ const OWNERS = {
     ],
     css: ['section:newsletter', '.myc-news'],
   },
-  'rich-text': {
-    js: ['components/section/SectionRichText.vue'],
-    css: ['section:rich-text', ...MARKDOWN],
-  },
   gallery: {
     js: ['components/section/SectionGallery.vue', HEAD, MEDIA],
     css: ['section:gallery'],

@@ -187,7 +187,7 @@ describe('the preview page in the admin', () => {
         slug: 'landing',
         site: defaultSite.documentId,
         sections: [
-          { __component: 'section.rich-text', body: 'Welcome to the landing.' },
+          { __component: 'shared.rich-text', body: 'Welcome to the landing.' },
           {
             __component: 'section.scene',
             variant: 'inline',
@@ -207,7 +207,7 @@ describe('the preview page in the admin', () => {
           title: 'Priced landing',
           site: defaultSite.documentId,
           sections: [
-            { __component: 'section.rich-text', body: 'Welcome.' },
+            { __component: 'shared.rich-text', body: 'Welcome.' },
             { __component: 'section.scene', variant: 'inline', alt: 'A globe', title: 'Globe' },
           ],
         } as never,
@@ -997,7 +997,7 @@ describe('the preview page in the admin', () => {
       await details.locator('summary').click()
       const rows = details.locator('tbody tr')
       await expect(rows.count()).resolves.toBe(2)
-      await expect(rows.nth(0).innerText()).resolves.toMatch(/1\s+rich-text\s+5\.0\s+–/)
+      await expect(rows.nth(0).innerText()).resolves.toMatch(/1\s+prose\s+5\.0\s+–/)
       await expect(rows.nth(1).innerText()).resolves.toMatch(/2\s+scene\s+5\.0\s+600\.0/)
       await expect(violationsOf(page)).resolves.toEqual([])
     })

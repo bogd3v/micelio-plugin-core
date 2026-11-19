@@ -75,8 +75,8 @@ function escapeHtml(text: string): string {
 
 // A heavy island on the page, or its static alternative: the poster, described by the scene's alt text.
 function sectionHtml(section: Section, isStatic: boolean, cmsBase: string): string {
-  if (section.__component === 'section.rich-text') {
-    return `<section data-section="rich-text"><p data-field="body">${escapeHtml(section.body ?? '')}</p></section>`
+  if (section.__component === 'shared.rich-text') {
+    return `<section data-section="prose"><p data-field="body">${escapeHtml(section.body ?? '')}</p></section>`
   }
   if (section.__component === 'section.scene') {
     const alt = escapeHtml(section.alt ?? '')
@@ -177,7 +177,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     const auth = { Authorization: `Bearer ${cms.apiToken}` }
     const populate = {
       'populate[sections][on][section.scene][populate]': '*',
-      'populate[sections][on][section.rich-text][populate]': '*',
+      'populate[sections][on][shared.rich-text][populate]': '*',
     }
     if (
       await answerWeight(
@@ -255,7 +255,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     }
     const query = new URLSearchParams({ documentId: draftPath[1] ?? '' })
     query.set('populate[sections][on][section.scene][populate]', '*')
-    query.set('populate[sections][on][section.rich-text][populate]', '*')
+    query.set('populate[sections][on][shared.rich-text][populate]', '*')
     const locale = url.searchParams.get('locale')
     if (locale) query.set('locale', locale)
     const cmsBase = cms.base

@@ -17,7 +17,7 @@ module.exports = withSiteScope(
       title: { type: 'string', required: true, pluginOptions: localized },
       sections: {
         type: 'dynamiczone',
-        components: ['section.rich-text', 'section.scene', 'shared.playground'],
+        components: ['section.rich-text', 'section.scene', 'shared.playground', 'shared.rich-text'],
         pluginOptions: localized,
       },
     },

@@ -2,7 +2,7 @@
 
 The blocks a page is made of, as a contract ([ADR-0018](https://github.com/bogd3v/micelio/blob/main/docs/adr/0018-blocks-as-a-contract.md)): each block has a stable `id`, the `schema` of the Strapi component that stores its content, its presentation `options`, its `cost` and its `static` alternative, and optionally the `module` of `site.modules` it needs. The catalogue is the builder's palette and the theme creator's reference.
 
-The first catalogue is the 19 blocks of ADR-0018, section 6, read from `micelio-cms` `v0.4.0`. It changes no block's content: the components stay in `micelio-cms` until the cut-over of release line 0.7. The presentation options of the vocabulary ([below](#presentation-options)) are the one addition.
+The first catalogue was the 19 blocks of ADR-0018, section 6, read from `micelio-cms` `v0.4.0`; it has 18 now: `rich-text` (`section.rich-text`, the page's Markdown section) left it and `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page and in an article ([Prose](#prose), micelio-cms#445). It changes no block's content: the components stay in `micelio-cms` until the cut-over of release line 0.7. The presentation options of the vocabulary ([below](#presentation-options)) are the one addition.
 
 ## Where it lives
 
@@ -30,16 +30,16 @@ A block's `options` are a closed set of presentation values (ADR-0018, section 1
 | Option      | Values, in the artboard's order (default in bold) | Exposed by                                                                  |
 | ----------- | ------------------------------------------------- | --------------------------------------------------------------------------- |
 | `layout`    | **`centered`**, `split`, `stacked`                | `hero`, `cta`, `testimonials`                                               |
-| `width`     | **`prose`**, `wide`, `full`                       | `rich-text`, `gallery`, `media`, `quote`                                    |
+| `width`     | **`prose`**, `wide`, `full`                       | `gallery`, `media`, `quote`                                                 |
 | `columns`   | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`                            |
 | `density`   | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list` |
-| `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the fourteen page sections                                      |
-| `tone`      | **`default`**, `raised`, `accent`                 | the fourteen page sections                                                  |
+| `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the thirteen page sections                                      |
+| `tone`      | **`default`**, `raised`, `accent`                 | the thirteen page sections                                                  |
 | `ratio`     | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                         |
 | `height`    | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                               |
 | `iconStyle` | **`outline`**, `filled`                           | none yet                                                                    |
 
-`tone` and `align` are on the fourteen page sections (`page.sections`). A `scene` offers them only in its `inline` variant: its `background` variant paints its own poster, and a save that sets either on it (a `scene` with no `variant` takes `background`) is refused with `blockOptionInvalid` unless the value is the option's default, the only value allowed (the content API stores both on a `scene`). The builder leaves both out of a new `background` scene, so a site's default of either never reaches it.
+`tone` and `align` are on the thirteen page sections (`page.sections`). A `scene` offers them only in its `inline` variant: its `background` variant paints its own poster, and a save that sets either on it (a `scene` with no `variant` takes `background`) is refused with `blockOptionInvalid` unless the value is the option's default, the only value allowed (the content API stores both on a `scene`). The builder leaves both out of a new `background` scene, so a site's default of either never reaches it.
 
 Two values are withheld: `width: full` from the article blocks (`media`, `quote`) and `columns: 6` from every block but `logo-cloud`; the reference lists the values each block offers.
 
@@ -69,6 +69,12 @@ Every block has a `blockId` and every repeatable item an `itemId` (ADR-0018, sec
 The twelve sections whose renderer uses `SectionHead` (`hero`, `feature-grid`, `stats`, `logo-cloud`, `testimonials`, `pricing`, `faq`, `cta`, `post-list`, `newsletter`, `gallery`, `scene`) have two optional strings next to `blockId`: `eyebrow`, a short line above the heading, and `anchor`, the id a link or a table of contents points at the section by. The anchor is explicit and never derived from the title, so an edited title breaks no link. Adding them is a MINOR of the contract; a section without them renders as before.
 
 **Validation at save.** On `create`, `update` and `clone` the plugin refuses a save whose `anchor` is not a kebab-case slug (lowercase letters and digits joined by single hyphens), or that an earlier block of the page already uses, with `sectionAnchorInvalid` ([`docs/api.md`](api.md#errors)): the problem detail names the zone and position of the block. An absent, `null` or empty anchor is no anchor. Stored content is not re-checked.
+
+## Prose
+
+`prose` (`shared.rich-text`) is the one Markdown block, allowed in a page's zone and in an article's (its `group` is `both`). It replaces `rich-text` (`section.rich-text`), which left the catalogue: the component stays registered in `micelio-cms` for one release, and a page that holds one keeps rendering, but the plugin no longer knows it as a block (it takes no block setting, has no cost line and its body is not checked).
+
+**Heading levels at save.** A page already has its `h1`, so a `prose` body is validated by position: its first heading is an `h2` (a body that opens with an `h1` fails, as one that opens at `h3` or below does), there is no `h1` after it, and a heading is at most one level below the one before it (`h2` to `h4` fails; going back up, `h4` to `h2`, does not). Headings are ATX (`## Title`) or setext (`Title` over `---`) and a heading inside a fenced code block is not one. A body with no heading is sound, and so is an absent, `null` or empty one. On `create`, `update` and `clone` the plugin refuses a save that breaks it with `proseHeadingInvalid` ([`docs/api.md`](api.md#errors)): the problem detail names the zone and position of the block and the heading, with its level and its line in the body. The dry run and the apply of an import check it too. Stored content is not re-checked.
 
 ## Modules
 
@@ -168,7 +174,6 @@ The measurement of 2026-10-23, in gzip bytes:
 | `cta`            | 483           | 254            | 798          | 803           |
 | `post-list`      | 376           | 233            | 768          | 768           |
 | `newsletter`     | 763           | 735            | 1810         | 1822          |
-| `rich-text`      | 1940          | 1895           | 225          | 226           |
 | `gallery`        | 425           | 220            | 1242         | 1251          |
 | `scene`          | 601           | 434            | 1299         | 1303          |
 | `prose`          | 1895          | 1895           | 610          | 609           |
@@ -177,7 +182,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `slider`         | 1545          | 1545           | 2601         | 2615          |
 | `playground`     | 633           | 633            | 1757         | 1758          |
 
-`rich-text` and `prose` carry the Markdown styles (`.myc-prose`, code blocks, callouts), which an article page loads anyway. A higher declared cost is a PATCH with the reason and the numbers (ADR-0018, section 2).
+`prose` carries the Markdown styles (`.myc-prose`, code blocks, callouts), which an article page loads anyway. A higher declared cost is a PATCH with the reason and the numbers (ADR-0018, section 2).
 
 <!-- blocks:reference:start (npm run blocks:generate) -->
 
@@ -196,7 +201,6 @@ The measurement of 2026-10-23, in gzip bytes:
 | `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`             | 483          | 803         | No                     |
 | `post-list`      | `section.post-list`      | `cards`, `list`                   | `density`, `align`, `tone`            | 376          | 768         | No                     |
 | `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`                       | 763          | 1822        | No                     |
-| `rich-text`      | `section.rich-text`      |                                   | `width`, `align`, `tone`              | 1940         | 226         | No                     |
 | `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`, `align`, `tone`   | 425          | 1251        | No                     |
 | `scene`          | `section.scene`          | `background`, `inline`            | `align`, `tone`, `height`             | 601          | 1303        | `scene` (3d)           |
 | `prose`          | `shared.rich-text`       |                                   |                                       | 1895         | 610         | No                     |
@@ -428,21 +432,6 @@ The measurement of 2026-10-23, in gzip bytes:
 | `text`        | text   | No       |         |
 | `buttonLabel` | string | No       |         |
 
-### `rich-text`
-
-- **Component:** `section.rich-text` (page sections)
-- **Options:**
-  - `width`: `prose`, `wide`, `full`; default `prose`
-  - `align`: `start`, `center`; default `start`
-  - `tone`: `default`, `raised`, `accent`; default `default`
-- **Cost:** 1940 B of CSS and 226 B of JS, gzip
-- **Static:** Itself: the block needs no JavaScript.
-
-| Field     | Type     | Required | Details |
-| --------- | -------- | -------- | ------- |
-| `blockId` | string   | No       |         |
-| `body`    | richtext | Yes      |         |
-
 ### `gallery`
 
 - **Component:** `section.gallery` (page sections)
@@ -489,7 +478,7 @@ The measurement of 2026-10-23, in gzip bytes:
 
 ### `prose`
 
-- **Component:** `shared.rich-text` (article and About blocks)
+- **Component:** `shared.rich-text` (page sections, and article and About blocks)
 - **Options:** none
 - **Cost:** 1895 B of CSS and 610 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript. A Mermaid diagram inside it is the `mermaid` island, and shows its source until it loads.

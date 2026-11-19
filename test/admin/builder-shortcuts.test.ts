@@ -19,7 +19,7 @@ const messages = (locale: string): Record<string, string> =>
 
 // Three blocks that differ in name, so the list says which is which.
 const SECTIONS = [
-  { __component: 'section.rich-text', body: 'One' },
+  { __component: 'shared.rich-text', body: 'One' },
   {
     __component: 'section.feature-grid',
     title: 'Grid',
@@ -33,7 +33,7 @@ describe('the keyboard of the builder', () => {
 
   async function openSeeded(options: Parameters<typeof session.open>[2] = {}): Promise<Page> {
     const page = await session.open(LANDING_UID, await session.seed(LANDING_UID, SECTIONS), options)
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid', 'logo-cloud'])
     return page
   }
   const panel = (page: Page) => page.getByRole('complementary', { name: 'Selected block' })
@@ -116,7 +116,7 @@ describe('the keyboard of the builder', () => {
     // A dialog keeps its keys: `2` does not select the second block behind it.
     await eventually(() => focused(page)).toBe('Close the shortcuts')
     await page.keyboard.press('2')
-    expect(await selectedRow(page)).toContain('Rich text')
+    expect(await selectedRow(page)).toContain('Prose')
     await eventually(() => focused(page)).toBe('Close the shortcuts')
     await page.keyboard.press('Escape')
     await sheet(page).waitFor({ state: 'detached' })
@@ -149,8 +149,8 @@ describe('the keyboard of the builder', () => {
     for (const key of ['Alt+ArrowUp', 'Control+d', 'Alt+Backspace', 'Control+Shift+s']) {
       await page.keyboard.press(key)
     }
-    expect(await rows(page)).toEqual(['Rich text', 'Feature grid', 'Logo cloud'])
-    expect(await selectedRow(page)).toContain('Rich text')
+    expect(await rows(page)).toEqual(['Prose', 'Feature grid', 'Logo cloud'])
+    expect(await selectedRow(page)).toContain('Prose')
     // Undo reaches the page from a field; typing was one step.
     await page.keyboard.press('Control+z')
     await eventually(() => body.inputValue()).toBe('One')
@@ -191,9 +191,9 @@ describe('the keyboard of the builder', () => {
     await duplicate.waitFor()
     await duplicate.focus()
     for (const key of ['2', '/', 'ArrowDown', 'ArrowRight']) await page.keyboard.press(key)
-    expect(await selectedRow(page)).toContain('Rich text')
+    expect(await selectedRow(page)).toContain('Prose')
     expect(await isFocused(page, search(page))).toBe(false)
-    expect(await panel(page).getByRole('heading', { level: 2 }).textContent()).toBe('Rich text')
+    expect(await panel(page).getByRole('heading', { level: 2 }).textContent()).toBe('Prose')
     // The same keys work from the list: it is the preview that keeps them.
     await page.locator('[data-block-key]').first().focus()
     await page.keyboard.press('2')
@@ -255,13 +255,13 @@ describe('the keyboard of the builder', () => {
     const row = (page2: Page, position: number) => page2.locator('[data-block-key]').nth(position)
     // ↓ from nothing selects the first, ↑ from nothing the last; each follows the list.
     await page.keyboard.press('ArrowDown')
-    expect(await selectedRow(page)).toContain('Rich text')
+    expect(await selectedRow(page)).toContain('Prose')
     await page.keyboard.press('ArrowDown')
     expect(await selectedRow(page)).toContain('Feature grid')
     await page.keyboard.press('ArrowUp')
     await page.keyboard.press('ArrowUp')
     await page.keyboard.press('ArrowUp')
-    expect(await selectedRow(page)).toContain('Rich text')
+    expect(await selectedRow(page)).toContain('Prose')
     // 1 to 9 jump to a block; a number with no block does nothing.
     await page.keyboard.press('3')
     expect(await selectedRow(page)).toContain('Logo cloud')
@@ -296,7 +296,7 @@ describe('the keyboard of the builder', () => {
     // Esc clears the search first; the block stays selected.
     await page.keyboard.press('Escape')
     expect(await search(page).inputValue()).toBe('')
-    expect(await selectedRow(page)).toContain('Rich text')
+    expect(await selectedRow(page)).toContain('Prose')
     // Enter, from the list, opens the palette; a row of it then inserts after the selection.
     await page.locator('[data-block-key]').first().focus()
     await page.keyboard.press('Enter')
@@ -306,7 +306,7 @@ describe('the keyboard of the builder', () => {
     await page.keyboard.press('Tab')
     await page.keyboard.press('Enter')
     await eventually(() => rows(page)).toEqual([
-      'Rich text',
+      'Prose',
       'Logo cloud',
       'Feature grid',
       'Logo cloud',
@@ -317,18 +317,18 @@ describe('the keyboard of the builder', () => {
     const page = await openSeeded()
     await page.keyboard.press('2')
     await page.keyboard.press('Alt+ArrowUp')
-    await eventually(() => rows(page)).toEqual(['Feature grid', 'Rich text', 'Logo cloud'])
+    await eventually(() => rows(page)).toEqual(['Feature grid', 'Prose', 'Logo cloud'])
     await page.keyboard.press('Alt+ArrowDown')
-    await eventually(() => rows(page)).toEqual(['Rich text', 'Feature grid', 'Logo cloud'])
+    await eventually(() => rows(page)).toEqual(['Prose', 'Feature grid', 'Logo cloud'])
     await page.keyboard.press('Control+d')
     await eventually(() => rows(page)).toEqual([
-      'Rich text',
+      'Prose',
       'Feature grid',
       'Feature grid',
       'Logo cloud',
     ])
     await page.keyboard.press('Control+Backspace')
-    await eventually(() => rows(page)).toEqual(['Rich text', 'Feature grid', 'Logo cloud'])
+    await eventually(() => rows(page)).toEqual(['Prose', 'Feature grid', 'Logo cloud'])
     await page.keyboard.press('Control+z')
     await eventually(() => rows(page)).toHaveLength(4)
     await page.keyboard.press('Control+Shift+z')
@@ -357,24 +357,24 @@ describe('the keyboard of the builder', () => {
     const first = page.locator('[data-block-key]').first()
     await first.focus()
     await page.keyboard.press('Space')
-    await page.getByText(/Rich text picked up: gap 1 of 4/).waitFor({ state: 'attached' })
+    await page.getByText(/Prose picked up: gap 1 of 4/).waitFor({ state: 'attached' })
     // The gaps beside the block are where it is: one step down is the gap before the third block.
     await page.keyboard.press('ArrowDown')
-    await page.getByText(/Rich text picked up: gap 3 of 4/).waitFor({ state: 'attached' })
+    await page.getByText(/Prose picked up: gap 3 of 4/).waitFor({ state: 'attached' })
     await page.keyboard.press('Space')
-    await eventually(() => rows(page)).toEqual(['Feature grid', 'Rich text', 'Logo cloud'])
+    await eventually(() => rows(page)).toEqual(['Feature grid', 'Prose', 'Logo cloud'])
     // Esc puts it down where it was.
     await first.focus()
     await page.keyboard.press('Space')
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Escape')
     await page.keyboard.press('Space')
-    expect(await rows(page)).toEqual(['Feature grid', 'Rich text', 'Logo cloud'])
+    expect(await rows(page)).toEqual(['Feature grid', 'Prose', 'Logo cloud'])
     await page.getByText(/picked up/).waitFor({ state: 'attached' })
     // Dropped on a gap beside itself, a block stays where it is.
     await page.keyboard.press('Space')
     await page.getByText(/picked up/).waitFor({ state: 'detached' })
-    expect(await rows(page)).toEqual(['Feature grid', 'Rich text', 'Logo cloud'])
+    expect(await rows(page)).toEqual(['Feature grid', 'Prose', 'Logo cloud'])
     // A key from outside the list puts a picked up block down where it was.
     await first.focus()
     await page.keyboard.press('Space')
@@ -382,7 +382,7 @@ describe('the keyboard of the builder', () => {
     await search(page).focus()
     await page.keyboard.press('a')
     await page.getByText(/picked up/).waitFor({ state: 'detached' })
-    expect(await rows(page)).toEqual(['Feature grid', 'Rich text', 'Logo cloud'])
+    expect(await rows(page)).toEqual(['Feature grid', 'Prose', 'Logo cloud'])
   })
 
   it('cycles the values of an option on its control, and resets them with ⌥⌫', async () => {

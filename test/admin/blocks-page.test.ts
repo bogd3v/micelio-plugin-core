@@ -111,7 +111,7 @@ describe('the Block catalogue page in the admin', () => {
         title: 'Priced landing',
         site: defaultSite.documentId,
         sections: [
-          { __component: 'section.rich-text', body: 'Welcome.' },
+          { __component: 'shared.rich-text', body: 'Welcome.' },
           { __component: 'section.scene', variant: 'inline', alt: 'A globe', title: 'Globe' },
         ],
       } as never,
@@ -168,11 +168,11 @@ describe('the Block catalogue page in the admin', () => {
     delete process.env.SERVE_ADMIN_PANEL
   })
 
-  it('lists the 19 blocks, toggles one and sees it leave the palette and come back', async () => {
+  it('lists the 18 blocks, toggles one and sees it leave the palette and come back', async () => {
     const page = await open('admin@example.com')
     await page.getByRole('heading', { level: 1, name: 'Block catalogue' }).waitFor()
-    await that(page.locator('tbody tr')).toHaveCount(19)
-    await that(page.getByTestId('block-counts')).toHaveText('0 disabled on default · 19 enabled')
+    await that(page.locator('tbody tr')).toHaveCount(18)
+    await that(page.getByTestId('block-counts')).toHaveText('0 disabled on default · 18 enabled')
     expect(await palette()).toContain('hero')
 
     // Flipping a switch with the keyboard keeps the focus on the same element and what an open drawer
@@ -185,7 +185,7 @@ describe('the Block catalogue page in the admin', () => {
     await switchOf(page, 'hero').evaluate((element) => element.setAttribute('data-mark', 'same'))
     await switchOf(page, 'hero').focus()
     await page.keyboard.press('Space')
-    await that(page.getByTestId('block-counts')).toHaveText('1 disabled on default · 18 enabled')
+    await that(page.getByTestId('block-counts')).toHaveText('1 disabled on default · 17 enabled')
     expect(await page.evaluate("document.activeElement?.getAttribute('data-mark') ?? null")).toBe(
       'same'
     )
@@ -201,13 +201,13 @@ describe('the Block catalogue page in the admin', () => {
     await page.getByLabel('Disabled only').uncheck()
 
     await switchOf(page, 'hero').click()
-    await that(page.getByTestId('block-counts')).toHaveText('0 disabled on default · 19 enabled')
+    await that(page.getByTestId('block-counts')).toHaveText('0 disabled on default · 18 enabled')
     expect(await palette()).toContain('hero')
   })
 
   it('filters by search, family and islands', async () => {
     const page = await open('admin@example.com')
-    await that(page.locator('tbody tr')).toHaveCount(19)
+    await that(page.locator('tbody tr')).toHaveCount(18)
     await page.getByLabel('Search').fill('grid')
     await that(page.locator('tbody tr')).toHaveCount(1)
     await page.getByLabel('Search').fill('')
@@ -283,7 +283,7 @@ describe('the Block catalogue page in the admin', () => {
   it('shows the detail of a refused save on the page and in the drawer', async () => {
     const detail = 'The default of "columns" is not one of its values.'
     const page = await open('admin-refusals@example.com')
-    await that(page.locator('tbody tr')).toHaveCount(19)
+    await that(page.locator('tbody tr')).toHaveCount(18)
     await refuseSaves(
       page,
       JSON.stringify({
@@ -312,7 +312,7 @@ describe('the Block catalogue page in the admin', () => {
   it('keeps the generic text when a refused save carries no detail', async () => {
     const generic = 'The setting could not be saved.'
     const page = await open('admin-refusals@example.com')
-    await that(page.locator('tbody tr')).toHaveCount(19)
+    await that(page.locator('tbody tr')).toHaveCount(18)
     // A body that is not a problem detail, then a problem detail with no `detail`.
     await refuseSaves(page, 'Bad gateway', 502, 'text/plain')
     await switchOf(page, 'hero').click()
@@ -352,7 +352,7 @@ describe('the Block catalogue page in the admin', () => {
 
   it('measures a block on a page that holds it only when asked, and compares it with the declared cost', async () => {
     site.weight.baseKb = 10
-    site.weight.blockKb = { scene: 1.9, 'rich-text': 1 }
+    site.weight.blockKb = { scene: 1.9, prose: 1 }
     const page = await open('measurer@example.com')
     await page.getByTestId('block-row-scene').getByRole('button', { name: 'Scene' }).click()
     const drawer = page.getByTestId('block-drawer')
@@ -372,7 +372,7 @@ describe('the Block catalogue page in the admin', () => {
     expect(site.weight.requests.every((request) => request.via === 'cookie')).toBe(true)
     expect(new Set(site.weight.requests.map((request) => request.path)).size).toBe(1)
 
-    site.weight.blockKb = { scene: 3, 'rich-text': 1 }
+    site.weight.blockKb = { scene: 3, prose: 1 }
     await drawer.getByRole('button', { name: 'Measure again' }).click()
     await that(drawer.getByTestId('block-cost')).toHaveText(
       'Declared 1.9 kB · measured now 3.0 kB on Priced landing (1.1 kB over)'

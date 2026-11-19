@@ -1,6 +1,8 @@
 import type { Core, Modules, UID } from '@strapi/strapi'
 import { SceneBackgroundLimitError } from '../islands/error'
 import { findBackgroundSceneExcess } from '../islands/rules'
+import { ProseHeadingError } from '../prose-headings/error'
+import { findProseHeadingViolation } from '../prose-headings/rules'
 import { SectionAnchorError } from '../section-anchor/error'
 import { findAnchorViolation } from '../section-anchor/rules'
 import { BlockOptionError } from './error'
@@ -21,10 +23,11 @@ type Params = Record<string, unknown> & { data?: Record<string, unknown> }
  * Stored content is not re-checked: only what is being written.
  *
  * It also refuses a zone with more than one `scene` block of `variant: background`, and a section
- * `anchor` that is not a kebab-case slug or that two blocks of the page share (`sectionAnchorInvalid`).
+ * `anchor` that is not a kebab-case slug or that two blocks of the page share (`sectionAnchorInvalid`), and a `prose` block whose Markdown body opens below `h2`, has an `h1` or
+ * skips a level (`proseHeadingInvalid`).
  *
  * @throws {@link BlockOptionError} with the block, the option and the values it allows, or
- * `SceneBackgroundLimitError` or {@link SectionAnchorError}.
+ * `SceneBackgroundLimitError` {@link SectionAnchorError} or {@link ProseHeadingError}.
  */
 export function blockOptionsDocuments(
   strapi: Core.Strapi
@@ -46,6 +49,8 @@ export function blockOptionsDocuments(
       }
       const anchor = findAnchorViolation(zones)
       if (anchor) throw new SectionAnchorError(anchor)
+      const heading = findProseHeadingViolation(zones)
+      if (heading) throw new ProseHeadingError(heading)
     }
     return next()
   }

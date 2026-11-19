@@ -75,7 +75,7 @@ describe('the preview action in the edit view', () => {
         title: 'Landing',
         slug: 'landing',
         site: site.documentId,
-        sections: [{ __component: 'section.rich-text', body: 'Welcome.' }],
+        sections: [{ __component: 'shared.rich-text', body: 'Welcome.' }],
       } as never,
     })
     const note = await strapi.documents(NOTE_UID as UID.ContentType).create({

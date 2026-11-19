@@ -1,0 +1,12 @@
+{
+  "collectionName": "components_shared_rich_texts",
+  "info": {
+    "displayName": "Rich text",
+    "description": "The `prose` block of the catalogue (contract/blocks.ts): Markdown in a page and in an article. Its body is required here, unlike in micelio-cms, so the builder suites have a block with a required text field (section.rich-text had one)"
+  },
+  "options": {},
+  "attributes": {
+    "blockId": { "type": "string" },
+    "body": { "type": "richtext", "required": true }
+  }
+}

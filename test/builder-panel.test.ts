@@ -31,6 +31,7 @@ import {
   type CatalogueEntry,
   type PaletteRow,
 } from '../admin/src/utils/builder/palette'
+import { filterBlocks, type CatalogueBlock } from '../admin/src/utils/blocks'
 import { parsePreviewMessage } from '../contract/preview'
 
 const grid = {
@@ -236,6 +237,37 @@ describe('the palette', () => {
     expect(groupRows(heavy, 'scene', [])[0]!.rows.map((r) => r.entry.id)).toEqual(['scene'])
     expect(pushRecent(['a', 'b', 'c'], 'b')).toEqual(['b', 'a', 'c'])
     expect(pushRecent(['a', 'b', 'c'], 'd')).toEqual(['d', 'a', 'b'])
+  })
+
+  it('lists a block of both zones once, with the sections', () => {
+    const rows = [
+      row(entry('hero')),
+      row(entry('prose', { group: 'both' })),
+      row(entry('quote', { group: 'article' })),
+    ]
+    expect(groupRows(rows, '', []).map((g) => [g.id, g.rows.map((r) => r.entry.id)])).toEqual([
+      ['section', ['hero', 'prose']],
+      ['article', ['quote']],
+    ])
+  })
+
+  it('keeps a block of both zones in the page family and in the article family', () => {
+    const block = (id: string, group: CatalogueBlock['group']) =>
+      ({
+        id,
+        group,
+        component: `x.${id}`,
+        labels: {},
+        isIsland: false,
+        enabled: true,
+      }) as CatalogueBlock
+    const blocks = [block('hero', 'section'), block('quote', 'article'), block('prose', 'both')]
+    const filters = { search: '', islandsOnly: false, disabledOnly: false }
+    const ids = (family: 'all' | 'section' | 'article') =>
+      filterBlocks(blocks, { ...filters, family }).map((entry) => entry.id)
+    expect(ids('all')).toEqual(['hero', 'quote', 'prose'])
+    expect(ids('section')).toEqual(['hero', 'prose'])
+    expect(ids('article')).toEqual(['quote', 'prose'])
   })
 })
 

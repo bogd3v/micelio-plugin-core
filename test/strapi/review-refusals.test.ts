@@ -63,7 +63,7 @@ describe('the refusals of the review flow', () => {
   }
 
   const inAnHour = () => new Date(Date.now() + 3_600_000).toISOString()
-  const text = (body: string) => ({ __component: 'section.rich-text', body })
+  const text = (body: string) => ({ __component: 'shared.rich-text', body })
   const cta = (url: string) => ({
     __component: 'section.cta',
     title: 'Ready?',
@@ -74,7 +74,7 @@ describe('the refusals of the review flow', () => {
   /** Each scenario of the issue, and what it answers: a refusal, or the warning of a transition that went through. */
   const scenarios: Record<string, () => Promise<Response>> = {
     async pageOverBudget() {
-      frontend.blockKb = { 'rich-text': 200 }
+      frontend.blockKb = { prose: 200 }
       const documentId = await page('Heavy', [text('A long read.')])
       expect((await move(documentId, 'in_review')).status).toBe(200)
       return move(documentId, 'published')
@@ -183,7 +183,7 @@ describe('the refusals of the review flow', () => {
 
   it('a refusal that names a block carries its id', async () => {
     const over = await refusal(await scenarios.pageOverBudget!())
-    expect(over.blocks?.[0]).toMatchObject({ id: 'rich-text', position: 1 })
+    expect(over.blocks?.[0]).toMatchObject({ id: 'prose', position: 1 })
     frontend.blockKb = 5
 
     // Its `position` counts the island blocks of the zone only (the check reads those alone), so the
@@ -198,7 +198,7 @@ describe('the refusals of the review flow', () => {
 
     const sample = await refusal(await scenarios.sampleTextPresent!())
     expect(sample.blocks).toEqual([
-      { block: 'rich-text', position: 0, fields: ['body'], zone: 'sections' },
+      { block: 'prose', position: 0, fields: ['body'], zone: 'sections' },
     ])
 
     const { data } = (await (await scenarios.linkToDraft!()).json()) as Answer

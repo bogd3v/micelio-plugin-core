@@ -13,7 +13,10 @@ module.exports = withSiteScope({
     title: { type: 'string', required: true },
     cover: { type: 'media', multiple: false, allowedTypes: ['images'] },
     seo: { type: 'component', repeatable: false, component: 'shared.seo' },
-    blocks: { type: 'dynamiczone', components: ['shared.quote', 'fixture.link'] },
+    blocks: {
+      type: 'dynamiczone',
+      components: ['shared.quote', 'shared.rich-text', 'fixture.link'],
+    },
     tags: { type: 'relation', relation: 'manyToMany', target: 'api::label.label' },
     related: { type: 'relation', relation: 'manyToMany', target: 'api::post.post' },
   },

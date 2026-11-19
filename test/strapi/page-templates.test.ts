@@ -101,7 +101,7 @@ describe('page templates', () => {
         { title: 'Open', text: 'MIT licensed.' },
       ],
     },
-    { __component: 'section.rich-text', body: 'Open source, in plain words.', width: 'wide' },
+    { __component: 'shared.rich-text', body: 'Open source, in plain words.' },
     { __component: 'section.logo-cloud', title: 'Used by', columns: '6' },
   ]
 
@@ -233,7 +233,7 @@ describe('page templates', () => {
     expect(template).toMatchObject({ version: 1, scope: 'site' })
     expect(template.blocks.map(({ block }) => block)).toEqual([
       'feature-grid',
-      'rich-text',
+      'prose',
       'logo-cloud',
     ])
     expect(template.blocks[0].options).toEqual({ columns: '4', density: 'compact' })
@@ -249,7 +249,7 @@ describe('page templates', () => {
     })
     expect(page.sections.map((section) => section.__component)).toEqual([
       'section.feature-grid',
-      'section.rich-text',
+      'shared.rich-text',
       'section.logo-cloud',
     ])
     expect(page.sections[0]).toMatchObject({
@@ -267,7 +267,7 @@ describe('page templates', () => {
 
   it('keeps no text of a block saved as clear, and none of a link or a file', async () => {
     const source = await pageWith([
-      { __component: 'section.rich-text', body: 'Keep me out.' },
+      { __component: 'shared.rich-text', body: 'Keep me out.' },
       { __component: 'section.feature-grid', title: 'Heading', columns: '2' },
     ])
     const response = await saveAs(source, {
@@ -305,11 +305,11 @@ describe('page templates', () => {
         version: 2,
         blocks: [
           {
-            block: 'rich-text',
-            component: 'section.rich-text',
+            block: 'prose',
+            component: 'shared.rich-text',
             content: 'sample',
             fixed: false,
-            data: { body: 'A different text.', width: 'full' },
+            data: { body: 'A different text.' },
           },
         ],
       } as never,
@@ -331,7 +331,7 @@ describe('page templates', () => {
     expect(refused.code).toBe('sampleTextPresent')
     expect(refused.blocks?.map(({ block, position }) => ({ block, position }))).toEqual([
       { block: 'feature-grid', position: 0 },
-      { block: 'rich-text', position: 1 },
+      { block: 'prose', position: 1 },
       { block: 'logo-cloud', position: 2 },
     ])
     expect(refused.blocks?.[0].fields).toEqual([
@@ -355,7 +355,7 @@ describe('page templates', () => {
             density: 'compact',
             items: [{ title: 'One', text: 'Mine.' }],
           },
-          { __component: 'section.rich-text', body: 'Our words.', width: 'wide' },
+          { __component: 'shared.rich-text', body: 'Our words.' },
           { __component: 'section.logo-cloud', title: 'Friends', columns: '6' },
         ],
       } as never,
@@ -469,7 +469,7 @@ describe('page templates', () => {
 
     it('refuses a structure over the budget of its page type before any content', async () => {
       const heavy = await pageWith(
-        Array.from({ length: 12 }, () => ({ __component: 'section.rich-text', body: 'x' }))
+        Array.from({ length: 12 }, () => ({ __component: 'shared.rich-text', body: 'x' }))
       )
       const refused = await problem(
         await saveAs(heavy, { name: 'Heavy', pageTypes: ['manifesto'] }),

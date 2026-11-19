@@ -99,6 +99,10 @@ npm run build -w @micelio/icons  # the glyphs, NOTICE and LICENSES of @micelio/i
   - `block-options/` is the validation of a block's presentation options at save (ADR-0018): `rules.ts` (pure: the first option of a dynamic zone that its block does not expose or whose value is outside the block's set), `documents.ts` (the document service middleware, on `create`, `update` and `clone`) and `error.ts` (`BlockOptionError`, which the `site-scope` route middleware answers as the problem detail `blockOptionInvalid`). `docs/blocks.md` describes the options.
   - `section-anchor/` is the validation of a section's `anchor` at save (micelio-cms#441): `rules.ts` (pure: the first anchor of a page that is not a kebab-case slug or that an earlier block uses) and `error.ts` (`SectionAnchorError`, which the `site-scope` route middleware answers as the problem detail `sectionAnchorInvalid`, naming the zone and position); the `block-options` document service middleware runs it. `docs/blocks.md`, "Eyebrow and anchor".
   - `block-ids/` is the instance ids of ADR-0018, section 1 (micelio-cms#440): `rules.ts` (pure: `assignIds` settles the ids of one list, stored ids first) and `documents.ts` (the document service middleware that gives a block without `blockId` an id unique in its zone and an item without `itemId` one unique in its parent block, on `create`, `update` and `clone`, and keeps the stored id on `update`). `docs/blocks.md`, "Instance ids".
+  - `prose-headings/` is the heading rule of the `prose` block (micelio-cms#445): `rules.ts` (pure: the first heading of a
+    `shared.rich-text` body that does not open at `h2`, is an `h1` or skips a level, `proseHeadingInvalid`) and `error.ts`
+    (`ProseHeadingError`, which the `site-scope` route middleware answers as the problem detail, naming the zone, position and
+    heading); the `block-options` document service middleware and the dry run of an import run it. `docs/blocks.md`, "Prose".
   - `islands/` is the rule of the islands (#56): `rules.ts` (pure: the island blocks of a zone whose
     static alternative lacks a field, `islandAlternativeMissing`, and a zone with more than one
     `scene` of `variant: background`, `sceneBackgroundLimit`), `check.ts` (reads a draft's zones
@@ -146,7 +150,7 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
     a site's settings of a block and a page that holds one) it is the shared folder of section 4 of
     the standard.
 - `contract/` — the block catalogue (ADR-0018) and the icon catalogue (ADR-0021: `icons.ts`, the pinned Tabler version, its names and the alias table; `icons.names.json` and `icons.schema.json` generated, the schema published as `./icons.schema.json`): `seo.ts` (the SEO and social limits, derivations and
-  checks the server and the admin share), `blocks.ts` (the 19 entries),
+  checks the server and the admin share), `blocks.ts` (the 18 entries),
   `islands.ts` (what the catalogue and the admin share about islands: the five kinds, the 1 MB
   rule that decides the trigger, and what counts as a filled field), `options.ts` (the
   presentation options vocabulary: nine names,

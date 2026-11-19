@@ -44,8 +44,8 @@ const TEMPLATE = {
       data: { title: 'Why', columns: '4', density: 'compact' },
     },
     {
-      block: 'rich-text',
-      component: 'section.rich-text',
+      block: 'prose',
+      component: 'shared.rich-text',
       content: 'clear',
       fixed: false,
       data: {},

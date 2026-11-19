@@ -30,3 +30,6 @@ export const SCENE_BACKGROUND_LIMIT = 1
 
 /** The `code` of the problem detail a save with an anchor that is not a kebab-case slug, or used twice in a page, answers. */
 export const SECTION_ANCHOR_INVALID = 'sectionAnchorInvalid'
+
+/** The `code` of the problem detail a save with a `prose` body whose heading levels break the rule answers. */
+export const PROSE_HEADING_INVALID = 'proseHeadingInvalid'

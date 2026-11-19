@@ -6,7 +6,8 @@ import { formatKb } from '../costMeter'
 export interface CatalogueEntry {
   /** The block's catalogue id, such as `feature-grid`. */
   id: string
-  group: 'section' | 'article'
+  /** Where the block lives: a page's sections, the article and About blocks, or both (`prose`). */
+  group: 'section' | 'article' | 'both'
   /** The component that stores it, such as `section.feature-grid`. */
   component: string
   /** The presentation options the block exposes, as the site merges them. */
@@ -141,7 +142,8 @@ export function groupRows(rows: PaletteRow[], search: string, recent: string[]):
   const used = recent.flatMap((id) => within.filter((row) => row.entry.id === id))
   const groups: PaletteGroup[] = [
     { id: 'recent', rows: used },
-    { id: 'section', rows: within.filter((row) => row.entry.group === 'section') },
+    // A block of both zones (`prose`) is a page's section too, so it is listed with them.
+    { id: 'section', rows: within.filter((row) => row.entry.group !== 'article') },
     { id: 'article', rows: within.filter((row) => row.entry.group === 'article') },
     { id: 'overBudget', rows: rows.filter((row) => row.state === 'overBudget') },
   ]

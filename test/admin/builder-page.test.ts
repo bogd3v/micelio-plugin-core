@@ -71,7 +71,7 @@ describe('the builder page in the admin', () => {
       populate: {
         sections: {
           on: {
-            'section.rich-text': true,
+            'shared.rich-text': true,
             'section.feature-grid': { populate: ['items'] },
             'section.logo-cloud': true,
           },
@@ -188,11 +188,11 @@ describe('the builder page in the admin', () => {
   it('composes a three-block landing from scratch and keeps it after a reload', async () => {
     const documentId = await newLanding()
     const page = await open(builderPath(documentId))
-    await page.locator('[data-block="rich-text"]').waitFor()
+    await page.locator('[data-block="prose"]').waitFor()
     await eventually(() => page.locator('iframe[title^="Preview of"]').count()).toBe(1)
 
     // Insert from the palette: a block of text, then (after it) a feature grid and a logo cloud.
-    await page.locator('[data-block="rich-text"]').click()
+    await page.locator('[data-block="prose"]').click()
     await page.getByLabel('Body').fill('Open source, in plain words.')
     // The text reaches the frame as a patch before any save, and the save follows.
     await eventually(() =>
@@ -203,9 +203,9 @@ describe('the builder page in the admin', () => {
     ])
     await page.locator('[data-block="feature-grid"]').click()
     await page.locator('[data-block="logo-cloud"]').click()
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid', 'logo-cloud'])
     expect((await sectionsOf(documentId)).map((s) => s.__component)).toEqual([
-      'section.rich-text',
+      'shared.rich-text',
       'section.feature-grid',
       'section.logo-cloud',
     ])
@@ -238,15 +238,15 @@ describe('the builder page in the admin', () => {
       .click()
     await page.keyboard.press('Alt+ArrowUp')
     await eventually(() => listed(page)).toEqual(
-      ['Rich text1', 'Logo cloud2', 'Feature grid3'].map((text) =>
+      ['Prose1', 'Logo cloud2', 'Feature grid3'].map((text) =>
         expect.stringContaining(text.slice(0, -1))
       )
     )
-    await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud', 'feature-grid'])
+    await eventually(() => shown(page)).toEqual(['prose', 'logo-cloud', 'feature-grid'])
 
     // Remove the logo cloud again.
     await page.getByRole('button', { name: 'Remove' }).click()
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid'])
     await eventually(async () => (await sectionsOf(documentId)).length).toBe(2)
 
     // A reload keeps the autosaved state.
@@ -257,7 +257,7 @@ describe('the builder page in the admin', () => {
       .first()
       .waitFor()
     await eventually(async () => (await listed(page)).length).toBe(2)
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid'])
     // Its patches and selections were messages of the protocol, with the version of the draft.
     const received = (await frameOf(page)
       .locator('body')
@@ -267,11 +267,11 @@ describe('the builder page in the admin', () => {
 
   it('selects a block from a click in the page and draws its outline from the frame’s boxes', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.feature-grid', title: 'Two', columns: '3' },
     ])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid'])
     await frameOf(page).locator('[data-myc-index="1"]').click()
     await page
       .getByRole('complementary', { name: 'Selected block' })
@@ -288,11 +288,11 @@ describe('the builder page in the admin', () => {
 
   it('drags a block of the palette into the gap under the first block', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.feature-grid', title: 'Two', columns: '3' },
     ])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid'])
     const row = page.locator('[data-block="logo-cloud"]')
     const rowBox = (await row.boundingBox())!
     const first = (await frameOf(page).locator('[data-myc-index="0"]').boundingBox())!
@@ -303,13 +303,13 @@ describe('the builder page in the admin', () => {
     await page.mouse.move(first.x + 100, first.y + first.height + 2, { steps: 8 })
     await page.getByText('DROP HERE').waitFor()
     await page.mouse.up()
-    await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud', 'feature-grid'])
+    await eventually(() => shown(page)).toEqual(['prose', 'logo-cloud', 'feature-grid'])
   })
 
   it('shows the conflict notice and overwrites nothing when another session saved first', async () => {
-    const documentId = await newLanding([{ __component: 'section.rich-text', body: 'Original' }])
+    const documentId = await newLanding([{ __component: 'shared.rich-text', body: 'Original' }])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text'])
+    await eventually(() => shown(page)).toEqual(['prose'])
     await page
       .getByRole('region', { name: /Page blocks/ })
       .locator('[data-block-key]')
@@ -340,18 +340,18 @@ describe('the builder page in the admin', () => {
 
   it('undoes a removal: the block comes back in the page and in the preview', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.logo-cloud', title: 'Two' },
     ])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'logo-cloud'])
     await frameOf(page).locator('[data-myc-index="1"]').click()
     await page.getByRole('button', { name: 'Remove' }).click()
-    await eventually(() => shown(page)).toEqual(['rich-text'])
+    await eventually(() => shown(page)).toEqual(['prose'])
     await page.getByRole('button', { name: 'Undo' }).click()
-    await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'logo-cloud'])
     await eventually(async () => (await sectionsOf(documentId)).map((s) => s.__component)).toEqual([
-      'section.rich-text',
+      'shared.rich-text',
       'section.logo-cloud',
     ])
   })
@@ -363,7 +363,7 @@ describe('the builder page in the admin', () => {
     })
     expect(set.status).toBe(200)
     try {
-      const documentId = await newLanding([{ __component: 'section.rich-text', body: 'One' }])
+      const documentId = await newLanding([{ __component: 'shared.rich-text', body: 'One' }])
       const page = await open(builderPath(documentId))
       const row = page.locator('[data-block="logo-cloud"]')
       await row.waitFor()
@@ -372,9 +372,7 @@ describe('the builder page in the admin', () => {
       // A click on it inserts nothing.
       await row.click({ force: true })
       await page.waitForTimeout(1500)
-      expect((await sectionsOf(documentId)).map((s) => s.__component)).toEqual([
-        'section.rich-text',
-      ])
+      expect((await sectionsOf(documentId)).map((s) => s.__component)).toEqual(['shared.rich-text'])
 
       await page.getByLabel('Search blocks').fill('feat')
       await page.getByText('1 of 5 match "feat"').waitFor()
@@ -384,7 +382,7 @@ describe('the builder page in the admin', () => {
       // No empty group of results under the message.
       expect(await page.getByRole('region', { name: 'Results' }).count()).toBe(0)
       await page.getByRole('button', { name: 'clear' }).click()
-      await page.locator('[data-block="rich-text"]').waitFor()
+      await page.locator('[data-block="prose"]').waitFor()
     } finally {
       await admin('/micelio/block-settings/logo-cloud?site=default', { method: 'DELETE' })
     }
@@ -396,9 +394,9 @@ describe('the builder page in the admin', () => {
     site.weight.baseKb = 0
     site.weight.blockKb = 199.2
     try {
-      const documentId = await newLanding([{ __component: 'section.rich-text', body: 'One' }])
+      const documentId = await newLanding([{ __component: 'shared.rich-text', body: 'One' }])
       const page = await open(builderPath(documentId))
-      await eventually(() => shown(page)).toEqual(['rich-text'])
+      await eventually(() => shown(page)).toEqual(['prose'])
       const palette = page.getByRole('complementary', { name: 'Block palette' })
       await palette
         .getByRole('region', { name: 'Over the remaining budget' })
@@ -437,12 +435,12 @@ describe('the builder page in the admin', () => {
 
   it('asks the frame to scroll to a selection once, and leaves it where the editor scrolled', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.feature-grid', title: 'Two', columns: '3' },
       { __component: 'section.logo-cloud', title: 'Three' },
     ])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid', 'logo-cloud'])
     await frameOf(page).locator('body').evaluate("document.body.style.paddingBottom = '4000px'")
     // Select from the list: outside the frame, so the frame is asked to scroll to the block.
     await page
@@ -482,7 +480,7 @@ describe('the builder page in the admin', () => {
   /** A page longer than the frame: the first block's text fills several screens. */
   const longLanding = () =>
     newLanding([
-      { __component: 'section.rich-text', body: 'Long text. '.repeat(3000) },
+      { __component: 'shared.rich-text', body: 'Long text. '.repeat(3000) },
       { __component: 'section.feature-grid', title: 'Two', columns: '3' },
       { __component: 'section.logo-cloud', title: 'Three' },
     ])
@@ -490,7 +488,7 @@ describe('the builder page in the admin', () => {
   it('brings the edited block back into view after the save reloads the frame', async () => {
     const documentId = await longLanding()
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid', 'logo-cloud'])
     await page
       .getByRole('region', { name: /Page blocks/ })
       .locator('[data-block-key]', { hasText: 'Feature grid' })
@@ -507,7 +505,7 @@ describe('the builder page in the admin', () => {
   it('does not ask the frame to scroll after a save when nothing is selected', async () => {
     const documentId = await longLanding()
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid', 'logo-cloud'])
     await page
       .getByRole('region', { name: /Page blocks/ })
       .locator('[data-block-key]', { hasText: 'Feature grid' })
@@ -516,14 +514,14 @@ describe('the builder page in the admin', () => {
     await page.getByRole('button', { name: 'Remove' }).click()
     await page.getByRole('button', { name: '+ Add a block here' }).dispatchEvent('click')
     await eventually(async () => (await sectionsOf(documentId)).length).toBe(2)
-    await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'logo-cloud'])
     await settle(page, 30)
     expect((await selectsOf(page)).filter(({ reveal }) => reveal === true)).toHaveLength(0)
   })
 
   it('addresses a block by its place in the zone when the site disabled one in the middle', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.logo-cloud', title: 'Two' },
       { __component: 'section.feature-grid', title: 'Three', columns: '3' },
     ])
@@ -534,7 +532,7 @@ describe('the builder page in the admin', () => {
     expect(set.status).toBe(200)
     try {
       const page = await open(builderPath(documentId))
-      await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud', 'feature-grid'])
+      await eventually(() => shown(page)).toEqual(['prose', 'logo-cloud', 'feature-grid'])
       // A click on the third block selects the third, not the one after the disabled block.
       await frameOf(page).locator('[data-myc-index="2"]').click()
       const panel = page.getByRole('complementary', { name: 'Selected block' })
@@ -555,7 +553,7 @@ describe('the builder page in the admin', () => {
       await panel.getByRole('button', { name: 'Remove' }).click()
       await eventually(async () =>
         (await sectionsOf(documentId)).map((s) => s.__component)
-      ).toEqual(['section.rich-text', 'section.feature-grid'])
+      ).toEqual(['shared.rich-text', 'section.feature-grid'])
     } finally {
       await admin('/micelio/block-settings/logo-cloud?site=default', { method: 'DELETE' })
     }
@@ -585,11 +583,11 @@ describe('the builder page in the admin', () => {
 
   it('keeps my version after the other session removed a block, and saves it', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.logo-cloud', title: 'Two' },
     ])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'logo-cloud'])
     await page
       .getByRole('region', { name: /Page blocks/ })
       .locator('[data-block-key]')
@@ -601,7 +599,7 @@ describe('the builder page in the admin', () => {
       `/content-manager/collection-types/${LANDING_UID}/${documentId}?locale=en`,
       {
         method: 'PUT',
-        json: { sections: [{ id: first!.id, __component: 'section.rich-text', body: 'One' }] },
+        json: { sections: [{ id: first!.id, __component: 'shared.rich-text', body: 'One' }] },
       }
     )
     expect(other.status).toBe(200)
@@ -611,7 +609,7 @@ describe('the builder page in the admin', () => {
     await eventually(async () =>
       (await sectionsOf(documentId)).map((section) => [section.__component, section.body])
     ).toEqual([
-      ['section.rich-text', 'My edit'],
+      ['shared.rich-text', 'My edit'],
       ['section.logo-cloud', undefined],
     ])
     await page.getByText('This page was saved somewhere else').waitFor({ state: 'hidden' })
@@ -622,16 +620,16 @@ describe('the builder page in the admin', () => {
     const documentId = await newLanding()
     const page = await open(builderPath(documentId))
     const status = page.getByTestId('save-status')
-    await page.locator('[data-block="rich-text"]').click()
+    await page.locator('[data-block="prose"]').click()
     await status.getByText('Not saved: a required field is empty').waitFor()
     await page.getByRole('button', { name: 'Undo' }).click()
     await eventually(() => status.textContent()).not.toContain('Not saved')
   })
 
   it('drops the refusal when an undo brings the page back to what the CMS holds', async () => {
-    const documentId = await newLanding([{ __component: 'section.rich-text', body: 'One' }])
+    const documentId = await newLanding([{ __component: 'shared.rich-text', body: 'One' }])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text'])
+    await eventually(() => shown(page)).toEqual(['prose'])
     const set = await admin('/micelio/block-settings/logo-cloud?site=default', {
       method: 'PUT',
       json: { enabled: false },
@@ -653,7 +651,7 @@ describe('the builder page in the admin', () => {
 
   it('saves a page that holds a disabled block with a hidden option, whatever is edited', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.feature-grid', title: 'Grid', items: [{ title: 'First' }] },
     ])
     const set = await admin('/micelio/block-settings/feature-grid?site=default', {
@@ -663,10 +661,10 @@ describe('the builder page in the admin', () => {
     expect(set.status).toBe(200)
     try {
       const page = await open(builderPath(documentId))
-      await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid'])
+      await eventually(() => shown(page)).toEqual(['prose', 'feature-grid'])
       await page
         .getByRole('region', { name: /Page blocks/ })
-        .locator('[data-block-key]', { hasText: 'Rich text' })
+        .locator('[data-block-key]', { hasText: 'Prose' })
         .click()
       await page.getByLabel('Body').fill('Edited')
       await eventually(async () => (await sectionsOf(documentId)).map((s) => s.body)).toEqual([
@@ -731,7 +729,7 @@ describe('the builder page in the admin', () => {
   /** A page whose grid the other session cut to one item, opened with the grid selected. */
   async function gridAfterTheirCut() {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       {
         __component: 'section.feature-grid',
         title: 'Grid',
@@ -739,7 +737,7 @@ describe('the builder page in the admin', () => {
       },
     ])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid'])
     const [first, grid] = (await sectionsOf(documentId)) as unknown as {
       id: number
       items: { id: number }[]
@@ -757,7 +755,7 @@ describe('the builder page in the admin', () => {
     const { documentId, page, first } = await gridAfterTheirCut()
     await page.locator('[data-block-key]').first().click()
     const other = await theirSave(documentId, [
-      { id: first.id, __component: 'section.rich-text', body: 'One' },
+      { id: first.id, __component: 'shared.rich-text', body: 'One' },
     ])
     expect(other.status).toBe(200)
     await page.getByLabel('Body').fill('Mine')
@@ -787,7 +785,7 @@ describe('the builder page in the admin', () => {
       .click()
     await eventually(async () => (await sectionsOf(documentId)).map((s) => s.__component)).toEqual([
       'section.feature-grid',
-      'section.rich-text',
+      'shared.rich-text',
     ])
     await eventually(() => page.getByTestId('save-status').textContent()).toContain('Saved')
     // The other session cuts the grid's second item.
@@ -799,7 +797,7 @@ describe('the builder page in the admin', () => {
         title: 'Grid',
         items: [{ id: grid.items[0]!.id, title: 'A' }],
       },
-      { id: rich!.id, __component: 'section.rich-text', body: 'One' },
+      { id: rich!.id, __component: 'shared.rich-text', body: 'One' },
     ])
     expect(other.status).toBe(200)
     await page.getByLabel('Title').fill('Mine')
@@ -826,11 +824,11 @@ describe('the builder page in the admin', () => {
 
   it('shows the panel’s fields in Strapi’s dark theme with text that differs from its background', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.feature-grid', title: 'Grid', items: [{ title: 'A' }] },
     ])
     const page = await open(builderPath(documentId), { theme: 'dark' })
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid'])
     const panel = page.getByRole('complementary', { name: 'Selected block' })
     const colours = (locator: ReturnType<Page['locator']>) =>
       locator.evaluate((el) => {
@@ -853,9 +851,9 @@ describe('the builder page in the admin', () => {
   })
 
   it('shows the reason of a block’s problem beside its selection label, not under it', async () => {
-    const documentId = await newLanding([{ __component: 'section.rich-text', body: 'One' }])
+    const documentId = await newLanding([{ __component: 'shared.rich-text', body: 'One' }])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text'])
+    await eventually(() => shown(page)).toEqual(['prose'])
     await page.locator('[data-block-key]').first().click()
     await page.getByLabel('Body').fill('')
     const problem = page.getByTestId('problem-label')
@@ -871,10 +869,10 @@ describe('the builder page in the admin', () => {
   })
 
   it('keeps the panel beside the page in the admin at 1280 px, the width of the artboards', async () => {
-    const documentId = await newLanding([{ __component: 'section.rich-text', body: 'One' }])
+    const documentId = await newLanding([{ __component: 'shared.rich-text', body: 'One' }])
     const page = await open(builderPath(documentId))
     await page.setViewportSize({ width: 1280, height: 900 })
-    await eventually(() => shown(page)).toEqual(['rich-text'])
+    await eventually(() => shown(page)).toEqual(['prose'])
     await page.locator('[data-block-key]').first().click()
     const panel = page.getByRole('complementary', { name: 'Selected block' })
     await panel.waitFor()
@@ -887,9 +885,9 @@ describe('the builder page in the admin', () => {
   })
 
   it('says why the server refused a save, in its words, with a way to the block', async () => {
-    const documentId = await newLanding([{ __component: 'section.rich-text', body: 'One' }])
+    const documentId = await newLanding([{ __component: 'shared.rich-text', body: 'One' }])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text'])
+    await eventually(() => shown(page)).toEqual(['prose'])
     // The site disables the block after the page read its catalogue: the server is the one to refuse.
     const set = await admin('/micelio/block-settings/logo-cloud?site=default', {
       method: 'PUT',
@@ -901,9 +899,7 @@ describe('the builder page in the admin', () => {
       const words = 'The logo-cloud block is disabled on this site'
       await eventually(() => page.getByText(words).count()).toBeGreaterThanOrEqual(2)
       await page.getByText('The page was not saved').first().waitFor()
-      expect((await sectionsOf(documentId)).map((s) => s.__component)).toEqual([
-        'section.rich-text',
-      ])
+      expect((await sectionsOf(documentId)).map((s) => s.__component)).toEqual(['shared.rich-text'])
       // The block is not stored: the way to it is in this page, and selects the block just added.
       await page.getByRole('button', { name: 'Go to the block' }).click()
       await page
@@ -919,7 +915,7 @@ describe('the builder page in the admin', () => {
   it('holds the save while a required field is empty, and saves once it has text', async () => {
     const documentId = await newLanding()
     const page = await open(builderPath(documentId))
-    await page.locator('[data-block="rich-text"]').click()
+    await page.locator('[data-block="prose"]').click()
     const status = page.getByTestId('save-status')
     await status.getByText('Not saved: a required field is empty').waitFor()
     await page.getByRole('button', { name: 'Save' }).click()
@@ -934,11 +930,11 @@ describe('the builder page in the admin', () => {
 
   it('edits an item one level down, goes up with Esc, and undoes only the typing', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.feature-grid', title: 'Grid', items: [{ title: 'First item' }] },
     ])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'feature-grid'])
+    await eventually(() => shown(page)).toEqual(['prose', 'feature-grid'])
     await page
       .getByRole('region', { name: /Page blocks/ })
       .locator('[data-block-key]', { hasText: 'Feature grid' })
@@ -960,7 +956,7 @@ describe('the builder page in the admin', () => {
     await panel.getByRole('button', { name: 'Move up' }).click()
     await eventually(() => listed(page)).toEqual([
       expect.stringContaining('Feature grid'),
-      expect.stringContaining('Rich text'),
+      expect.stringContaining('Prose'),
     ])
     await panel.getByRole('button', { name: /Item 1/ }).click()
     await page.getByLabel('Title').fill('Changed item')
@@ -969,36 +965,36 @@ describe('the builder page in the admin', () => {
     await eventually(() => page.getByLabel('Title').inputValue()).toBe('First item')
     expect(await listed(page)).toEqual([
       expect.stringContaining('Feature grid'),
-      expect.stringContaining('Rich text'),
+      expect.stringContaining('Prose'),
     ])
   })
 
   it('undoes a removal with the Undo control', async () => {
     const documentId = await newLanding([
-      { __component: 'section.rich-text', body: 'One' },
+      { __component: 'shared.rich-text', body: 'One' },
       { __component: 'section.logo-cloud', title: 'Two' },
     ])
     const page = await open(builderPath(documentId))
-    await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'logo-cloud'])
     // The keyboard is test/admin/builder-shortcuts.test.ts; this is the pointer's way back.
     await frameOf(page).locator('[data-myc-index="1"]').click()
     await page.getByRole('button', { name: 'Remove' }).click()
-    await eventually(() => shown(page)).toEqual(['rich-text'])
+    await eventually(() => shown(page)).toEqual(['prose'])
     await page.getByRole('button', { name: 'Undo' }).click()
-    await eventually(() => shown(page)).toEqual(['rich-text', 'logo-cloud'])
+    await eventually(() => shown(page)).toEqual(['prose', 'logo-cloud'])
   })
 
   it('moves the admin only with the motion tokens, and not at all with reduced motion', async () => {
-    const documentId = await newLanding([{ __component: 'section.rich-text', body: 'One' }])
+    const documentId = await newLanding([{ __component: 'shared.rich-text', body: 'One' }])
     const tokens = (page: Page) =>
       page.evaluate(
         "(() => { const style = getComputedStyle(document.querySelector('main').parentElement); return ['--m-fast', '--m-base', '--m-slow'].map((name) => style.getPropertyValue(name).trim()) })()"
       ) as Promise<string[]>
     const normal = await open(builderPath(documentId))
-    await normal.locator('[data-block="rich-text"]').waitFor()
+    await normal.locator('[data-block="prose"]').waitFor()
     expect(await tokens(normal)).toEqual(['120ms', '200ms', '320ms'])
     const reduced = await open(builderPath(documentId), { reducedMotion: 'reduce' })
-    await reduced.locator('[data-block="rich-text"]').waitFor()
+    await reduced.locator('[data-block="prose"]').waitFor()
     expect(await tokens(reduced)).toEqual(['1ms', '1ms', '1ms'])
   })
 
@@ -1027,13 +1023,11 @@ describe('the builder page in the admin', () => {
     const previous = superAdminId
     superAdminId = role.id
     try {
-      const documentId = await newLanding([{ __component: 'section.rich-text', body: 'One' }])
+      const documentId = await newLanding([{ __component: 'shared.rich-text', body: 'One' }])
       const page = await open(builderPath(documentId))
       await page.getByText('the builder is read-only').waitFor()
-      expect(await page.locator('[data-block="rich-text"]').getAttribute('aria-disabled')).toBe(
-        'true'
-      )
-      await page.locator('[data-block="rich-text"]').click({ force: true })
+      expect(await page.locator('[data-block="prose"]').getAttribute('aria-disabled')).toBe('true')
+      await page.locator('[data-block="prose"]').click({ force: true })
       await page.waitForTimeout(1500)
       expect((await sectionsOf(documentId)).length).toBe(1)
     } finally {
