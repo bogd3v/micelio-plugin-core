@@ -142,6 +142,7 @@ const faqItem = part('section.faq-item', {
   itemId: ITEM_ID,
   question: string({ required: true }),
   answer: richtext({ required: true }),
+  defaultOpen: boolean({ default: false }),
 })
 const logo = part('section.logo', {
   itemId: ITEM_ID,

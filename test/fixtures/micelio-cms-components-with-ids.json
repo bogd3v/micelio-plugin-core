@@ -1,11 +1,11 @@
 {
   "source": {
     "repository": "bogd3v/micelio-cms",
-    "commit": "bee8d4006dde3af1a50649b3dde1e57d40757976",
+    "commit": "7405cbc3af6b5cd0e0f56fd23d54c92dd138db72",
     "derivedFrom": {
       "tag": "v0.4.0",
       "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
-      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40)"
+      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40); defaultOpen added to section.faq-item as micelio-cms stores it since bogd3v/micelio-cms#515 (merge 7405cbc)"
     }
   },
   "components": {
@@ -44,7 +44,8 @@
       "attributes": {
         "itemId": { "type": "string" },
         "question": { "type": "string", "required": true },
-        "answer": { "type": "richtext", "required": true }
+        "answer": { "type": "richtext", "required": true },
+        "defaultOpen": { "type": "boolean", "default": false }
       }
     },
     "section.faq": {

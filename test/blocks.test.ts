@@ -171,6 +171,24 @@ describe('the block catalogue', () => {
     ).toEqual([...FIELDS, 'section.rich-text'].sort())
   })
 
+  it('gives a faq item an optional defaultOpen that is false by default and no default to the options', () => {
+    const faq = blockOf('faq')
+    const item = strapiComponents(faq).components['section.faq-item']
+    expect(item.defaultOpen).toEqual({ type: 'boolean', default: false })
+    expect(item.defaultOpen.required).toBeUndefined()
+    const schema = blockContentSchema(faq)
+    const content = { variant: 'list', items: [{ question: 'q', answer: 'a' }] }
+    expect(schema.safeParse(content).success).toBe(true)
+    expect(
+      schema.safeParse({ ...content, items: [{ question: 'q', answer: 'a', defaultOpen: true }] })
+        .success
+    ).toBe(true)
+    expect(
+      schema.safeParse({ ...content, items: [{ question: 'q', answer: 'a', defaultOpen: 'yes' }] })
+        .success
+    ).toBe(false)
+  })
+
   it('has no entry for rich-text, and puts prose in both zones', () => {
     expect(BLOCKS.map((block) => block.id)).not.toContain('rich-text')
     expect(BLOCKS.map((block) => block.schema.component)).not.toContain('section.rich-text')
