@@ -70,6 +70,12 @@ The twelve sections whose renderer uses `SectionHead` (`hero`, `feature-grid`, `
 
 **Validation at save.** On `create`, `update` and `clone` the plugin refuses a save whose `anchor` is not a kebab-case slug (lowercase letters and digits joined by single hyphens), or that an earlier block of the page already uses, with `sectionAnchorInvalid` ([`docs/api.md`](api.md#errors)): the problem detail names the zone and position of the block. An absent, `null` or empty anchor is no anchor. Stored content is not re-checked.
 
+## Newsletter consent
+
+`newsletter` (`section.newsletter`) has three optional fields beside `title`, `text` and `buttonLabel`: `consentText`, the legal sentence a visitor accepts beside a checkbox (Ley 1581, GDPR), and `successMessage` and `placeholder`, the sentence after a subscription and the hint of the address field. There is no default for any of them: a consent text is a node's own wording, and an empty `successMessage` or `placeholder` leaves the frontend's own string. Adding them is a MINOR of the contract; a newsletter without them renders as before.
+
+**Warning at save.** On `create`, `update` and `clone` of any type with a dynamic zone, a `newsletter` block of the data whose `consentText` is absent, `null` or blank gets one line of the server log at `warn`, naming the type, the zone and the position (`[micelio] the newsletter block at api::page.page sections.2 has no consentText; ...`). The save is never refused and the text is never filled in. Stored content is not re-checked.
+
 ## Prose
 
 `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page's zone and in an article's (its `group` is `both`). It replaces `rich-text` (`section.rich-text`), which left the catalogue: the component stays registered in `micelio-cms` for one release, and a page that holds one keeps rendering, but the plugin no longer knows it as a block (it takes no block setting, has no cost line and its body is not checked).
@@ -423,14 +429,17 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Module:** `newsletter`; not offered on a site that has it off in `site.modules`
 - **Static:** In static builds, the static form (`MycNewsletterStatic`). In dynamic mode the form submits only once hydrated (a known limitation, `docs/blocks.md`). Nothing when the `newsletter` module is off.
 
-| Field         | Type   | Required | Details |
-| ------------- | ------ | -------- | ------- |
-| `blockId`     | string | No       |         |
-| `eyebrow`     | string | No       |         |
-| `anchor`      | string | No       |         |
-| `title`       | string | No       |         |
-| `text`        | text   | No       |         |
-| `buttonLabel` | string | No       |         |
+| Field            | Type   | Required | Details |
+| ---------------- | ------ | -------- | ------- |
+| `blockId`        | string | No       |         |
+| `eyebrow`        | string | No       |         |
+| `anchor`         | string | No       |         |
+| `title`          | string | No       |         |
+| `text`           | text   | No       |         |
+| `buttonLabel`    | string | No       |         |
+| `consentText`    | text   | No       |         |
+| `successMessage` | string | No       |         |
+| `placeholder`    | string | No       |         |
 
 ### `gallery`
 

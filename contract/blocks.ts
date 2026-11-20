@@ -395,6 +395,9 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       text: text(),
       buttonLabel: string(),
+      consentText: text(),
+      successMessage: string(),
+      placeholder: string(),
     }),
     options: {
       variant: variant('inline', 'card'),
