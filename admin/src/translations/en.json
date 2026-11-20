@@ -504,6 +504,7 @@
   "builder.field.consentText": "Consent text",
   "builder.field.successMessage": "Success message",
   "builder.field.placeholder": "Placeholder",
+  "builder.field.defaultOpen": "Open by default",
   "builder.field.text": "Text",
   "builder.field.body": "Body",
   "builder.field.alt": "Alt text",

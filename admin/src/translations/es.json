@@ -504,6 +504,7 @@
   "builder.field.consentText": "Texto de consentimiento",
   "builder.field.successMessage": "Mensaje de éxito",
   "builder.field.placeholder": "Marcador de posición",
+  "builder.field.defaultOpen": "Abierta por defecto",
   "builder.field.text": "Texto",
   "builder.field.body": "Cuerpo",
   "builder.field.alt": "Texto alternativo",

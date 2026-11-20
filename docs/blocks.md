@@ -76,6 +76,10 @@ The twelve sections whose renderer uses `SectionHead` (`hero`, `feature-grid`, `
 
 **Warning at save.** On `create`, `update` and `clone` of any type with a dynamic zone, a `newsletter` block of the data whose `consentText` is absent, `null` or blank gets one line of the server log at `warn`, naming the type, the zone and the position (`[micelio] the newsletter block at api::page.page sections.2 has no consentText; ...`). The save is never refused and the text is never filled in. Stored content is not re-checked.
 
+## FAQ
+
+`faq` (`section.faq`) holds `section.faq-item` entries (`question`, `answer`, and the optional `defaultOpen`). `defaultOpen` is a boolean, `false` by default: a `true` item renders its native `<details>` open. An item stored before the field existed returns `null` until it is saved again, and the frontend reads `null` as closed. Adding it is a MINOR of the contract. `variant` (`list`, `two-columns`), `density`, `align` and `tone` were already in the entry.
+
 ## Prose
 
 `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page's zone and in an article's (its `group` is `both`). It replaces `rich-text` (`section.rich-text`), which left the catalogue: the component stays registered in `micelio-cms` for one release, and a page that holds one keeps rendering, but the plugin no longer knows it as a block (it takes no block setting, has no cost line and its body is not checked).
@@ -569,11 +573,12 @@ Nested components: each exists only inside the `schema` of the blocks listed wit
 
 Nested in `faq`.
 
-| Field      | Type     | Required | Details |
-| ---------- | -------- | -------- | ------- |
-| `itemId`   | string   | No       |         |
-| `question` | string   | Yes      |         |
-| `answer`   | richtext | Yes      |         |
+| Field         | Type     | Required | Details         |
+| ------------- | -------- | -------- | --------------- |
+| `itemId`      | string   | No       |                 |
+| `question`    | string   | Yes      |                 |
+| `answer`      | richtext | Yes      |                 |
+| `defaultOpen` | boolean  | No       | default `false` |
 
 ### `section.feature-item`
 

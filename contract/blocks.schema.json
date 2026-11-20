@@ -812,6 +812,12 @@
                     "type": "string",
                     "x-strapi": { "type": "richtext" },
                     "contentMediaType": "text/markdown"
+                  },
+                  "defaultOpen": {
+                    "anyOf": [
+                      { "type": "boolean", "x-strapi": { "type": "boolean" }, "default": false },
+                      { "type": "null" }
+                    ]
                   }
                 },
                 "required": ["question", "answer"]
