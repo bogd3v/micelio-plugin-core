@@ -1,11 +1,11 @@
 {
   "source": {
     "repository": "bogd3v/micelio-cms",
-    "commit": "6647bf306659b6f396b89d3e735db585575892d1",
+    "commit": "bee8d4006dde3af1a50649b3dde1e57d40757976",
     "derivedFrom": {
       "tag": "v0.4.0",
       "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
-      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3)"
+      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40)"
     }
   },
   "components": {
@@ -272,7 +272,10 @@
         },
         "title": { "type": "string" },
         "text": { "type": "text" },
-        "buttonLabel": { "type": "string" }
+        "buttonLabel": { "type": "string" },
+        "consentText": { "type": "text" },
+        "successMessage": { "type": "string" },
+        "placeholder": { "type": "string" }
       }
     },
     "section.plan": {

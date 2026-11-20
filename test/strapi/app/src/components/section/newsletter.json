@@ -8,6 +8,9 @@
   "options": {},
   "attributes": {
     "title": { "type": "string" },
-    "buttonLabel": { "type": "string" }
+    "buttonLabel": { "type": "string" },
+    "consentText": { "type": "text" },
+    "successMessage": { "type": "string" },
+    "placeholder": { "type": "string" }
   }
 }
