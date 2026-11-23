@@ -37,7 +37,7 @@ A block's `options` are a closed set of presentation values (ADR-0018, section 1
 | `tone`      | **`default`**, `raised`, `accent`                 | the thirteen page sections                                                  |
 | `ratio`     | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                         |
 | `height`    | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                               |
-| `iconStyle` | **`outline`**, `filled`                           | none yet                                                                    |
+| `iconStyle` | **`outline`**, `filled`                           | every block with an icon field ([Icons](#icons)); none yet                  |
 
 `tone` and `align` are on the thirteen page sections (`page.sections`). A `scene` offers them only in its `inline` variant: its `background` variant paints its own poster, and a save that sets either on it (a `scene` with no `variant` takes `background`) is refused with `blockOptionInvalid` unless the value is the option's default, the only value allowed (the content API stores both on a `scene`). The builder leaves both out of a new `background` scene, so a site's default of either never reaches it.
 
@@ -120,19 +120,46 @@ at save with `sceneBackgroundLimit` ([`docs/api.md`](api.md#errors)).
 Pages saved before this release may hold what these rules refuse; they are not changed, and the
 first move out of `draft` of one that lacks an alternative is refused until the editor fills it.
 
+## Icons
+
+An icon in a block is a **name** of the icon catalogue ([`docs/icons.md`](icons.md), ADR-0021 of `micelio`), never a file: `icon: 'map-pin'`. The fields of this section are the contract side every icon field uses; no block has one yet.
+
+**The declaration.** A block declares an icon as `icon: { required: boolean }` (ADR-0021, section 1), written in its `schema`, or a part's, with the field kind `icon({ required })` of `contract/fields.ts`. It is the custom field `micelio.icon` (`plugin::micelio.icon`, a string), so the save checks the name against the pinned set (`iconInvalid`, [`docs/api.md`](api.md#errors)). An icon is never required on an existing block (ADR-0021, section 6): adding one is an optional field, a MINOR of the contract.
+
+- **Beside text** (`iconFields({ required: false })`): the icon is decorative and no label is asked.
+- **Standing alone**, with no text beside it (a social link, an icon-only button: `iconFields({ required: false, alone: true })`): the part also requires a `label`, which the frontend renders as the icon's accessible name.
+
+The generated schema marks the field with `x-micelio-icon`, the declaration (`{ required, alone }`), next to its `x-strapi` (`{ type: customField, customField: plugin::micelio.icon }`), and describes the value as a kebab-case name of `icons.schema.json`.
+
+**`iconStyle`.** A block with an icon field offers the `iconStyle` option ([above](#presentation-options)), which draws all of its icons, and a block without one does not. `iconIssues` in `contract/strapi.ts` checks it, with the label of an icon that stands alone and the cost below; `npm run blocks:generate` and `lint:blocks` stop on an entry that breaks one of them.
+
+**Cost.** An icon is delivered in one sprite inlined in the page, never as a request (ADR-0021, section 3), so a block with an icon field declares `cost.icons`: the gzip bytes of the sprite entries its icons add, as `docs/performance.md` of `micelio` ("Icons: the cost of a sprite entry") measures an entry. Raw, an entry is 340 bytes at the median and 562 at the 90th percentile of the set; the 16 entries of the specimen's sprite are 1 549 bytes gzip, wrapper included. The reference below adds the number to the block's **Cost** line. A block without an icon field declares none. Every total of a block's cost adds it to the CSS and JS (`costBytes`, `contract/cost.ts`): the palette and the block panel of the builder, `costKb` of the Block catalogue page (`GET /micelio/block-settings?site=`) and the weight of a page template.
+
+**The fields that take one.** The block catalogue plan of `micelio` (`docs/architecture/block-catalogue-plan.md`, "Icons") picks four fields for step 1, each `required: false`. Each lands with its block's line of the plan, with the change of `micelio-cms` that adds the field to the component:
+
+| Block          | Field                  | Beside text or alone                                              | Plan line |
+| -------------- | ---------------------- | ----------------------------------------------------------------- | --------- |
+| `feature-grid` | `feature-item.icon`    | Beside text: decorative                                           | 17        |
+| every link     | `link.icon`            | Beside its label; with `iconPosition: only`, the `label` names it | 18        |
+| `stats`        | `stat.icon`            | Beside text: decorative                                           | 33        |
+| `pricing`      | `plan.features[].icon` | Beside text: decorative                                           | 41        |
+
+A brand's own mark is the one exception, `customIcon` (an upload, ADR-0021, section 7), offered only where a later entry allows it (`logo`, `badge`) and never with `icon` on the same item; none of the four does.
+
 ## How a schema maps to Strapi
 
 Each block's JSON Schema describes its content as the content API answers it, its options included (it is an option, and ADR-0018 keeps it stored inside the component until a migration moves it). An optional field may be absent or `null`; a field Strapi requires is in `required`. What JSON Schema cannot say about the Strapi attribute is in the `x-strapi` keyword of the field:
 
-| `x-strapi.type`                                | JSON Schema                                                      |
-| ---------------------------------------------- | ---------------------------------------------------------------- |
-| `string`, `text`                               | `string`, with `pattern`, `minLength` and `maxLength`            |
-| `richtext`                                     | `string` with `contentMediaType: text/markdown`                  |
-| `integer`, `boolean`                           | `integer` with `minimum` and `maximum`, `boolean`                |
-| `enumeration`                                  | `string` with `enum`                                             |
-| `media`, with `multiple` and `allowedTypes`    | An uploaded file (`url`, `mime` and more), or a list of them     |
-| `relation`, with `relation` and `target`       | An entry with its `documentId`                                   |
-| `component`, with `component` and `repeatable` | The part's object, or a list of them with `minItems`, `maxItems` |
+| `x-strapi.type`                                         | JSON Schema                                                                     |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `string`, `text`                                        | `string`, with `pattern`, `minLength` and `maxLength`                           |
+| `richtext`                                              | `string` with `contentMediaType: text/markdown`                                 |
+| `integer`, `boolean`                                    | `integer` with `minimum` and `maximum`, `boolean`                               |
+| `enumeration`                                           | `string` with `enum`                                                            |
+| `media`, with `multiple` and `allowedTypes`             | An uploaded file (`url`, `mime` and more), or a list of them                    |
+| `relation`, with `relation` and `target`                | An entry with its `documentId`                                                  |
+| `component`, with `component` and `repeatable`          | The part's object, or a list of them with `minItems`, `maxItems`                |
+| `customField`, with `customField: plugin::micelio.icon` | A string: a name of the icon catalogue, with `x-micelio-icon` ([Icons](#icons)) |
 
 `default` is Strapi's default, filled in when an entry is created. `test/blocks.test.ts` reads every schema back as Strapi attributes (`contract/strapi.ts`) and compares them, less the options of the vocabulary that `v0.4.0` does not store yet, with the component JSON of `micelio-cms` in `test/fixtures/micelio-cms-components-with-ids.json`: the components of `v0.4.0` plus the `blockId` and `itemId` attributes as `micelio-cms` stores them since #477 (its `source` names the commit and the tag it derives from). That fixture is test data, never registered as a component; a catalogue update regenerates it from the new tag in the same pull request:
 
@@ -146,7 +173,7 @@ node test/fixtures/micelio-cms-components.mjs <micelio-cms checkout> <tag>
 
 ## How cost is measured
 
-`cost` follows ADR-0018, section 1: the gzip bytes of the block's CSS and JS on a page, and, for an island, the JS it loads once used. HTML bytes are not part of it. It was measured on `micelio` `v0.4.0` (`ef5c979`), the frontend of release line 0.4 that pairs with `micelio-cms` `v0.4.0`, in the `bogota` and `starter` themes; the catalogue declares the larger of the two.
+`cost` follows ADR-0018, section 1: the gzip bytes of the block's CSS and JS on a page, and, for an island, the JS it loads once used. HTML bytes are not part of it, except the sprite entries of a block's icons (`cost.icons`, [Icons](#icons)). It was measured on `micelio` `v0.4.0` (`ef5c979`), the frontend of release line 0.4 that pairs with `micelio-cms` `v0.4.0`, in the `bogota` and `starter` themes; the catalogue declares the larger of the two.
 
 - **JS** is the minified code that the client source maps attribute to the block's component and to the components and helpers only blocks use (`SectionHead`, `SectionLink`, `SectionMedia`, the newsletter form, the figure credit), gzipped on its own. What every page loads anyway is not counted: `SectionRenderer` and `BlocksRenderer`, the button, `useStrapi`, the post card of the blog.
 - **CSS** is every rule of the built CSS whose selector names the block (`[data-section=<id>]` and the block's own classes, `scripts/blocks/cost.mjs` lists them) in the core's stylesheets and the theme's, gzipped together. A rule that names two blocks counts for both; the rules every section shares (`.myc-section`, `.myc-section-head`, the item grid) are not counted.

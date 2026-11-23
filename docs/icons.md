@@ -29,7 +29,7 @@ An icon is a **name** of one set, [Tabler Icons](https://tabler.io/icons), at th
 
 ## The custom field
 
-The plugin registers the custom field `micelio.icon` (`plugin::micelio.icon`, a string) on the server (`server/src/icons/register.ts`) and in the admin (`admin/src/index.ts`, the input is `admin/src/components/IconField.tsx`). A host or a distribution puts it in a schema as `{ "type": "customField", "customField": "plugin::micelio.icon" }`, in a type, a component or a block. The editor's side is [Picking an icon](guide/icons.md).
+The plugin registers the custom field `micelio.icon` (`plugin::micelio.icon`, a string) on the server (`server/src/icons/register.ts`) and in the admin (`admin/src/index.ts`, the input is `admin/src/components/IconField.tsx`). A host or a distribution puts it in a schema as `{ "type": "customField", "customField": "plugin::micelio.icon" }`, in a type, a component or a block. A block of the catalogue declares one with the field kind `icon({ required })` of `contract/fields.ts` ([`docs/blocks.md`](blocks.md#icons), "Icons"). The editor's side is [Picking an icon](guide/icons.md).
 
 - **What it stores**: the name as the editor picked it, or `null` for none. It is never rewritten: an alias stays stored as it is and renders the glyph it points to.
 - **The check at save**: the document service middleware `server/src/icons/documents.ts` refuses, on `create`, `update` and `clone`, a value that is not a name of `contract/icons.ts` or one of its aliases (`iconInvalid`, `docs/api.md`, "Errors"). The names it checks against are `strapi.plugin('micelio').service('icons').catalogue`, a copy of the pin.

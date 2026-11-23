@@ -1,5 +1,5 @@
 /** The UID of the custom field `micelio.icon`: a string that holds a name of the icon catalogue. */
-export const ICON_FIELD = 'plugin::micelio.icon'
+export { ICON_FIELD } from '../../../contract/icons'
 
 /** The `code` of the problem detail a save with a value that is not a pinned name or alias answers. */
 export const ICON_INVALID = 'iconInvalid'

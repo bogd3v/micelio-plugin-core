@@ -7,8 +7,12 @@ import {
   blockContentSchema,
   type Block,
 } from '../contract/blocks'
+import { ICON_KEYWORD, component, icon, iconFields, part, string, text } from '../contract/fields'
 import { OPTION_NAMES } from '../contract/options'
+import { OPTIONS } from '../contract/options'
 import { strapiComponents, type StrapiAttributes } from '../contract/strapi'
+import { blockJsonSchema, iconFieldsOf, iconIssues, type JsonSchema } from '../contract/strapi'
+import { costBytes } from '../contract/blocks'
 import modulesComponent from '../server/src/components/site/modules.json'
 import fixture from './fixtures/micelio-cms-components-with-ids.json'
 
@@ -245,6 +249,158 @@ describe('the block catalogue', () => {
     ).toBe(false)
   })
 })
+
+// No entry has an icon field yet: each of the four step-1 fields lands with its block's line of the
+// plan, so these cases build an entry of their own (ADR-0021, section 1).
+describe('an icon field', () => {
+  it('an icon field maps to the micelio.icon custom field and is optional unless declared required', () => {
+    const entry = iconBlock({
+      itemId: string(),
+      icon: icon({ required: false }),
+      title: string({ required: true }),
+    })
+    const item = strapiComponents(entry).components['section.icon-item']
+    expect(item.icon).toEqual({ type: 'customField', customField: 'plugin::micelio.icon' })
+    const schema = blockContentSchema(entry)
+    const content = { variant: 'grid', items: [{ title: 'Fast' }] }
+    expect(schema.safeParse(content).success).toBe(true)
+    expect(schema.safeParse({ ...content, items: [{ title: 'Fast', icon: null }] }).success).toBe(
+      true
+    )
+    expect(
+      schema.safeParse({ ...content, items: [{ title: 'Fast', icon: 'map-pin' }] }).success
+    ).toBe(true)
+    expect(
+      schema.safeParse({ ...content, items: [{ title: 'Fast', icon: '/uploads/a.svg' }] }).success
+    ).toBe(false)
+
+    const required = iconBlock({ icon: icon({ required: true }), title: string() })
+    expect(strapiComponents(required).components['section.icon-item'].icon).toEqual({
+      type: 'customField',
+      customField: 'plugin::micelio.icon',
+      required: true,
+    })
+    expect(
+      blockContentSchema(required).safeParse({ variant: 'grid', items: [{ title: 'Fast' }] })
+        .success
+    ).toBe(false)
+    expect(iconFieldsOf(required)).toEqual([
+      { path: 'items[].icon', declaration: { required: true, alone: false } },
+    ])
+  })
+
+  it('an icon that stands alone requires a label in the schema', () => {
+    const alone = iconBlock({
+      url: string({ required: true }),
+      ...iconFields({ required: false, alone: true }),
+    })
+    const item = nonNull(blockJsonSchema(alone).properties?.items).items
+    expect(item?.required).toContain('label')
+    expect(item?.properties?.icon?.anyOf?.[0]?.[ICON_KEYWORD]).toEqual({
+      required: false,
+      alone: true,
+    })
+    expect(strapiComponents(alone).components['section.icon-item'].label).toEqual({
+      type: 'string',
+      required: true,
+    })
+    const schema = blockContentSchema(alone)
+    const content = {
+      variant: 'grid',
+      items: [{ url: '/a', icon: 'brand-mastodon', label: 'Mastodon' }],
+    }
+    expect(schema.safeParse(content).success).toBe(true)
+    expect(
+      schema.safeParse({ ...content, items: [{ url: '/a', icon: 'brand-mastodon' }] }).success
+    ).toBe(false)
+    expect(iconIssues(alone)).toEqual([])
+
+    // Decorative, beside text: no label is asked.
+    const decorative = iconBlock({
+      title: string({ required: true }),
+      ...iconFields({ required: false }),
+    })
+    expect(Object.keys(decorative.schema.fields.shape)).not.toContain('label')
+    expect(iconIssues(decorative)).toEqual([])
+
+    // A part that makes the label of an icon that stands alone optional breaks the rule.
+    const unnamed = iconBlock({ icon: icon({ required: false, alone: true }), label: string() })
+    expect(iconIssues(unnamed)).toEqual([
+      'icon-grid: the icon items[].icon stands alone and needs a required label beside it',
+    ])
+  })
+
+  it('the generated schema describes an icon field with its iconStyle option', () => {
+    const schema = blockJsonSchema(iconBlock({ title: text(), ...iconFields({ required: false }) }))
+    expect(nonNull(schema.properties?.iconStyle)).toMatchObject({
+      type: 'string',
+      enum: ['outline', 'filled'],
+      default: 'outline',
+    })
+    expect(schema.required ?? []).not.toContain('iconStyle')
+    const field = nonNull(nonNull(schema.properties?.items).items?.properties?.icon)
+    expect(field).toMatchObject({
+      type: 'string',
+      pattern: '^[a-z0-9]+(-[a-z0-9]+)*$',
+      'x-strapi': { type: 'customField', customField: 'plugin::micelio.icon' },
+      [ICON_KEYWORD]: { required: false, alone: false },
+    })
+    expect(field?.description).toContain('iconStyle')
+  })
+
+  it('a block with an icon field offers iconStyle and declares cost.icons, and no other block does', () => {
+    for (const block of BLOCKS) expect(iconIssues(block), block.id).toEqual([])
+    const fields = { title: string(), ...iconFields({ required: false }) }
+    const withoutStyle = iconBlock(fields)
+    delete withoutStyle.options.iconStyle
+    expect(iconIssues(withoutStyle)).toEqual([
+      'icon-grid: a block with an icon field offers iconStyle',
+    ])
+    const plain = iconBlock({ title: string() })
+    expect(iconIssues(plain)).toEqual([
+      'icon-grid: iconStyle is offered with no icon field',
+      'icon-grid: cost.icons is declared with no icon field',
+    ])
+    const withoutCost = iconBlock(fields)
+    delete withoutCost.cost.icons
+    expect(iconIssues(withoutCost)).toEqual([
+      'icon-grid: a block with an icon field declares cost.icons',
+    ])
+  })
+})
+
+describe('the cost of a block', () => {
+  it("a block's cost total adds the bytes of its icons' sprite entries to its CSS and JS", () => {
+    const withIcons = iconBlock({ title: string(), ...iconFields({ required: false }) })
+    expect(costBytes(withIcons.cost)).toBe(1 + 1 + 97)
+    for (const block of BLOCKS) {
+      expect(costBytes(block.cost), block.id).toBe(block.cost.css + block.cost.js)
+    }
+  })
+})
+
+// An optional field is `anyOf: [field, { type: 'null' }]`.
+function nonNull(schema: JsonSchema | undefined): JsonSchema {
+  return schema?.anyOf?.find((option) => option.type !== 'null') ?? schema ?? {}
+}
+
+// An entry with one repeatable part, `section.icon-item`, of the given fields: test data, never a
+// block of the catalogue.
+function iconBlock(fields: Parameters<typeof part>[1]): Block {
+  return {
+    id: 'icon-grid',
+    group: 'section',
+    schema: part('section.icon-grid', {
+      items: component(part('section.icon-item', fields), { repeatable: true }),
+    }),
+    options: {
+      variant: { values: ['grid', 'list'], default: 'grid' },
+      iconStyle: { values: OPTIONS.iconStyle.values, default: OPTIONS.iconStyle.default },
+    },
+    cost: { css: 1, js: 1, island: null, icons: 97 },
+    static: 'Itself.',
+  }
+}
 
 // The options of the vocabulary (contract/options.ts) are new in the catalogue: the components of
 // micelio-cms v0.4.0 (the base of the fixture) have only `variant`, and micelio-cms adds the rest in its own change (standard,

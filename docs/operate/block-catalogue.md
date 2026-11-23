@@ -47,8 +47,9 @@ Pick the site in the **Site** select; every setting is for that site alone.
 
 ## Cost and where a block is used
 
-The table shows the **declared** cost of each block, in kB (gzip, CSS and JS; an island's script
-loads on demand and is apart): the number in the contract.
+The table shows the **declared** cost of each block, in kB (gzip, CSS and JS, and the sprite entries
+of its icons for a block with an icon field; an island's script loads on demand and is apart): the
+number in the contract.
 
 **Measure again** in the drawer asks the frontend what the block weighs now. It does so only when
 pressed: opening the page or the drawer asks the frontend for nothing. It takes the first page of

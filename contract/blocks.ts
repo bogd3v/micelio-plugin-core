@@ -27,6 +27,7 @@ export interface BlockOption {
 }
 
 export { ISLAND_KINDS, ON_CLICK_ABOVE_KB, type IslandKind } from './islands'
+export { costBytes } from './cost'
 
 /** The heavy island a block renders (`app/islands/lib/constants.ts` in `micelio`). */
 export interface BlockIsland {
@@ -65,6 +66,13 @@ interface BlockCost {
   js: number
   /** The heavy island it renders, or `null` when it renders none. */
   island: BlockIsland | null
+  /**
+   * The bytes of the sprite entries its icon fields add to a page, gzip (ADR-0021, section 3):
+   * declared by a block with an icon field (`icon` in `contract/fields.ts`) and by no other. A sprite
+   * entry is measured as `docs/performance.md` of `micelio` measures it; `docs/blocks.md`, "Icons",
+   * has the rule. Every total of a block's cost adds it: {@link costBytes}.
+   */
+  icons?: number
 }
 
 /** The keys of the `modules` component of a site (`server/src/components/site/modules.json`). */
@@ -81,7 +89,15 @@ export const SITE_MODULES = [
 /** A module a site turns on or off. */
 export type SiteModule = (typeof SITE_MODULES)[number]
 
-/** A block of the catalogue: `{ id, schema, options, cost, static }` (ADR-0018, section 1). */
+/**
+ * A block of the catalogue: `{ id, schema, options, cost, static }` (ADR-0018, section 1).
+ *
+ * @remarks
+ * A block that offers an icon declares it in its `schema` (or a part's) as an icon field,
+ * `icon({ required })` of `contract/fields.ts`, and, where the icon stands alone, with a required
+ * `label` beside it (`iconFields({ required, alone: true })`; ADR-0021, section 1). It then offers
+ * `iconStyle` and declares `cost.icons` (`iconIssues` in `contract/strapi.ts`).
+ */
 export interface Block {
   /** Stable and kebab-case: stored content, themes and the visual editor refer to the block by it. */
   id: string
