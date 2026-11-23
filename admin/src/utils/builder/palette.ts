@@ -1,3 +1,4 @@
+import { costBytes } from '../../../../contract/cost'
 import type { IslandKind } from '../../../../contract/islands'
 
 import { formatKb } from '../costMeter'
@@ -21,6 +22,8 @@ export interface CatalogueEntry {
   cost: {
     css: number
     js: number
+    /** The sprite entries its icon fields add, gzip bytes; absent for a block without one. */
+    icons?: number
     /** The heavy island the block renders; `null` for a block that renders none. */
     island: {
       js: number
@@ -79,9 +82,9 @@ export function budgetNote(
   }
 }
 
-/** The weight a block adds to a page, in kB with one decimal (gzip bytes of CSS and JS; an island's on-demand script is apart). */
+/** The weight a block adds to a page, in kB with one decimal (gzip bytes of CSS, JS and its icons' sprite entries; an island's on-demand script is apart). */
 export function costKbOf(entry: Pick<CatalogueEntry, 'cost'>): number {
-  return Math.round(((entry.cost.css + entry.cost.js) / 1024) * 10) / 10
+  return Math.round((costBytes(entry.cost) / 1024) * 10) / 10
 }
 
 /** The name an editor sees for a block: the site's label in the locale, else the title-cased `id`. */

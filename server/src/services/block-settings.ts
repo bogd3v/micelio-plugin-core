@@ -1,5 +1,5 @@
 import type { Core, UID } from '@strapi/strapi'
-import { BLOCKS, type Block } from '../../../contract/blocks'
+import { BLOCKS, costBytes, type Block } from '../../../contract/blocks'
 import { blockJsonSchema } from '../../../contract/strapi'
 import { modulesOf } from '../block-settings/check'
 import { BlockSettingError } from '../block-settings/error'
@@ -240,7 +240,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): BlockSettingsService => {
             group: block.group,
             component: block.schema.component,
             options: mergedOptions(block, setting),
-            costKb: Math.round(((block.cost.css + block.cost.js) / BYTES_PER_KB) * 10) / 10,
+            costKb: Math.round((costBytes(block.cost) / BYTES_PER_KB) * 10) / 10,
             isIsland: block.cost.island !== null,
             enabled: setting.enabled,
             moduleOff: moduleOffOf(block, modules),

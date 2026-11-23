@@ -6,8 +6,14 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import prettier from 'prettier'
 import { BLOCKS, optionsOf, type Block } from '../../contract/blocks'
+import { ICON_FIELD } from '../../contract/icons'
 import { triggerOf } from '../../contract/islands'
-import { blockJsonSchema, strapiComponents, type StrapiAttribute } from '../../contract/strapi'
+import {
+  blockJsonSchema,
+  iconIssues,
+  strapiComponents,
+  type StrapiAttribute,
+} from '../../contract/strapi'
 
 const SCHEMA_FILE = new URL('../../contract/blocks.schema.json', import.meta.url)
 const DOCS_FILE = new URL('../../docs/blocks.md', import.meta.url)
@@ -23,6 +29,10 @@ const GROUP_LABEL: Record<Block['group'], string> = {
 
 const isCheck = process.argv.includes('--check')
 const drifted: string[] = []
+
+// An entry that breaks the icon rules of ADR-0021 is not written into the contract.
+const issues = BLOCKS.flatMap(iconIssues)
+if (issues.length) throw new Error(`contract/blocks.ts: ${issues.join('; ')}`)
 
 await write(SCHEMA_FILE, JSON.stringify(catalogueSchema()), 'json')
 const docs = readFileSync(DOCS_FILE, 'utf8')
@@ -113,7 +123,7 @@ function blockSection(block: Block, attributes: Record<string, StrapiAttribute>)
       ([name, option]) =>
         `  - \`${name}\`: ${option.values.map((value) => `\`${value}\``).join(', ')}; default \`${option.default}\``
     ),
-    `- **Cost:** ${block.cost.css} B of CSS and ${block.cost.js} B of JS, gzip${island ? `; the \`${island.id}\` island (budget \`${island.budget}\`) loads ${island.js} B of JS, gzip, once used` : ''}`,
+    `- **Cost:** ${block.cost.css} B of CSS and ${block.cost.js} B of JS, gzip${block.cost.icons === undefined ? '' : `; its icons add ${block.cost.icons} B of sprite entries, gzip`}${island ? `; the \`${island.id}\` island (budget \`${island.budget}\`) loads ${island.js} B of JS, gzip, once used` : ''}`,
     ...(island
       ? [
           `- **Island:** \`${island.kind}\`; loads ${island.loadKb} kB once used, ${triggerOf(island.loadKb) === 'click' ? 'on a click' : 'when it scrolls into view'}`,
@@ -146,6 +156,8 @@ function typeOf(attribute: StrapiAttribute): string {
       return `\`${String(attribute.component)}\`${attribute.repeatable ? ', repeatable' : ''}`
     case 'relation':
       return `relation to \`${String(attribute.target)}\``
+    case 'customField':
+      return attribute.customField === ICON_FIELD ? 'icon (`micelio.icon`)' : 'custom field'
     default:
       return attribute.type
   }
@@ -165,6 +177,8 @@ function detailsOf(attribute: StrapiAttribute): string {
   if (attribute.max !== undefined) details.push(`at most ${String(attribute.max)}`)
   if (attribute.default !== undefined) details.push(`default \`${String(attribute.default)}\``)
   if (attribute.description) details.push(String(attribute.description))
+  if (attribute.customField === ICON_FIELD)
+    details.push("a name of the icon catalogue, drawn in the block's `iconStyle`")
   return details.join('; ')
 }
 

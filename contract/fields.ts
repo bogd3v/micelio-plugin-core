@@ -2,6 +2,7 @@
 // field as the content API answers it, annotated with what JSON Schema cannot say about the Strapi
 // attribute that stores it. `docs/blocks.md` describes the mapping.
 import { z } from 'zod'
+import { ICON_FIELD } from './icons'
 
 /** What JSON Schema does not say about a Strapi attribute: the `x-strapi` keyword of a field. */
 export type StrapiAnnotation =
@@ -9,6 +10,7 @@ export type StrapiAnnotation =
   | { type: 'media'; multiple: boolean; allowedTypes: readonly MediaType[] }
   | { type: 'relation'; relation: 'oneToOne'; target: string }
   | { type: 'component'; component: string; repeatable: boolean }
+  | { type: 'customField'; customField: typeof ICON_FIELD }
 
 /** A kind of file a media field accepts, as Strapi names it. */
 type MediaType = 'images' | 'videos' | 'files'
@@ -44,6 +46,26 @@ interface CountOptions extends Presence {
 
 /** The keyword that carries a field's {@link StrapiAnnotation} in the generated JSON Schema. */
 export const STRAPI_KEYWORD = 'x-strapi'
+
+/**
+ * How a block declares an icon field (ADR-0021, section 1): `icon: { required: boolean }`. An icon
+ * beside text is decorative; one that stands alone, with no text beside it, is named by a `label`
+ * its part requires ({@link iconFields}).
+ */
+export interface IconDeclaration {
+  /** An icon is never required on an existing block (ADR-0021, section 6). */
+  required: boolean
+  /**
+   * `true` when the icon stands alone (a social link, an icon-only button): the part then requires
+   * a `label`, the icon's accessible name. Decorative, beside text, when absent.
+   *
+   * @defaultValue false
+   */
+  alone?: boolean
+}
+
+/** The keyword that carries an icon field's {@link IconDeclaration} in the generated JSON Schema. */
+export const ICON_KEYWORD = 'x-micelio-icon'
 
 /** A short text: Strapi's `string`. */
 export function string(options: TextOptions = {}): Field {
@@ -132,6 +154,39 @@ export function component(
   if (options.min !== undefined) list = list.min(options.min)
   if (options.max !== undefined) list = list.max(options.max)
   return presence(list.meta(annotation), options)
+}
+
+/**
+ * A name of the icon catalogue (`contract/icons.ts`, ADR-0021): the custom field `micelio.icon`
+ * (`plugin::micelio.icon`), a string. The save checks the name against the pinned set
+ * (`iconInvalid`); the block's `iconStyle` option says how it is drawn. Use {@link iconFields} in a
+ * part, so an icon that stands alone gets its `label`.
+ */
+export function icon(declaration: IconDeclaration): Field {
+  const schema = z
+    .string()
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+    .describe(
+      'A name of the icon catalogue (icons.schema.json), drawn in the iconStyle of the block' +
+        (declaration.alone ? '; it stands alone, and the label is its accessible name' : '')
+    )
+    .meta({
+      [STRAPI_KEYWORD]: { type: 'customField', customField: ICON_FIELD },
+      [ICON_KEYWORD]: { required: declaration.required, alone: declaration.alone ?? false },
+    })
+  return presence(schema, declaration)
+}
+
+/**
+ * The fields an icon adds to a part: `icon`, and when it stands alone a required `label`, its
+ * accessible name (ADR-0021, section 1). Spread it into the part's shape after the fields it
+ * replaces, so a `label` of the part cannot make the name optional.
+ */
+export function iconFields(declaration: IconDeclaration): Record<string, Field> {
+  return {
+    icon: icon(declaration),
+    ...(declaration.alone ? { label: string({ required: true }) } : {}),
+  }
 }
 
 /** A nested component, from its Strapi UID and its fields. */

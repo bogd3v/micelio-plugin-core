@@ -7,6 +7,12 @@
 import { z } from 'zod'
 import names from './icons.names.json'
 
+/**
+ * The UID of the custom field `micelio.icon`: a string that holds a name of the catalogue. A
+ * block's icon field is one (`icon` in `contract/fields.ts`).
+ */
+export const ICON_FIELD = 'plugin::micelio.icon'
+
 /** The one set the core pins. */
 export const ICON_SET = 'tabler'
 

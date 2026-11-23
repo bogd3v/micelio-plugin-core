@@ -31,8 +31,8 @@ export const OPTIONS = {
   height: { values: ['s', 'm', 'l', 'full'], default: 'm' },
   /**
    * The drawing of the block's icons, for all of them (ADR-0021, section 1); a name without a filled
-   * drawing stays `outline`. No block offers it yet: the builder does not show it until the theme
-   * contract renders it (ADR-0018, section 1).
+   * drawing stays `outline`. Offered by every block with an icon field and by no other
+   * (`iconIssues` in `contract/strapi.ts`); no block has one yet.
    */
   iconStyle: { values: ['outline', 'filled'], default: 'outline' },
 } as const satisfies Record<string, VocabularyOption>

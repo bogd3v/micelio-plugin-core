@@ -1,4 +1,4 @@
-import { BLOCKS, optionsOf, type Block } from '../../../contract/blocks'
+import { BLOCKS, costBytes, optionsOf, type Block } from '../../../contract/blocks'
 import { OPTION_NAMES } from '../../../contract/options'
 import { isInstanceId } from '../block-ids/rules'
 import type {
@@ -200,7 +200,7 @@ export function findSampleText(
 export function costKbOf(blocks: readonly Pick<TemplateBlock, 'block'>[]): number {
   const bytes = blocks.reduce((sum, { block }) => {
     const entry = BLOCKS.find((candidate) => candidate.id === block)
-    return sum + (entry ? entry.cost.css + entry.cost.js : 0)
+    return sum + (entry ? costBytes(entry.cost) : 0)
   }, 0)
   return Math.round((bytes / 1024) * 10) / 10
 }

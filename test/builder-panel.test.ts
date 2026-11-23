@@ -187,6 +187,12 @@ describe('the palette', () => {
     ).toBe(0)
   })
 
+  it('weighs a block with icons with the bytes of their sprite entries', () => {
+    expect(costKbOf(entry('c', { cost: { css: 737, js: 1556, icons: 512, island: null } }))).toBe(
+      2.7
+    )
+  })
+
   it('refuses a block the page type’s catalogue excludes and flags one over the remaining budget', () => {
     const landing = entry('hero', { pageTypes: ['landing'] })
     expect(stateOf(landing, 'standard', 100)).toBe('notAllowed')
