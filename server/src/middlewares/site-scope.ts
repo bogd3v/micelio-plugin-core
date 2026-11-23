@@ -6,6 +6,7 @@ import {
   PROSE_HEADING_INVALID,
   SCENE_BACKGROUND_LIMIT_CODE,
   SECTION_ANCHOR_INVALID,
+  TESTIMONIAL_RATING_INVALID,
 } from '../constants/blocks'
 import { ICON_INVALID } from '../constants/icons'
 import { SITE_UID } from '../constants/site'
@@ -13,6 +14,7 @@ import { IconInvalidError } from '../icons/error'
 import type { SiteScopeState } from '../site-scope'
 import { ProseHeadingError } from '../prose-headings/error'
 import { SectionAnchorError } from '../section-anchor/error'
+import { TestimonialRatingError } from '../testimonial-rating/error'
 import { SceneBackgroundLimitError } from '../islands/error'
 import { TEMPLATE_CODES } from '../constants/page-templates'
 import { FixedBlockError } from '../page-templates/error'
@@ -35,7 +37,8 @@ const BLOCK_OPTION_STATUS = 400
  * answers `blockNotAllowed`, naming the block and why (the module, when the site has off the one the block needs). A zone with more background Scenes than a
  * page may hold answers `sceneBackgroundLimit`, naming the block, the count and the limit, and a section
  * anchor that is not a kebab-case slug or is used twice answers `sectionAnchorInvalid`, naming the position. A `prose` body whose headings open below `h2`, include an `h1` or skip a level
- * answers `proseHeadingInvalid`, naming the position and the heading.
+ * answers `proseHeadingInvalid`, naming the position and the heading, and a testimonial whose `rating` is not a whole number from 1 to 5
+ * answers `testimonialRatingInvalid`, naming the block, the item and the rating.
  */
 const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
   return async (ctx, next) => {
@@ -134,6 +137,17 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
           status: BLOCK_OPTION_STATUS,
           detail: error.message,
           code: PROSE_HEADING_INVALID,
+          ...error.violation,
+        })
+        return
+      }
+      if (error instanceof TestimonialRatingError) {
+        sendProblem(ctx, {
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: BLOCK_OPTION_STATUS,
+          detail: error.message,
+          code: TESTIMONIAL_RATING_INVALID,
           ...error.violation,
         })
         return

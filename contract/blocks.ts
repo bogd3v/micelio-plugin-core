@@ -186,6 +186,9 @@ const testimonial = part('section.testimonial', {
   author: string({ required: true }),
   role: string(),
   avatar: media(['images']),
+  sourceUrl: string({ regex: '^https?://\\S+$' }),
+  logo: media(['images']),
+  rating: integer({ min: 1, max: 5 }),
 })
 const imageCredit = part('shared.image-credit', {
   kind: enumeration(['photo', 'illustration', 'diagram', 'screenshot'], {
@@ -324,7 +327,7 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('single', 'grid'),
-      ...presentation('testimonials', 'section', 'layout', 'density', 'align', 'tone'),
+      ...presentation('testimonials', 'section', 'layout', 'columns', 'density', 'align', 'tone'),
     },
     cost: { css: 599, js: 1482, island: null },
     static: ITSELF,

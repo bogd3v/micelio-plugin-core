@@ -1,11 +1,11 @@
 {
   "source": {
     "repository": "bogd3v/micelio-cms",
-    "commit": "7405cbc3af6b5cd0e0f56fd23d54c92dd138db72",
+    "commit": "17a21f39eb05e468d6e5ac8ce9c4a3853db3f54e",
     "derivedFrom": {
       "tag": "v0.4.0",
       "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
-      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40); defaultOpen added to section.faq-item as micelio-cms stores it since bogd3v/micelio-cms#515 (merge 7405cbc)"
+      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40); defaultOpen added to section.faq-item as micelio-cms stores it since bogd3v/micelio-cms#515 (merge 7405cbc); sourceUrl, logo and rating added to section.testimonial as micelio-cms stores them since bogd3v/micelio-cms#516 (merge 17a21f3)"
     }
   },
   "components": {
@@ -447,7 +447,10 @@
         "quote": { "type": "text", "required": true },
         "author": { "type": "string", "required": true },
         "role": { "type": "string" },
-        "avatar": { "type": "media", "multiple": false, "allowedTypes": ["images"] }
+        "avatar": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+        "sourceUrl": { "type": "string", "regex": "^https?://\\S+$" },
+        "logo": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+        "rating": { "type": "integer", "min": 1, "max": 5 }
       }
     },
     "section.testimonials": {

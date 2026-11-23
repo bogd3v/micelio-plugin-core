@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_section_testimonial_items",
+  "info": {
+    "displayName": "Testimonial",
+    "icon": "quote",
+    "description": "An item of the `testimonials` block as micelio-cms stores it, for the testimonial rating suite"
+  },
+  "options": {},
+  "attributes": {
+    "itemId": { "type": "string" },
+    "quote": { "type": "text", "required": true },
+    "author": { "type": "string", "required": true },
+    "role": { "type": "string" },
+    "avatar": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "sourceUrl": { "type": "string", "regex": "^https?://\\S+$" },
+    "logo": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "rating": { "type": "integer", "min": 1, "max": 5 }
+  }
+}

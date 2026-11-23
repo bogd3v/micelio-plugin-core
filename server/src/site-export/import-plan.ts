@@ -6,6 +6,8 @@ import { findBackgroundSceneExcess } from '../islands/rules'
 import { ProseHeadingError } from '../prose-headings/error'
 import { findProseHeadingViolation } from '../prose-headings/rules'
 import { SectionAnchorError } from '../section-anchor/error'
+import { TestimonialRatingError } from '../testimonial-rating/error'
+import { findRatingViolation } from '../testimonial-rating/rules'
 import { findAnchorViolation } from '../section-anchor/rules'
 import { findBlockNotAllowedIn } from '../block-settings/check'
 import { EDITORIAL_ATTRIBUTE } from '../constants/editorial'
@@ -249,6 +251,14 @@ function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, wh
     throw new ExportError(
       'exportDocumentInvalid',
       `${where}: ${new ProseHeadingError(heading).message}`
+    )
+  }
+  // And the rating of a testimonial.
+  const rating = findRatingViolation(zones)
+  if (rating) {
+    throw new ExportError(
+      'exportDocumentInvalid',
+      `${where}: ${new TestimonialRatingError(rating).message}`
     )
   }
 }

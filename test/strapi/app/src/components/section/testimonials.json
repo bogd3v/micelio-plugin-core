@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_section_testimonials",
+  "info": {
+    "displayName": "Testimonials",
+    "icon": "discuss",
+    "description": "The `testimonials` block, for the testimonial rating suite"
+  },
+  "options": {},
+  "attributes": {
+    "blockId": { "type": "string" },
+    "title": { "type": "string" },
+    "items": { "type": "component", "component": "section.testimonial", "repeatable": true }
+  }
+}

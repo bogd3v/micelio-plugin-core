@@ -5,6 +5,8 @@ import { ProseHeadingError } from '../prose-headings/error'
 import { findProseHeadingViolation } from '../prose-headings/rules'
 import { SectionAnchorError } from '../section-anchor/error'
 import { findAnchorViolation } from '../section-anchor/rules'
+import { TestimonialRatingError } from '../testimonial-rating/error'
+import { findRatingViolation } from '../testimonial-rating/rules'
 import { BlockOptionError } from './error'
 import { findBlockOptionViolation } from './rules'
 
@@ -24,10 +26,11 @@ type Params = Record<string, unknown> & { data?: Record<string, unknown> }
  *
  * It also refuses a zone with more than one `scene` block of `variant: background`, and a section
  * `anchor` that is not a kebab-case slug or that two blocks of the page share (`sectionAnchorInvalid`), and a `prose` block whose Markdown body opens below `h2`, has an `h1` or
- * skips a level (`proseHeadingInvalid`).
+ * skips a level (`proseHeadingInvalid`), and a `testimonials` item whose `rating` is not a whole number from 1 to 5
+ * (`testimonialRatingInvalid`).
  *
  * @throws {@link BlockOptionError} with the block, the option and the values it allows, or
- * `SceneBackgroundLimitError` {@link SectionAnchorError} or {@link ProseHeadingError}.
+ * `SceneBackgroundLimitError` {@link SectionAnchorError} {@link ProseHeadingError} or {@link TestimonialRatingError}.
  */
 export function blockOptionsDocuments(
   strapi: Core.Strapi
@@ -51,6 +54,8 @@ export function blockOptionsDocuments(
       if (anchor) throw new SectionAnchorError(anchor)
       const heading = findProseHeadingViolation(zones)
       if (heading) throw new ProseHeadingError(heading)
+      const rating = findRatingViolation(zones)
+      if (rating) throw new TestimonialRatingError(rating)
     }
     return next()
   }
