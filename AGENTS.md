@@ -123,6 +123,18 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
     the Template tab of the drawer are its admin.
     Details: [docs/architecture/structure.md](docs/architecture/structure.md#page-templates); the
     guide is `docs/guide/templates.md`.
+  - `reusable-blocks/` is the reusable blocks (#200, ADR-0022 section 1):
+    `plugin::micelio.reusable-block` (site-scoped and editorial; `fillReusableBlockZone` fills its
+    zone at `register` with the page blocks of the catalogue the host registers), `rules.ts` (pure:
+    the fields that reference it, found from the schemas and never from a page UID, and the rule of
+    its one block), `index.ts` (`pagesUsing`: the pages of its site that reference one),
+    `documents.ts` (the document service middleware: `reusableBlockInvalid`, a reference to another
+    site's refused at save and dropped from a scoped read, a referenced one never deleted), the
+    `reusableBlocks` service (`usedOn`, and `republish`, the handler of `afterPublish` and
+    `afterUnpublish`, which writes nothing) and the read-only routes `/api/reusable-blocks`
+    (`routes/reusable-blocks.ts`). The site archive writes it first and refuses a reference to
+    another site's (`site-export/model.ts`, `import-plan.ts`). `docs/api.md`, "Reusable blocks";
+    the guide is `docs/guide/reusable-blocks.md`.
   - `block-settings/` is what a site manages of the catalogue (#51):
     `plugin::micelio.block-setting` (hidden, `export: never`), the `blockSettings` service,
     `GET /micelio/blocks?site=` (the merged view the palette reads) and the checks at save:

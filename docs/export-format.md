@@ -1,6 +1,6 @@
 # Site export format
 
-**Kind:** reference. Format version `1.2`. The archive that carries one whole site out of a Micelio CMS and into another: its layout, how every content type is written, what is never in it, how an import behaves, and how the format itself changes. It is the source of truth of the site export contract (section 6 of the engineering standard): a release whose archive the previous release can no longer import is a breaking change.
+**Kind:** reference. Format version `1.3`. The archive that carries one whole site out of a Micelio CMS and into another: its layout, how every content type is written, what is never in it, how an import behaves, and how the format itself changes. It is the source of truth of the site export contract (section 6 of the engineering standard): a release whose archive the previous release can no longer import is a breaking change.
 
 Exporting and importing a whole site is what the preservation network, a move between hosting plans and a client's right to leave rest on (ADR-0017). No exporter or importer exists yet; this document comes first so the content types of the cut-over (release line `0.7`) are designed to serialise. It names every content type of `micelio-cms` at `v0.4.0`, and `test/export-format.test.ts` fails when one of them is missing from [Content types](#content-types).
 
@@ -32,7 +32,7 @@ plugins/<id>/…           the files of a sibling plugin's section, when there a
 ```json
 {
   "format": "micelio-site-export",
-  "formatVersion": "1.2",
+  "formatVersion": "1.3",
   "exportedAt": "2026-10-23T12:00:00.000Z",
   "generator": { "name": "@micelio/strapi-plugin-core", "version": "0.2.0" },
   "micelio": "0.7",
@@ -78,7 +78,7 @@ plugins/<id>/…           the files of a sibling plugin's section, when there a
 | `fediverse`     | The id and handle of the site's fediverse actor, or `null` when it has none. See [Fediverse](#fediverse)                                                                                                          |
 | `personal`      | Whether the archive holds the personal data that is not shown on the site. See [What is never exported](#what-is-never-exported)                                                                                  |
 | `plugins`       | The sections of sibling plugins written, each with the `id` that names its folder, its `version`, whether it holds personal data and its number of files. `[]` when none. See [Plugin sections](#plugin-sections) |
-| `types`         | Each content type written: its export name, the UID it had on the exporting instance, its file and its number of documents                                                                                        |
+| `types`         | Each content type written, `reusable-block` first and the others in byte order of export name: its export name, the UID it had on the exporting instance, its file and its number of documents                    |
 | `media`         | The media index, the number of media files and their total bytes                                                                                                                                                  |
 | `redirects`     | The redirects part, its file and its number of redirects. Absent from a format `1.1` archive. See [Redirects](#redirects)                                                                                         |
 | `files`         | Every file of the archive except the manifest, with its SHA-256 (lower case hex) and its size in bytes                                                                                                            |
@@ -307,7 +307,7 @@ An attribute that declares nothing is written, except a `private` attribute, whi
 
 ## Content types
 
-Every content type of `micelio-cms` at `v0.4.0`, and the `site`, `category` and `tag` types of this plugin (`plugin::micelio.redirect` is written as [Redirects](#redirects), not as a type), with its export name and how it is written. The export name is what the archive uses; it never changes, whatever the UID becomes at the cut-over (ADR-0017, section 2). An instance before the cut-over has one site and no `site` relation: an exporter writes all its rows as the default site's.
+Every content type of `micelio-cms` at `v0.4.0`, and the `site`, `category`, `tag` and `reusable-block` types of this plugin (`plugin::micelio.redirect` is written as [Redirects](#redirects), not as a type), with its export name and how it is written. The export name is what the archive uses; it never changes, whatever the UID becomes at the cut-over (ADR-0017, section 2). An instance before the cut-over has one site and no `site` relation: an exporter writes all its rows as the default site's.
 
 ### Site
 
@@ -321,6 +321,12 @@ Every content type of `micelio-cms` at `v0.4.0`, and the `site`, `category` and 
 | -------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `plugin::micelio.category` | `category`  | The type `api::category.category` of `v0.4.0` became in `micelio-cms` 0.5, with the same export name and attributes, and the plugin owns from the release that ships it. Site-scoped: an archive holds the categories of its site. Localised, no draft and publish. The inverse `articles` is not in the plugin (a plugin's type cannot target a type of the host): the distribution adds it, as a `mappedBy` side that is never written, so a site's archive does not carry it until the article moves into the plugin (ADR-0017, amendment of 2026-10-26, D5) |
 | `plugin::micelio.tag`      | `tag`       | The same for `api::tag.tag`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+
+### Reusable blocks
+
+| UID                              | Export name      | Written                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugin::micelio.reusable-block` | `reusable-block` | Added by the core after `v0.4.0` (ADR-0022, section 1). Site-scoped, localised, draft and publish, with the editorial component. `name` and `blocks`, a dynamic zone of one block. First in `manifest.types` and written first after `site` ([Import](#import)). A page references one through a component of its zone with a relation to the type (`section.reusable`), written as `{ "ref": "reusable-block", "documentId": … }`; a reference to another site's refuses the import (`exportDocumentInvalid`) |
 
 ### Content of `micelio-cms` `v0.4.0`
 
@@ -366,7 +372,7 @@ An import writes one archive into one target instance.
 - **Existing documents.** An importer may let the caller choose what to do with a matched document: replace it (the default above), leave it as it is, or keep both, which writes the archive's document as a new one under a `documentId` of the importer's own making. The core derives it from the target site, the export name and the archive's id, so the same archive imported again finds its copies; and it is the one way to import a document that another site of the target holds.
 - **Idempotent.** Importing the same archive a second time, in either mode, writes nothing: an importer compares each version with what the target holds and skips the ones that are equal.
 - **All or nothing.** The content is written in one database transaction. Media is uploaded before it; an importer removes the files it uploaded when the transaction fails.
-- **Order.** Media first, then `site`, then the other types in byte order of export name. A reference to a document the import writes later is left out of the first write, and that document is written again once every document exists, in the same transaction.
+- **Order.** Media first, then `site`, then `reusable-block`, then the other types in byte order of export name. A reference to a document the import writes later is left out of the first write, and that document is written again once every document exists, in the same transaction.
 - **Timestamps.** Each version's `createdAt`, `updatedAt` and `publishedAt` are written as the archive has them.
 - **Older formats.** An importer of format `1.y` imports every `1.x` archive, with the content migrations its release ships for the blocks and types that changed since.
 - **Redirects.** After the content, in the same transaction, as [Redirects](#redirects) says.
@@ -399,10 +405,11 @@ Errors are problem details (section 4 of the standard) with these codes. The fir
 - An importer **must** accept an archive with a higher minor of its major: it ignores manifest fields and attributes it does not know, imports the export names it knows and lists the others in its report. This is what lets the previous release import a newer archive.
 - An importer **must** refuse an archive whose major it does not know (`exportFormatUnsupported`).
 - The core release line in `manifest.micelio` is information for the importer, not a condition: the format version decides.
+- Format `1.2` added `redirects.json`; format `1.3` adds the export name `reusable-block` ([Reusable blocks](#reusable-blocks)). An archive of format `1.2` has no reusable blocks and imports as it did.
 
 ## Conformance checklist
 
-An exporter conforms to format `1.2` when:
+An exporter conforms to format `1.3` when:
 
 - [ ] It writes one site per archive, with the layout, the manifest and the checksums above.
 - [ ] Every content type of the site is written under its export name, as [Content types](#content-types) says, with `documentId`s and no numeric ids.
@@ -414,7 +421,7 @@ An exporter conforms to format `1.2` when:
 - [ ] The site's redirects are written in `redirects.json`, with the manifest's `redirects` entry.
 - [ ] A plugin section is written under `plugins/<id>/` with its manifest entry, and only when it has no personal data or is asked for by `id`.
 
-An importer conforms to format `1.2` when:
+An importer conforms to format `1.3` when:
 
 - [ ] It checks every size and hash, the layout and every document before it writes anything.
 - [ ] It refuses an unknown major and accepts a higher minor, reporting what it skipped.

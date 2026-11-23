@@ -4,9 +4,9 @@
 
 ## Why a plan
 
-ADR-0017 section 2 moves the content types of `micelio-cms` into `@micelio/strapi-plugin-core` as `plugin::micelio.<type>`, one type at a time and each in the release where the core ships it (D8). Two types moved (`category` and `tag`, bogd3v/micelio-plugin-core#88) and `site-setting` became `site`. Seven types of `micelio-cms` are still its own, and three things wait for them:
+ADR-0017 section 2 moves the content types of `micelio-cms` into `@micelio/strapi-plugin-core` as `plugin::micelio.<type>`, one type at a time and each in the release where the core ships it (D8). Two types moved (`category` and `tag`, bogd3v/micelio-plugin-core#88) and `site-setting` became `site`. Seven types of `micelio-cms` are still its own, and two things wait for them:
 
-- **The reusable block.** A core type cannot target a host type (D5), so the core's `reusable-block` (row 11 of the catalogue plan, ADR-0022 section 1), which must list and refuse on the pages that reference it, needs `page` in the core.
+- **The reusable block waits for none of them.** A core type cannot declare an attribute that targets a host type (D5), but the core's `reusable-block` (row 11 of the catalogue plan, ADR-0022 section 1) declares none: the host's page holds the relation to it, and the core finds the pages that reference it by query, from the schemas, in `api::page.page` today and in `plugin::micelio.page` after C4 (the maintainer's decision of 2026-11-23, in bogd3v/micelio#872; bogd3v/micelio-plugin-core#200).
 - **The block catalogue.** Its schema wave 0 lands before this move because a UID change after it costs more, and the absorption of the About blocks (row 45 of the catalogue plan) goes with the move of the page type.
 - **The registry.** After a registry accepts third-party themes (bogd3v/micelio#404) a UID change costs a MAJOR (D8). Every move below is planned before that.
 
@@ -169,7 +169,7 @@ C3  components (core)             <- C1, C2, catalogue rows 1 to 5
 C4  page + site.homePage (core)   <- C3, cms#414
 C6  frontend accepts both pages   <- C4
 C5  CMS runs page                 <- C4, C6
-C14 row 11 pointer                <- approval of this plan   (row 11 of the catalogue plan starts when C4 is merged)
+C14 row 11 pointer                <- approval of this plan   (row 11 of the catalogue plan needs no move)
 C7  author + article (core)       <- C3, C4
 C9  fediverse accepts both        <- C7
 C10 frontend accepts both article <- C7
@@ -187,7 +187,7 @@ C15 site-setting removed (CMS)    <- C1, C5, C16
 - **L2: `author`, `article` and the inverse `articles` of `category` and `tag`.** Three relations, all in one release (above). `article` needs the `shared.*` components, so it follows L1.
 - **L3: `about` becomes a page, and `global` is retired.** They are independent of each other and of L2 (about needs only the page and the catalogue blocks; global needs only the fediverse plugin); they ride together because both are D6 retirements and share a release note.
 
-**Where row 11 of the catalogue plan can start.** The `reusable-block` type lists and refuses on pages, so it needs `plugin::micelio.page` and the block components in the core, which is C4. It does not need L2 or L3. Row 11 starts when C4 is merged, not when the whole cut-over is. The proposal changes the dependency of row 11 from the milestone to C4 (C14), and rows 12 and 13 follow it unchanged.
+**Where row 11 of the catalogue plan can start.** Now: it needs no move. The `reusable-block` type lists and refuses on the pages that reference it by query, as `usageOf` lists the pages of a template in any host page type, so it needs neither `plugin::micelio.page` nor the block components in the core (the maintainer's decision of 2026-11-23, in bogd3v/micelio#872). C14 records that row 11 waits for no move, and rows 12 and 13 follow it unchanged.
 
 **What can start now.** C1 (the spike), C14 (the pointer) and C16 (the frontend reads the site by the core's route) need nothing; the rest wait for the spike or for catalogue wave 0.
 
@@ -298,7 +298,7 @@ One line per issue, ready to be opened under the milestone "Tipos de contenido a
 | C11 | `feat(content)!: the About page becomes a page: copy, convert the about blocks and freeze api::about.about`                                               | `micelio-cms`              | C5, rows 4, 17, 26, 39, 40 and 42 of the catalogue plan (replaces row 45) |
 | C12 | `feat(pages): render /about from the page of slug about and retire app/pages/about.vue and GET /api/about`                                                | `micelio`                  | C11                                                                       |
 | C13 | `feat(content)!: retire api::global.global into the default site`                                                                                         | `micelio-cms`              | C9                                                                        |
-| C14 | `docs(architecture): row 11 of the block catalogue plan waits for the page type in the core, not for the whole cut-over`                                  | `micelio`                  | the maintainer's approval of this plan                                    |
+| C14 | `docs(architecture): row 11 of the block catalogue plan waits for no move of a content type`                                                              | `micelio`                  | the maintainer's approval of this plan                                    |
 | C15 | `chore(content)!: remove the retired api::site-setting and its alias route`                                                                               | `micelio-cms`              | C1, C5, C16                                                               |
 | C16 | `feat(site): read the default site from GET /api/micelio/sites and stop calling GET /api/site-setting`                                                    | `micelio`                  | none                                                                      |
 

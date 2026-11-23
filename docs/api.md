@@ -10,7 +10,7 @@ How the plugin's content API routes behave. Routes keep Strapi's content API for
 | `GET`  | `/api/micelio/sites/:id` | One site by `documentId`                            |
 | `GET`  | `/api/micelio/redirects` | The site's 301 redirects, with an `ETag`            |
 
-The prefix `/micelio` is set explicitly, so a host's own `/api/sites` does not collide with it. The preview routes ([Preview](#preview)) are content API routes too. The two taxonomy types answer at the paths `micelio-cms` already serves ([Category and tag](#category-and-tag)).
+The prefix `/micelio` is set explicitly, so a host's own `/api/sites` does not collide with it. The preview routes ([Preview](#preview)) are content API routes too. The two taxonomy types answer at the paths `micelio-cms` already serves ([Category and tag](#category-and-tag)), and the reusable blocks at `/api/reusable-blocks` ([Reusable blocks](#reusable-blocks)).
 The redirects of the page settings ([Redirects](#redirects)) are a content API route too.
 
 ## Scoping the routes of a type
@@ -119,6 +119,27 @@ COMMIT;
 4. After the boot, `\dt host_categories*` lists the type's tables with their rows, and the plugin's `categories` and `categories_site_lnk` are new and empty.
 
 Repeat with `tags` and `host_tags` for a type on `tags`. The SQL is for PostgreSQL in the schema the connection uses (`current_schema()`); the steps were run on 18, with a link, a component, a dynamic zone, a media and a `morphToMany` attribute. MySQL and SQLite hosts are unproven: they move the same tables with their own tools, and on SQLite, where index names are global, drop the indexes that carry the old name and let Strapi recreate them. Strapi shortens a name over 55 characters with a hash, so check that a name longer than that, with `host_` added, is the one Strapi expects.
+
+## Reusable blocks
+
+`plugin::micelio.reusable-block` is one block of the catalogue, written once and shown on every page of its site that references it (ADR-0022, section 1; the guide is [guide/reusable-blocks.md](guide/reusable-blocks.md)). It is site-scoped, localised and editorial: it is published through the transitions like a page. Its attributes are `name` (internal, never rendered) and `blocks`, a dynamic zone of exactly one page block of the catalogue that the host registers. `REUSABLE_BLOCK_UID` is exported by `@micelio/strapi-plugin-core/strapi-server`.
+
+| Method | Path                       | Answers                                              |
+| ------ | -------------------------- | ---------------------------------------------------- |
+| `GET`  | `/api/reusable-blocks`     | The reusable blocks of the site, localised           |
+| `GET`  | `/api/reusable-blocks/:id` | One reusable block by `documentId`, in its site only |
+
+The routes are read-only and scoped like any other ([Which site a request is for](#which-site-a-request-is-for)); writes go through the admin. A page reads its references by populating them, `populate[sections][on][section.reusable][populate]=reusableBlock`, and Strapi resolves a relation only for a token that may `find` its target: a host adds `plugin::micelio.reusable-block.find` to its read token, as it does `READ_ACTIONS`.
+
+A page references a reusable block through a component of one of its dynamic zones with a relation to the type (`section.reusable` in `micelio-cms`). The plugin finds those fields from the schemas, in every site-scoped type, and never from a page UID. The rules, all refused with `400` and a `ValidationError` whose `details.code` says which:
+
+- **One block, one level** (`reusableBlockInvalid`). A save of a reusable block with more than one block, with a block that references a reusable block, or with a block that carries a `group` key is refused, with `details.reason` `count`, `reference` or `group`. A draft may have no block; its publish is refused until it has one.
+- **Per site** (`reusableBlockOtherSite`). A save of a page that references a reusable block of another site is refused, with its `documentId`, and so is a move of a page to another site while it references one of its old site's. A content API read scoped to a site answers `null` for a reference to another site's reusable block, so a block that moved site after the page referenced it is never resolved. A site archive is checked the same way ([export-format.md](export-format.md#reusable-blocks)).
+- **Delete** (`reusableBlockInUse`). A delete of a reusable block that pages of its site reference, in the locale deleted, is refused, and `details.pages` lists them: `uid`, `documentId`, `locale`, `title` and `published` (the page has a published version in that locale).
+
+**Used on.** `strapi.plugin('micelio').service('reusableBlocks').usedOn({ documentId, locale })` answers the pages of the block's site that reference it, in every locale, draft or published, one per page and locale; with `locale`, only those that reference that locale of the block.
+
+**Republish.** Publishing, republishing or unpublishing a reusable block fires `afterPublish` or `afterUnpublish` for the reusable block only ([hooks.md](hooks.md#afterpublish)). The plugin's own handler of both lists the pages that show it (`republish`, which logs them) and writes nothing: the pages are not edited, keep their state and fire no hook, and a second run for the same `documentId` and locale changes nothing. In dynamic mode the next render of a page shows the change; in static mode the build's `afterPublish` handler asks `usedOn` and rebuilds those pages, not the site.
 
 ## Errors
 

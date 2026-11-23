@@ -1,4 +1,4 @@
-// Writes one site as an archive of format 1.2 (`docs/export-format.md`).
+// Writes one site as an archive of format 1.3 (`docs/export-format.md`).
 import { createHash } from 'node:crypto'
 import { Readable, type Writable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'

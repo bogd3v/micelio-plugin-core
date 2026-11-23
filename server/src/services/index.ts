@@ -1,5 +1,6 @@
 import { factories, type UID } from '@strapi/strapi'
 import { SITE_UID } from '../constants/site'
+import { REUSABLE_BLOCK_UID } from '../constants/reusable-blocks'
 import { CATEGORY_UID, TAG_UID } from '../constants/taxonomy'
 import about from './about'
 import blockSettings from './block-settings'
@@ -10,6 +11,7 @@ import hostCheck from './host-check'
 import icons from './icons'
 import pageTemplates from './page-templates'
 import preview from './preview'
+import reusableBlocks from './reusable-blocks'
 import siteExport from './site-export'
 import status from './status'
 import transfers from './transfers'
@@ -19,6 +21,8 @@ export default {
   site: factories.createCoreService(SITE_UID as UID.ContentType),
   category: factories.createCoreService(CATEGORY_UID as UID.ContentType),
   tag: factories.createCoreService(TAG_UID as UID.ContentType),
+  'reusable-block': factories.createCoreService(REUSABLE_BLOCK_UID as UID.ContentType),
+  reusableBlocks,
   transitions,
   hostCheck,
   hooks,

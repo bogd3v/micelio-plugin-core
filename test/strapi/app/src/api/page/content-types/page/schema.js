@@ -1,6 +1,6 @@
 // A fixture type for the preview: a page made of sections, with the shape of the `page` of micelio-cms
 // (the frontend previews `api::page.page`), site-scoped with the plugin's helper. Like the others it
-// adds nothing of the distribution.
+// adds nothing of the distribution. `section.reusable` references a reusable block as #201 shapes it.
 const { withSiteScope } = require('../../../../../micelio.js')
 
 const localized = { i18n: { localized: true } }
@@ -33,6 +33,7 @@ module.exports = withSiteScope({
         'section.scene',
         'section.feature-grid',
         'section.gallery',
+        'section.reusable',
         'shared.rich-text',
       ],
       pluginOptions: localized,

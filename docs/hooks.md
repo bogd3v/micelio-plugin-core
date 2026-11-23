@@ -92,12 +92,20 @@ fires for it too, with `afterTransition` carrying `published` as both `from` and
 handler that publishes elsewhere (the fediverse, a static rebuild) must be idempotent per
 `documentId` and `locale`.
 
+A reusable block (`plugin::micelio.reusable-block`, ADR-0022) fires it for itself only: the
+pages that show it are not edited and fire nothing. A static build rebuilds those pages, not
+the site: `strapi.plugin('micelio').service('reusableBlocks').usedOn({ documentId })` lists
+them, in every locale (`docs/api.md`, "Reusable blocks").
+
 Payload: [`EntryPayload`](#entrypayload).
 
 ### `afterUnpublish`
 
 Runs after an entry's published version is taken down (`published → draft`), following
 `afterTransition`.
+
+For a reusable block, as for `afterPublish`: the pages that showed
+it fire nothing.
 
 Payload: [`EntryPayload`](#entrypayload).
 

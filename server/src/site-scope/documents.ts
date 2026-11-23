@@ -218,7 +218,8 @@ async function repairSiteOfLocales(
   }
 }
 
-function currentSite(strapi: Core.Strapi): SiteSummary | undefined {
+/** The site of the content API request being served, when the `site-scope` route middleware resolved one. */
+export function currentSite(strapi: Core.Strapi): SiteSummary | undefined {
   const state = strapi.requestContext.get()?.state as SiteScopeState | undefined
   return state?.micelio?.site
 }
