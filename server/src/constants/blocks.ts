@@ -33,3 +33,9 @@ export const SECTION_ANCHOR_INVALID = 'sectionAnchorInvalid'
 
 /** The `code` of the problem detail a save with a `prose` body whose heading levels break the rule answers. */
 export const PROSE_HEADING_INVALID = 'proseHeadingInvalid'
+
+/** The `code` of the problem detail a save with a testimonial rating outside 1 to 5 answers. */
+export const TESTIMONIAL_RATING_INVALID = 'testimonialRatingInvalid'
+
+/** The lowest and the highest rating of a testimonial (`rating` of `section.testimonial`). */
+export const TESTIMONIAL_RATING_RANGE = { min: 1, max: 5 } as const

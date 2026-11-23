@@ -98,7 +98,7 @@ describe('the options of the catalogue', () => {
   it.each<[OptionName, string[]]>([
     ['layout', ['hero', 'cta', 'testimonials']],
     ['width', ['media', 'quote', 'gallery']],
-    ['columns', ['feature-grid', 'stats', 'pricing', 'logo-cloud']],
+    ['columns', ['feature-grid', 'stats', 'pricing', 'logo-cloud', 'testimonials']],
     ['density', ['feature-grid', 'gallery', 'logo-cloud', 'testimonials', 'faq', 'post-list']],
     ['align', ['quote', ...PAGE_SECTIONS]],
     ['tone', PAGE_SECTIONS],

@@ -582,6 +582,43 @@
                       },
                       { "type": "null" }
                     ]
+                  },
+                  "sourceUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^https?:\\/\\/\\S+$",
+                        "x-strapi": { "type": "string" }
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "logo": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": { "url": { "type": "string" }, "mime": { "type": "string" } },
+                        "required": ["url", "mime"],
+                        "additionalProperties": {},
+                        "x-strapi": {
+                          "type": "media",
+                          "multiple": false,
+                          "allowedTypes": ["images"]
+                        }
+                      },
+                      { "type": "null" }
+                    ]
+                  },
+                  "rating": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5,
+                        "x-strapi": { "type": "integer" }
+                      },
+                      { "type": "null" }
+                    ]
                   }
                 },
                 "required": ["quote", "author"]
@@ -608,6 +645,17 @@
               "enum": ["centered", "split", "stacked"],
               "x-strapi": { "type": "enumeration" },
               "default": "centered"
+            },
+            { "type": "null" }
+          ]
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["2", "3", "4"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "3"
             },
             { "type": "null" }
           ]

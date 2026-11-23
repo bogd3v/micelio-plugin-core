@@ -31,7 +31,7 @@ A block's `options` are a closed set of presentation values (ADR-0018, section 1
 | ----------- | ------------------------------------------------- | --------------------------------------------------------------------------- |
 | `layout`    | **`centered`**, `split`, `stacked`                | `hero`, `cta`, `testimonials`                                               |
 | `width`     | **`prose`**, `wide`, `full`                       | `gallery`, `media`, `quote`                                                 |
-| `columns`   | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`                            |
+| `columns`   | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`, `testimonials`            |
 | `density`   | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list` |
 | `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the thirteen page sections                                      |
 | `tone`      | **`default`**, `raised`, `accent`                 | the thirteen page sections                                                  |
@@ -225,26 +225,26 @@ The measurement of 2026-10-23, in gzip bytes:
 
 ## Blocks
 
-| id               | Component                | `variant` (default first)         | Other options                         | CSS (B gzip) | JS (B gzip) | Island                 |
-| ---------------- | ------------------------ | --------------------------------- | ------------------------------------- | ------------ | ----------- | ---------------------- |
-| `hero`           | `section.hero`           | `centered`, `split`, `full-bleed` | `layout`, `align`, `tone`, `height`   | 737          | 1556        | No                     |
-| `feature-grid`   | `section.feature-grid`   | `grid`, `list`, `bento`           | `columns`, `density`, `align`, `tone` | 643          | 1350        | No                     |
-| `media-showcase` | `section.media-showcase` | `left`, `right`, `stacked`        | `align`, `tone`, `ratio`              | 214          | 1423        | No                     |
-| `stats`          | `section.stats`          | `row`, `cards`                    | `columns`, `align`, `tone`            | 527          | 540         | No                     |
-| `logo-cloud`     | `section.logo-cloud`     | `row`, `marquee`                  | `columns`, `density`, `align`, `tone` | 497          | 1446        | No                     |
-| `testimonials`   | `section.testimonials`   | `single`, `grid`                  | `layout`, `density`, `align`, `tone`  | 599          | 1482        | No                     |
-| `pricing`        | `section.pricing`        | `cards`, `table`                  | `columns`, `align`, `tone`            | 805          | 1186        | No                     |
-| `faq`            | `section.faq`            | `list`, `two-columns`             | `density`, `align`, `tone`            | 527          | 525         | No                     |
-| `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`             | 483          | 803         | No                     |
-| `post-list`      | `section.post-list`      | `cards`, `list`                   | `density`, `align`, `tone`            | 376          | 768         | No                     |
-| `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`                       | 763          | 1822        | No                     |
-| `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`, `align`, `tone`   | 425          | 1251        | No                     |
-| `scene`          | `section.scene`          | `background`, `inline`            | `align`, `tone`, `height`             | 601          | 1303        | `scene` (3d)           |
-| `prose`          | `shared.rich-text`       |                                   |                                       | 1895         | 610         | No                     |
-| `quote`          | `shared.quote`           |                                   | `width`, `align`                      | 293          | 259         | No                     |
-| `media`          | `shared.media`           |                                   | `width`, `ratio`                      | 543          | 1400        | No                     |
-| `slider`         | `shared.slider`          |                                   | `ratio`                               | 1545         | 2615        | No                     |
-| `playground`     | `shared.playground`      |                                   | `height`                              | 633          | 1758        | `playground` (runtime) |
+| id               | Component                | `variant` (default first)         | Other options                                   | CSS (B gzip) | JS (B gzip) | Island                 |
+| ---------------- | ------------------------ | --------------------------------- | ----------------------------------------------- | ------------ | ----------- | ---------------------- |
+| `hero`           | `section.hero`           | `centered`, `split`, `full-bleed` | `layout`, `align`, `tone`, `height`             | 737          | 1556        | No                     |
+| `feature-grid`   | `section.feature-grid`   | `grid`, `list`, `bento`           | `columns`, `density`, `align`, `tone`           | 643          | 1350        | No                     |
+| `media-showcase` | `section.media-showcase` | `left`, `right`, `stacked`        | `align`, `tone`, `ratio`                        | 214          | 1423        | No                     |
+| `stats`          | `section.stats`          | `row`, `cards`                    | `columns`, `align`, `tone`                      | 527          | 540         | No                     |
+| `logo-cloud`     | `section.logo-cloud`     | `row`, `marquee`                  | `columns`, `density`, `align`, `tone`           | 497          | 1446        | No                     |
+| `testimonials`   | `section.testimonials`   | `single`, `grid`                  | `layout`, `columns`, `density`, `align`, `tone` | 599          | 1482        | No                     |
+| `pricing`        | `section.pricing`        | `cards`, `table`                  | `columns`, `align`, `tone`                      | 805          | 1186        | No                     |
+| `faq`            | `section.faq`            | `list`, `two-columns`             | `density`, `align`, `tone`                      | 527          | 525         | No                     |
+| `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`                       | 483          | 803         | No                     |
+| `post-list`      | `section.post-list`      | `cards`, `list`                   | `density`, `align`, `tone`                      | 376          | 768         | No                     |
+| `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`                                 | 763          | 1822        | No                     |
+| `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`, `align`, `tone`             | 425          | 1251        | No                     |
+| `scene`          | `section.scene`          | `background`, `inline`            | `align`, `tone`, `height`                       | 601          | 1303        | `scene` (3d)           |
+| `prose`          | `shared.rich-text`       |                                   |                                                 | 1895         | 610         | No                     |
+| `quote`          | `shared.quote`           |                                   | `width`, `align`                                | 293          | 259         | No                     |
+| `media`          | `shared.media`           |                                   | `width`, `ratio`                                | 543          | 1400        | No                     |
+| `slider`         | `shared.slider`          |                                   | `ratio`                                         | 1545         | 2615        | No                     |
+| `playground`     | `shared.playground`      |                                   | `height`                                        | 633          | 1758        | `playground` (runtime) |
 
 ### `hero`
 
@@ -354,6 +354,7 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Options:**
   - `variant`: `single`, `grid`; default `single`
   - `layout`: `centered`, `split`, `stacked`; default `centered`
+  - `columns`: `2`, `3`, `4`; default `3`
   - `density`: `comfortable`, `compact`; default `comfortable`
   - `align`: `start`, `center`; default `start`
   - `tone`: `default`, `raised`, `accent`; default `default`
@@ -666,13 +667,16 @@ Nested in `stats`.
 
 Nested in `testimonials`.
 
-| Field    | Type           | Required | Details |
-| -------- | -------------- | -------- | ------- |
-| `itemId` | string         | No       |         |
-| `quote`  | text           | Yes      |         |
-| `author` | string         | Yes      |         |
-| `role`   | string         | No       |         |
-| `avatar` | media (images) | No       |         |
+| Field       | Type           | Required | Details                    |
+| ----------- | -------------- | -------- | -------------------------- |
+| `itemId`    | string         | No       |                            |
+| `quote`     | text           | Yes      |                            |
+| `author`    | string         | Yes      |                            |
+| `role`      | string         | No       |                            |
+| `avatar`    | media (images) | No       |                            |
+| `sourceUrl` | string         | No       | matches `^https?:\/\/\S+$` |
+| `logo`      | media (images) | No       |                            |
+| `rating`    | integer        | No       | at least 1; at most 5      |
 
 ### `shared.image-credit`
 

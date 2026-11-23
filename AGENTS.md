@@ -104,6 +104,7 @@ npm run build -w @micelio/icons  # the glyphs, NOTICE and LICENSES of @micelio/i
     `shared.rich-text` body that does not open at `h2`, is an `h1` or skips a level, `proseHeadingInvalid`) and `error.ts`
     (`ProseHeadingError`, which the `site-scope` route middleware answers as the problem detail, naming the zone, position and
     heading); the `block-options` document service middleware and the dry run of an import run it. `docs/blocks.md`, "Prose".
+  - `testimonial-rating/` is the rating of a testimonial at save (micelio-cms#451): `rules.ts` (pure: the first `rating` of a `testimonials` item that is not a whole number from 1 to 5) and `error.ts` (`TestimonialRatingError`, which the `site-scope` route middleware answers as the problem detail `testimonialRatingInvalid`, naming the position and the rating); the `block-options` document service middleware and the dry run of an import run it. `docs/api.md`, `docs/blocks.md`.
   - `islands/` is the rule of the islands (#56): `rules.ts` (pure: the island blocks of a zone whose
     static alternative lacks a field, `islandAlternativeMissing`, and a zone with more than one
     `scene` of `variant: background`, `sceneBackgroundLimit`), `check.ts` (reads a draft's zones
