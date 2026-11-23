@@ -14,11 +14,14 @@ import { renameLegacyUids } from './migrations/rename-legacy-uids'
 import { templateFixedDocuments } from './page-templates/documents'
 import { redirectDocuments } from './page-settings/documents'
 import { registerPreviewShortcut } from './preview/shortcut'
+import { fillReusableBlockZone } from './reusable-blocks'
+import { reusableBlockDocuments } from './reusable-blocks/documents'
 import { liftSeoLimits } from './seo'
 import { seoDocuments } from './seo/documents'
 import { siteCreatedHook } from './sites/hooks'
 import { siteScopeDocuments } from './site-scope/documents'
 import { siteRules } from './sites/rules'
+import type { EntryPayload } from './types/hooks'
 
 /** Register phase: runs before the database is ready. */
 const register = ({ strapi }: { strapi: Core.Strapi }): void => {
@@ -26,6 +29,7 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   registerIconField(strapi)
   registerPreviewShortcut(strapi)
   liftSeoLimits(strapi)
+  fillReusableBlockZone(strapi)
   // Before any plugin bootstraps: users-permissions deletes the permissions of an action that no
   // longer exists in its own bootstrap, and the rename has to reach them first (ADR-0017,
   // amendment of 2026-10-23).
@@ -41,6 +45,7 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
   strapi.documents.use(documentVersionDocuments(strapi))
   strapi.documents.use(siteSectionInstances(strapi))
   strapi.documents.use(siteScopeDocuments(strapi))
+  strapi.documents.use(reusableBlockDocuments(strapi))
   strapi.documents.use(blockOptionsDocuments(strapi))
   strapi.documents.use(newsletterConsentDocuments(strapi))
   strapi.documents.use(blockIdsDocuments(strapi))
@@ -55,6 +60,11 @@ const register = ({ strapi }: { strapi: Core.Strapi }): void => {
     value: hooksOf(strapi),
     enumerable: true,
   })
+  // A reusable block's publish, republish or unpublish lists the pages that show it (ADR-0022).
+  const republish = (payload: EntryPayload) =>
+    strapi.plugin('micelio').service('reusableBlocks').republish(payload)
+  hooksOf(strapi).on('afterPublish', republish)
+  hooksOf(strapi).on('afterUnpublish', republish)
 }
 
 export default register

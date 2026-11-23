@@ -11,8 +11,10 @@ import { findRatingViolation } from '../testimonial-rating/rules'
 import { findAnchorViolation } from '../section-anchor/rules'
 import { findBlockNotAllowedIn } from '../block-settings/check'
 import { EDITORIAL_ATTRIBUTE } from '../constants/editorial'
+import { REUSABLE_BLOCK_UID } from '../constants/reusable-blocks'
 import { SITE_UID } from '../constants/site'
 import { isEditorial } from '../editorial'
+import { reusableBlocksOfSite } from '../reusable-blocks'
 import type { StagedArchive } from './archive'
 import { deserialiseData, type DeserialiseContext, type RefState } from './deserialise'
 import { ExportError } from './errors'
@@ -193,15 +195,28 @@ function checkEditorial(type: ExportedType, document: ExportDocument): void {
  *
  * @returns The references that resolve nowhere.
  * @throws `ExportError` `exportDocumentInvalid`, also for a block the target's site disabled or
- * does not allow on the page's type (`blockNotAllowed` at save).
+ * does not allow on the page's type (`blockNotAllowed` at save), and for a reference to a reusable
+ * block of another site of the target (`reusableBlockOtherSite` at save).
  */
 export async function validate(strapi: Core.Strapi, plan: Plan): Promise<number> {
   const context = deserialiseContext(strapi, plan, new Map(), undefined)
+  const foreign = await foreignReusableBlocks(strapi, plan)
   let missing = 0
   for (const type of plan.types) {
     for (const document of plan.staged.contents.get(type.name)!.documents) {
       for (const version of document.versions) {
         const where = `${type.name} ${document.documentId} (${version.locale ?? 'no locale'})`
+        const refs = new Map<string, Set<string>>()
+        collectRefs(version.data, refs)
+        for (const [name, ids] of refs) {
+          const other = [...ids].find((id) => foreign.has(`${name}:${id}`))
+          if (other) {
+            throw new ExportError(
+              'exportDocumentInvalid',
+              `${where}: the reusable block ${other} belongs to another site of the target`
+            )
+          }
+        }
         const result = deserialiseData(type.attributes, version.data, context, where)
         missing += result.missing
         checkBlockOptions(type, result.data, where)
@@ -210,6 +225,18 @@ export async function validate(strapi: Core.Strapi, plan: Plan): Promise<number>
     }
   }
   return missing
+}
+
+// The references to reusable blocks the archive does not hold and the target holds under another
+// site, as `<export name>:<documentId>`: a page references only its own site's (ADR-0022).
+async function foreignReusableBlocks(strapi: Core.Strapi, plan: Plan): Promise<Set<string>> {
+  const name = all(plan.types, strapi).find((type) => type.uid === REUSABLE_BLOCK_UID)?.name
+  if (!name) return new Set()
+  const ids = [...plan.targetHas]
+    .filter((key) => key.startsWith(`${name}:`) && !plan.inArchive.has(key))
+    .map((key) => key.slice(name.length + 1))
+  const own = await reusableBlocksOfSite(strapi, ids, plan.site.documentId)
+  return new Set(ids.filter((id) => !own.has(id)).map((id) => `${name}:${id}`))
 }
 
 // The save of the importer refuses an option the catalogue does not allow (ADR-0018); checking it

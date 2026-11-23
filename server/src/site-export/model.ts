@@ -1,6 +1,7 @@
 // The content types of an archive and their documents, as the exporter writes them and the
 // importer compares them with what the target holds.
 import type { Core, UID } from '@strapi/strapi'
+import { REUSABLE_BLOCK_UID } from '../constants/reusable-blocks'
 import { SITE_UID } from '../constants/site'
 import { isSiteScoped, SITE_ATTRIBUTE } from '../site-scope'
 import { exportNameOf, exportPolicyOf, isWritten } from './names'
@@ -26,7 +27,8 @@ export interface ExportedType {
 export type Row = Record<string, unknown> & { documentId: string; locale?: string | null }
 
 /**
- * The site type and every site-scoped type the archive writes, in byte order of export name.
+ * The site type and every site-scoped type the archive writes: the reusable blocks first, which
+ * pages reference (ADR-0022, section 1), then the others in byte order of export name.
  *
  * @param personal - Whether to count the types an archive writes only with personal data.
  */
@@ -44,7 +46,13 @@ export function exportedTypes(strapi: Core.Strapi, personal: boolean): ExportedT
       hasDrafts: schema.options?.draftAndPublish === true,
     })
   }
-  return types.sort((a, b) => compare(a.name, b.name))
+  return types.sort(byArchiveOrder)
+}
+
+/** The order of the types of an archive: `reusable-block` first, then byte order of export name. */
+export function byArchiveOrder(a: ExportedType, b: ExportedType): number {
+  const rank = (type: ExportedType) => (type.uid === REUSABLE_BLOCK_UID ? 0 : 1)
+  return rank(a) - rank(b) || compare(a.name, b.name)
 }
 
 /**

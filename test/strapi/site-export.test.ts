@@ -63,7 +63,7 @@ describe('the site exporter', () => {
     it('describes the format, the site and the locales', () => {
       expect(manifest).toMatchObject({
         format: 'micelio-site-export',
-        formatVersion: '1.2',
+        formatVersion: '1.3',
         exportedAt: NOW.toISOString(),
         micelio: expect.stringMatching(/^\d+\.\d+$/) as unknown,
         site: { documentId: site, slug: 'default' },
@@ -78,6 +78,7 @@ describe('the site exporter', () => {
 
     it('writes the site and every site-scoped type but the personal one, by export name', () => {
       expect(manifest.types.map(({ name, uid, documents }) => [name, uid, documents])).toEqual([
+        ['reusable-block', 'plugin::micelio.reusable-block', 0],
         ['article', 'api::article.article', 0],
         ['category', 'plugin::micelio.category', 0],
         ['essay', 'api::essay.essay', 0],

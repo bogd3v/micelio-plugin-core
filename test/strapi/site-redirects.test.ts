@@ -92,7 +92,7 @@ describe('the redirects in the site archive', () => {
 
   it('writes the redirects of the site, without ids, and lists the part in the manifest', () => {
     const manifest = jsonOf<Manifest & { redirects: unknown }>(files, 'manifest.json')
-    expect(manifest.formatVersion).toBe('1.2')
+    expect(manifest.formatVersion).toBe('1.3')
     expect(manifest.redirects).toEqual({ file: 'redirects.json', count: 2 })
     const body = files.get('redirects.json')!
     expect(manifest.files['redirects.json']).toEqual({ sha256: sha256(body), bytes: body.length })

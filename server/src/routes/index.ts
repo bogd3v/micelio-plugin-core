@@ -1,6 +1,7 @@
 import adminRoutes from './admin'
 import contentApiRoutes from './content-api'
 import siteRoutes from './site'
+import { reusableBlockRoutes } from './reusable-blocks'
 import { categoryRoutes, tagRoutes } from './taxonomy'
 
 export default {
@@ -9,4 +10,5 @@ export default {
   site: siteRoutes,
   category: categoryRoutes,
   tag: tagRoutes,
+  'reusable-block': reusableBlockRoutes,
 }

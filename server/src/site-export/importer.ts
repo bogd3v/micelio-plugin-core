@@ -20,7 +20,7 @@ import {
   isDraftOnly as inspectDraftOnly,
   serialiseContext,
 } from './inspect'
-import { compare, exportedTypes, siteRowsOf, type ExportedType } from './model'
+import { byArchiveOrder, compare, exportedTypes, siteRowsOf, type ExportedType } from './model'
 import { importRedirects, type RedirectsReport } from './redirects'
 import { readSections } from './sections'
 import { removeMedia, storeMedia } from './store-media'
@@ -187,8 +187,9 @@ async function writeContent(
   for (const key of plan.inArchive) if (plan.targetHas.has(key)) written.add(key)
   const context = deserialiseContext(strapi, plan, files, written)
   const shaOf = new Map([...files.entries()].map(([sha256, id]) => [id, sha256]))
+  // The site, then the reusable blocks, so the pages that reference them link them in one write.
   const ordered = [...plan.types].sort((a, b) =>
-    a.uid === SITE_UID ? -1 : b.uid === SITE_UID ? 1 : compare(a.name, b.name)
+    a.uid === SITE_UID ? -1 : b.uid === SITE_UID ? 1 : byArchiveOrder(a, b)
   )
   const pending: [ExportedType, ExportDocument][] = []
   for (const type of ordered) {

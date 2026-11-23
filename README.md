@@ -29,7 +29,8 @@ blocks ([docs/blocks.md](docs/blocks.md)); the Sites, Export and import and Abou
 ([docs/operate/transfer-page.md](docs/operate/transfer-page.md),
 [docs/operate/about-page.md](docs/operate/about-page.md)); and the carbon estimate beside the cost
 meter ([docs/operate/budgets.md](docs/operate/budgets.md)). `0.5.0` adds the custom field
-`micelio.icon` and its picker ([docs/guide/icons.md](docs/guide/icons.md)). The other capabilities arrive with the
+`micelio.icon` and its picker ([docs/guide/icons.md](docs/guide/icons.md)), and the next release the reusable blocks
+([docs/guide/reusable-blocks.md](docs/guide/reusable-blocks.md)). The other capabilities arrive with the
 issues of the first milestone. Until then, install nothing from it on a site.
 
 This repository is an npm workspace: it also holds `@micelio/icons` (`packages/icons/`), the Tabler

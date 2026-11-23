@@ -478,7 +478,7 @@ describe('the extension points', () => {
       const info = vi.spyOn(strapi.log, 'info')
       const files = untar(await exportRequest({ include: ['fixture-members'] }))
       const manifest = jsonOf<Manifest & { plugins: object[] }>(files, 'manifest.json')
-      expect(manifest.formatVersion).toBe('1.2')
+      expect(manifest.formatVersion).toBe('1.3')
       expect(manifest.plugins).toEqual([
         { id: 'fixture-members', version: '1.0', personalData: true, entries: 1 },
       ])
