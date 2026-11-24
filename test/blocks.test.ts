@@ -28,7 +28,7 @@ const CATALOGUE: [string, string, string[]][] = [
   ['pricing', 'section.pricing', ['cards', 'table']],
   ['faq', 'section.faq', ['list', 'two-columns']],
   ['cta', 'section.cta', ['banner', 'card']],
-  ['post-list', 'section.post-list', ['cards', 'list']],
+  ['post-list', 'section.post-list', ['cards', 'list', 'featured']],
   ['newsletter', 'section.newsletter', ['inline', 'card']],
   ['gallery', 'section.gallery', ['grid', 'masonry']],
   ['scene', 'section.scene', ['background', 'inline']],

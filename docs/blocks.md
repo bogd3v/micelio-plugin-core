@@ -27,17 +27,17 @@ A change to the catalogue follows ADR-0018, section 2: a new block, option, opti
 
 A block's `options` are a closed set of presentation values (ADR-0018, section 1). `variant` is the block's own set. The rest come from one vocabulary, `contract/options.ts`: nine names with short value sets, each with a default (in bold below) that keeps today's content valid. A block declares which names it exposes (the reference below lists them per block) and offers all of a name's values, less the two withheld below. The vocabulary is the only place a value is written; a theme styles each value and may restyle it, and how it does so is in `docs/themes/` of `micelio`.
 
-| Option      | Values, in the artboard's order (default in bold) | Exposed by                                                                  |
-| ----------- | ------------------------------------------------- | --------------------------------------------------------------------------- |
-| `layout`    | **`centered`**, `split`, `stacked`                | `hero`, `cta`, `testimonials`                                               |
-| `width`     | **`prose`**, `wide`, `full`                       | `gallery`, `media`, `quote`                                                 |
-| `columns`   | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`, `testimonials`            |
-| `density`   | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list` |
-| `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the thirteen page sections other than `reusable`                |
-| `tone`      | **`default`**, `raised`, `accent`                 | the thirteen page sections other than `reusable`                            |
-| `ratio`     | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                         |
-| `height`    | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                               |
-| `iconStyle` | **`outline`**, `filled`                           | every block with an icon field ([Icons](#icons)); none yet                  |
+| Option      | Values, in the artboard's order (default in bold) | Exposed by                                                                    |
+| ----------- | ------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `layout`    | **`centered`**, `split`, `stacked`                | `hero`, `cta`, `testimonials`                                                 |
+| `width`     | **`prose`**, `wide`, `full`                       | `gallery`, `media`, `quote`                                                   |
+| `columns`   | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`, `testimonials`, `post-list` |
+| `density`   | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list`   |
+| `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the thirteen page sections other than `reusable`                  |
+| `tone`      | **`default`**, `raised`, `accent`                 | the thirteen page sections other than `reusable`                              |
+| `ratio`     | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                           |
+| `height`    | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                                 |
+| `iconStyle` | **`outline`**, `filled`                           | every block with an icon field ([Icons](#icons)); none yet                    |
 
 `tone` and `align` are on the thirteen page sections (`page.sections`) that have options: `reusable` has none of its own ([Reusable](#reusable)). A `scene` offers them only in its `inline` variant: its `background` variant paints its own poster, and a save that sets either on it (a `scene` with no `variant` takes `background`) is refused with `blockOptionInvalid` unless the value is the option's default, the only value allowed (the content API stores both on a `scene`). The builder leaves both out of a new `background` scene, so a site's default of either never reaches it.
 
@@ -248,7 +248,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `pricing`        | `section.pricing`        | `cards`, `table`                  | `columns`, `align`, `tone`                      | 805          | 1186        | No                     |
 | `faq`            | `section.faq`            | `list`, `two-columns`             | `density`, `align`, `tone`                      | 527          | 525         | No                     |
 | `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`                       | 483          | 803         | No                     |
-| `post-list`      | `section.post-list`      | `cards`, `list`                   | `density`, `align`, `tone`                      | 376          | 768         | No                     |
+| `post-list`      | `section.post-list`      | `cards`, `list`, `featured`       | `columns`, `density`, `align`, `tone`           | 376          | 768         | No                     |
 | `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`                                 | 763          | 1822        | No                     |
 | `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`, `align`, `tone`             | 425          | 1251        | No                     |
 | `scene`          | `section.scene`          | `background`, `inline`            | `align`, `tone`, `height`                       | 601          | 1303        | `scene` (3d)           |
@@ -455,23 +455,26 @@ The measurement of 2026-10-23, in gzip bytes:
 
 - **Component:** `section.post-list` (page sections)
 - **Options:**
-  - `variant`: `cards`, `list`; default `cards`
+  - `variant`: `cards`, `list`, `featured`; default `cards`
+  - `columns`: `2`, `3`, `4`; default `3`
   - `density`: `comfortable`, `compact`; default `comfortable`
   - `align`: `start`, `center`; default `start`
   - `tone`: `default`, `raised`, `accent`; default `default`
 - **Cost:** 376 B of CSS and 768 B of JS, gzip
 - **Static:** Itself: the posts are rendered with the page.
 
-| Field      | Type                                 | Required | Details                             |
-| ---------- | ------------------------------------ | -------- | ----------------------------------- |
-| `blockId`  | string                               | No       |                                     |
-| `eyebrow`  | string                               | No       |                                     |
-| `anchor`   | string                               | No       |                                     |
-| `title`    | string                               | No       |                                     |
-| `category` | relation to `api::category.category` | No       |                                     |
-| `tag`      | relation to `api::tag.tag`           | No       |                                     |
-| `count`    | integer                              | Yes      | at least 1; at most 12; default `3` |
-| `group`    | `section.group`                      | No       |                                     |
+| Field         | Type                                   | Required | Details                                              |
+| ------------- | -------------------------------------- | -------- | ---------------------------------------------------- |
+| `blockId`     | string                                 | No       |                                                      |
+| `eyebrow`     | string                                 | No       |                                                      |
+| `anchor`      | string                                 | No       |                                                      |
+| `title`       | string                                 | No       |                                                      |
+| `category`    | relation to `plugin::micelio.category` | No       |                                                      |
+| `tag`         | relation to `plugin::micelio.tag`      | No       |                                                      |
+| `count`       | integer                                | Yes      | at least 1; at most 12; default `3`                  |
+| `showExcerpt` | boolean                                | No       | default `true`                                       |
+| `sort`        | enumeration                            | No       | `newest`, `oldest`, `alphabetical`; default `newest` |
+| `group`       | `section.group`                        | No       |                                                      |
 
 ### `newsletter`
 
