@@ -1,4 +1,6 @@
 import type { Core, Modules, UID } from '@strapi/strapi'
+import { BlockGroupError } from '../block-groups/error'
+import { findGroupViolation } from '../block-groups/rules'
 import { SceneBackgroundLimitError } from '../islands/error'
 import { findBackgroundSceneExcess } from '../islands/rules'
 import { ProseHeadingError } from '../prose-headings/error'
@@ -27,10 +29,11 @@ type Params = Record<string, unknown> & { data?: Record<string, unknown> }
  * It also refuses a zone with more than one `scene` block of `variant: background`, and a section
  * `anchor` that is not a kebab-case slug or that two blocks of the page share (`sectionAnchorInvalid`), and a `prose` block whose Markdown body opens below `h2`, has an `h1` or
  * skips a level (`proseHeadingInvalid`), and a `testimonials` item whose `rating` is not a whole number from 1 to 5
- * (`testimonialRatingInvalid`).
+ * (`testimonialRatingInvalid`), and a group of blocks (ADR-0022, section 2) split into two runs or
+ * whose members set two tones (`blockGroupInvalid`).
  *
  * @throws {@link BlockOptionError} with the block, the option and the values it allows, or
- * `SceneBackgroundLimitError` {@link SectionAnchorError} {@link ProseHeadingError} or {@link TestimonialRatingError}.
+ * `SceneBackgroundLimitError` {@link SectionAnchorError} {@link ProseHeadingError} {@link TestimonialRatingError} or {@link BlockGroupError}.
  */
 export function blockOptionsDocuments(
   strapi: Core.Strapi
@@ -56,6 +59,8 @@ export function blockOptionsDocuments(
       if (heading) throw new ProseHeadingError(heading)
       const rating = findRatingViolation(zones)
       if (rating) throw new TestimonialRatingError(rating)
+      const group = findGroupViolation(zones)
+      if (group) throw new BlockGroupError(group)
     }
     return next()
   }

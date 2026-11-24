@@ -2,7 +2,7 @@
 
 The blocks a page is made of, as a contract ([ADR-0018](https://github.com/bogd3v/micelio/blob/main/docs/adr/0018-blocks-as-a-contract.md)): each block has a stable `id`, the `schema` of the Strapi component that stores its content, its presentation `options`, its `cost` and its `static` alternative, and optionally the `module` of `site.modules` it needs. The catalogue is the builder's palette and the theme creator's reference.
 
-The first catalogue was the 19 blocks of ADR-0018, section 6, read from `micelio-cms` `v0.4.0`; it has 18 now: `rich-text` (`section.rich-text`, the page's Markdown section) left it and `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page and in an article ([Prose](#prose), micelio-cms#445). It changes no block's content: the components stay in `micelio-cms` until the cut-over of release line 0.7. The presentation options of the vocabulary ([below](#presentation-options)) are the one addition.
+The first catalogue was the 19 blocks of ADR-0018, section 6, read from `micelio-cms` `v0.4.0`; it has 19 now: `rich-text` (`section.rich-text`, the page's Markdown section) left it and `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page and in an article ([Prose](#prose), micelio-cms#445), and `reusable` (`section.reusable`) references a reusable block ([Reusable](#reusable), ADR-0022). It changes no block's content: the components stay in `micelio-cms` until the cut-over of release line 0.7. The presentation options of the vocabulary ([below](#presentation-options)) are the one addition.
 
 ## Where it lives
 
@@ -33,13 +33,13 @@ A block's `options` are a closed set of presentation values (ADR-0018, section 1
 | `width`     | **`prose`**, `wide`, `full`                       | `gallery`, `media`, `quote`                                                 |
 | `columns`   | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`, `testimonials`            |
 | `density`   | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list` |
-| `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the thirteen page sections                                      |
-| `tone`      | **`default`**, `raised`, `accent`                 | the thirteen page sections                                                  |
+| `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the thirteen page sections other than `reusable`                |
+| `tone`      | **`default`**, `raised`, `accent`                 | the thirteen page sections other than `reusable`                            |
 | `ratio`     | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                         |
 | `height`    | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                               |
 | `iconStyle` | **`outline`**, `filled`                           | every block with an icon field ([Icons](#icons)); none yet                  |
 
-`tone` and `align` are on the thirteen page sections (`page.sections`). A `scene` offers them only in its `inline` variant: its `background` variant paints its own poster, and a save that sets either on it (a `scene` with no `variant` takes `background`) is refused with `blockOptionInvalid` unless the value is the option's default, the only value allowed (the content API stores both on a `scene`). The builder leaves both out of a new `background` scene, so a site's default of either never reaches it.
+`tone` and `align` are on the thirteen page sections (`page.sections`) that have options: `reusable` has none of its own ([Reusable](#reusable)). A `scene` offers them only in its `inline` variant: its `background` variant paints its own poster, and a save that sets either on it (a `scene` with no `variant` takes `background`) is refused with `blockOptionInvalid` unless the value is the option's default, the only value allowed (the content API stores both on a `scene`). The builder leaves both out of a new `background` scene, so a site's default of either never reaches it.
 
 Two values are withheld: `width: full` from the article blocks (`media`, `quote`) and `columns: 6` from every block but `logo-cloud`; the reference lists the values each block offers.
 
@@ -85,6 +85,18 @@ The twelve sections whose renderer uses `SectionHead` (`hero`, `feature-grid`, `
 `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page's zone and in an article's (its `group` is `both`). It replaces `rich-text` (`section.rich-text`), which left the catalogue: the component stays registered in `micelio-cms` for one release, and a page that holds one keeps rendering, but the plugin no longer knows it as a block (it takes no block setting, has no cost line and its body is not checked).
 
 **Heading levels at save.** A page already has its `h1`, so a `prose` body is validated by position: its first heading is an `h2` (a body that opens with an `h1` fails, as one that opens at `h3` or below does), there is no `h1` after it, and a heading is at most one level below the one before it (`h2` to `h4` fails; going back up, `h4` to `h2`, does not). Headings are ATX (`## Title`) or setext (`Title` over `---`) and a heading inside a fenced code block is not one. A body with no heading is sound, and so is an absent, `null` or empty one. On `create`, `update` and `clone` the plugin refuses a save that breaks it with `proseHeadingInvalid` ([`docs/api.md`](api.md#errors)): the problem detail names the zone and position of the block and the heading, with its level and its line in the body. The dry run and the apply of an import check it too. Stored content is not re-checked.
+
+## Groups
+
+Every page section (the blocks whose `group` is `section`, `reusable` included) has an optional `group` key, the part `section.group` with two required fields: `groupId`, an opaque string unique in the page, and `tone`, a value of the `tone` option (`default`, `raised`, `accent`) with no default (ADR-0022, section 2). Consecutive blocks that share a `groupId` form one band on the surface of its `tone`; the sequence stays one flat list, so a block keeps its `blockId` and position (ADR-0019 is unaffected). Groups are one level: a block has one key, so a member is never a group. The article blocks and `prose` take no key. Adding it is a MINOR of the contract; a block without it renders as before.
+
+**Validation at save.** On `create`, `update` and `clone` the plugin refuses with `blockGroupInvalid` ([`docs/api.md`](api.md#errors)) a save where a `groupId` appears in two separate runs (a block of another group, of none, or a host's own component sits between its members, or it is in two zones) or two members of one `groupId` set different `tone`s; the problem detail names the position of the refused block and the earlier member. A key that is absent, `null` or has an empty `groupId` makes no member. A group of one is valid, so removing a block never makes a save fail. A member's own `tone` option is ignored while it is in the group, not refused: it keeps its value. The dry run and the apply of an import check it too. Stored content is not re-checked.
+
+## Reusable
+
+`reusable` (`section.reusable`) is a reference to a reusable block of the page's site (ADR-0022, section 1; [`docs/api.md`](api.md#reusable-blocks)): its one relation, `reusableBlock`, targets `plugin::micelio.reusable-block`. It has no presentation options of its own: the block it points to keeps its own. Like any page section it may carry a `group` key, and in a group it is a member like any other. The palette of the builder does not list it among the catalogue's groups: a reference is made from a reusable block of the site, never empty from the catalogue.
+
+Its `cost` is not measured yet (the renderer is bogd3v/micelio#896, the measurement bogd3v/micelio#981). Until then it declares the most a page section without an island adds, the CSS of `pricing` and the JS of `newsletter`, since its target is one page section; its target's own cost is what the page budget measures at publish.
 
 ## Modules
 
@@ -245,6 +257,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `media`          | `shared.media`           |                                   | `width`, `ratio`                                | 543          | 1400        | No                     |
 | `slider`         | `shared.slider`          |                                   | `ratio`                                         | 1545         | 2615        | No                     |
 | `playground`     | `shared.playground`      |                                   | `height`                                        | 633          | 1758        | `playground` (runtime) |
+| `reusable`       | `section.reusable`       |                                   |                                                 | 805          | 1822        | No                     |
 
 ### `hero`
 
@@ -268,6 +281,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `primaryLink`   | `section.link`         | No       |         |
 | `secondaryLink` | `section.link`         | No       |         |
 | `media`         | media (images, videos) | No       |         |
+| `group`         | `section.group`        | No       |         |
 
 ### `feature-grid`
 
@@ -289,6 +303,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `title`   | string                             | No       |                       |
 | `text`    | text                               | No       |                       |
 | `items`   | `section.feature-item`, repeatable | No       | at least 3; at most 6 |
+| `group`   | `section.group`                    | No       |                       |
 
 ### `media-showcase`
 
@@ -308,6 +323,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `text`    | richtext               | No       |         |
 | `media`   | media (images, videos) | Yes      |         |
 | `link`    | `section.link`         | No       |         |
+| `group`   | `section.group`        | No       |         |
 
 ### `stats`
 
@@ -327,6 +343,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `anchor`  | string                     | No       |                       |
 | `title`   | string                     | No       |                       |
 | `items`   | `section.stat`, repeatable | No       | at least 2; at most 4 |
+| `group`   | `section.group`            | No       |                       |
 
 ### `logo-cloud`
 
@@ -347,6 +364,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `anchor`  | string                     | No       |            |
 | `title`   | string                     | No       |            |
 | `logos`   | `section.logo`, repeatable | No       | at least 1 |
+| `group`   | `section.group`            | No       |            |
 
 ### `testimonials`
 
@@ -368,6 +386,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `anchor`  | string                            | No       |            |
 | `title`   | string                            | No       |            |
 | `items`   | `section.testimonial`, repeatable | No       | at least 1 |
+| `group`   | `section.group`                   | No       |            |
 
 ### `pricing`
 
@@ -388,6 +407,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `title`   | string                     | No       |            |
 | `text`    | text                       | No       |            |
 | `plans`   | `section.plan`, repeatable | No       | at least 1 |
+| `group`   | `section.group`            | No       |            |
 
 ### `faq`
 
@@ -407,6 +427,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `anchor`  | string                         | No       |            |
 | `title`   | string                         | No       |            |
 | `items`   | `section.faq-item`, repeatable | No       | at least 1 |
+| `group`   | `section.group`                | No       |            |
 
 ### `cta`
 
@@ -419,15 +440,16 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Cost:** 483 B of CSS and 803 B of JS, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
-| Field           | Type           | Required | Details |
-| --------------- | -------------- | -------- | ------- |
-| `blockId`       | string         | No       |         |
-| `eyebrow`       | string         | No       |         |
-| `anchor`        | string         | No       |         |
-| `title`         | string         | Yes      |         |
-| `text`          | text           | No       |         |
-| `primaryLink`   | `section.link` | No       |         |
-| `secondaryLink` | `section.link` | No       |         |
+| Field           | Type            | Required | Details |
+| --------------- | --------------- | -------- | ------- |
+| `blockId`       | string          | No       |         |
+| `eyebrow`       | string          | No       |         |
+| `anchor`        | string          | No       |         |
+| `title`         | string          | Yes      |         |
+| `text`          | text            | No       |         |
+| `primaryLink`   | `section.link`  | No       |         |
+| `secondaryLink` | `section.link`  | No       |         |
+| `group`         | `section.group` | No       |         |
 
 ### `post-list`
 
@@ -449,6 +471,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `category` | relation to `api::category.category` | No       |                                     |
 | `tag`      | relation to `api::tag.tag`           | No       |                                     |
 | `count`    | integer                              | Yes      | at least 1; at most 12; default `3` |
+| `group`    | `section.group`                      | No       |                                     |
 
 ### `newsletter`
 
@@ -461,17 +484,18 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Module:** `newsletter`; not offered on a site that has it off in `site.modules`
 - **Static:** In static builds, the static form (`MycNewsletterStatic`). In dynamic mode the form submits only once hydrated (a known limitation, `docs/blocks.md`). Nothing when the `newsletter` module is off.
 
-| Field            | Type   | Required | Details |
-| ---------------- | ------ | -------- | ------- |
-| `blockId`        | string | No       |         |
-| `eyebrow`        | string | No       |         |
-| `anchor`         | string | No       |         |
-| `title`          | string | No       |         |
-| `text`           | text   | No       |         |
-| `buttonLabel`    | string | No       |         |
-| `consentText`    | text   | No       |         |
-| `successMessage` | string | No       |         |
-| `placeholder`    | string | No       |         |
+| Field            | Type            | Required | Details |
+| ---------------- | --------------- | -------- | ------- |
+| `blockId`        | string          | No       |         |
+| `eyebrow`        | string          | No       |         |
+| `anchor`         | string          | No       |         |
+| `title`          | string          | No       |         |
+| `text`           | text            | No       |         |
+| `buttonLabel`    | string          | No       |         |
+| `consentText`    | text            | No       |         |
+| `successMessage` | string          | No       |         |
+| `placeholder`    | string          | No       |         |
+| `group`          | `section.group` | No       |         |
 
 ### `gallery`
 
@@ -492,6 +516,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `anchor`  | string                  | No       |         |
 | `title`   | string                  | No       |         |
 | `images`  | media, several (images) | Yes      |         |
+| `group`   | `section.group`         | No       |         |
 
 ### `scene`
 
@@ -506,16 +531,17 @@ The measurement of 2026-10-23, in gzip bytes:
 - **Static alternative needs:** `poster`, `alt`, filled in before the page is sent to review
 - **Static:** The required poster, with the alt text of the scene.
 
-| Field     | Type           | Required | Details |
-| --------- | -------------- | -------- | ------- |
-| `blockId` | string         | No       |         |
-| `eyebrow` | string         | No       |         |
-| `anchor`  | string         | No       |         |
-| `model`   | media (files)  | Yes      |         |
-| `poster`  | media (images) | Yes      |         |
-| `alt`     | string         | Yes      |         |
-| `title`   | string         | No       |         |
-| `text`    | text           | No       |         |
+| Field     | Type            | Required | Details |
+| --------- | --------------- | -------- | ------- |
+| `blockId` | string          | No       |         |
+| `eyebrow` | string          | No       |         |
+| `anchor`  | string          | No       |         |
+| `model`   | media (files)   | Yes      |         |
+| `poster`  | media (images)  | Yes      |         |
+| `alt`     | string          | Yes      |         |
+| `title`   | string          | No       |         |
+| `text`    | text            | No       |         |
+| `group`   | `section.group` | No       |         |
 
 ### `prose`
 
@@ -593,6 +619,19 @@ The measurement of 2026-10-23, in gzip bytes:
 | `setup`          | text        | No       | at most 20000 characters      |
 | `caption`        | text        | No       |                               |
 
+### `reusable`
+
+- **Component:** `section.reusable` (page sections)
+- **Options:** none
+- **Cost:** 805 B of CSS and 1822 B of JS, gzip
+- **Static:** The block it references, as that block renders with no JavaScript; nothing while the target has no published version in the page's locale.
+
+| Field           | Type                                         | Required | Details |
+| --------------- | -------------------------------------------- | -------- | ------- |
+| `blockId`       | string                                       | No       |         |
+| `reusableBlock` | relation to `plugin::micelio.reusable-block` | No       |         |
+| `group`         | `section.group`                              | No       |         |
+
 ## Parts
 
 Nested components: each exists only inside the `schema` of the blocks listed with it.
@@ -618,6 +657,15 @@ Nested in `feature-grid`.
 | `icon`   | media (images) | No       |         |
 | `title`  | string         | Yes      |         |
 | `text`   | text           | No       |         |
+
+### `section.group`
+
+Nested in `hero`, `feature-grid`, `media-showcase`, `stats`, `logo-cloud`, `testimonials`, `pricing`, `faq`, `cta`, `post-list`, `newsletter`, `gallery`, `scene`, `reusable`.
+
+| Field     | Type        | Required | Details                       |
+| --------- | ----------- | -------- | ----------------------------- |
+| `groupId` | string      | Yes      |                               |
+| `tone`    | enumeration | Yes      | `default`, `raised`, `accent` |
 
 ### `section.link`
 

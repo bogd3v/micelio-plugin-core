@@ -71,6 +71,24 @@
             { "type": "null" }
           ]
         },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
+        },
         "variant": {
           "type": "string",
           "enum": ["centered", "split", "full-bleed"],
@@ -193,6 +211,24 @@
             { "type": "null" }
           ]
         },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
+        },
         "variant": {
           "type": "string",
           "enum": ["grid", "list", "bento"],
@@ -291,6 +327,24 @@
             { "type": "null" }
           ]
         },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
+        },
         "variant": {
           "type": "string",
           "enum": ["left", "right", "stacked"],
@@ -374,6 +428,24 @@
                 "required": ["value", "label"]
               },
               "x-strapi": { "type": "component", "component": "section.stat", "repeatable": true }
+            },
+            { "type": "null" }
+          ]
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
             },
             { "type": "null" }
           ]
@@ -472,6 +544,24 @@
                 "required": ["image", "name"]
               },
               "x-strapi": { "type": "component", "component": "section.logo", "repeatable": true }
+            },
+            { "type": "null" }
+          ]
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
             },
             { "type": "null" }
           ]
@@ -632,6 +722,24 @@
             { "type": "null" }
           ]
         },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
+        },
         "variant": {
           "type": "string",
           "enum": ["single", "grid"],
@@ -783,6 +891,24 @@
             { "type": "null" }
           ]
         },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
+        },
         "variant": {
           "type": "string",
           "enum": ["cards", "table"],
@@ -875,6 +1001,24 @@
                 "component": "section.faq-item",
                 "repeatable": true
               }
+            },
+            { "type": "null" }
+          ]
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
             },
             { "type": "null" }
           ]
@@ -974,6 +1118,24 @@
             { "type": "null" }
           ]
         },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
+        },
         "variant": {
           "type": "string",
           "enum": ["banner", "card"],
@@ -1067,6 +1229,24 @@
           "x-strapi": { "type": "integer" },
           "default": 3
         },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
+        },
         "variant": {
           "type": "string",
           "enum": ["cards", "list"],
@@ -1140,6 +1320,24 @@
         "placeholder": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
         },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
+        },
         "variant": {
           "type": "string",
           "enum": ["inline", "card"],
@@ -1196,6 +1394,24 @@
             "additionalProperties": {}
           },
           "x-strapi": { "type": "media", "multiple": true, "allowedTypes": ["images"] }
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
         },
         "variant": {
           "type": "string",
@@ -1283,6 +1499,24 @@
         },
         "text": {
           "anyOf": [{ "type": "string", "x-strapi": { "type": "text" } }, { "type": "null" }]
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
         },
         "variant": {
           "type": "string",
@@ -1713,6 +1947,49 @@
       },
       "required": ["runtime", "code"],
       "x-strapi": { "type": "component", "component": "shared.playground", "repeatable": false }
+    },
+    "reusable": {
+      "type": "object",
+      "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "reusableBlock": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "documentId": { "type": "string" } },
+              "required": ["documentId"],
+              "additionalProperties": {},
+              "x-strapi": {
+                "type": "relation",
+                "relation": "oneToOne",
+                "target": "plugin::micelio.reusable-block"
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "groupId": { "type": "string", "x-strapi": { "type": "string" } },
+                "tone": {
+                  "type": "string",
+                  "enum": ["default", "raised", "accent"],
+                  "x-strapi": { "type": "enumeration" }
+                }
+              },
+              "required": ["groupId", "tone"],
+              "x-strapi": { "type": "component", "component": "section.group", "repeatable": false }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "x-strapi": { "type": "component", "component": "section.reusable", "repeatable": false }
     }
   }
 }

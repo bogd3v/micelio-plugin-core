@@ -14,6 +14,11 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "plugin::micelio.reusable-block"
+    },
+    "group": {
+      "type": "component",
+      "repeatable": false,
+      "component": "section.group"
     }
   }
 }

@@ -5,7 +5,7 @@
     "derivedFrom": {
       "tag": "v0.4.0",
       "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
-      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40); defaultOpen added to section.faq-item as micelio-cms stores it since bogd3v/micelio-cms#515 (merge 7405cbc); sourceUrl, logo and rating added to section.testimonial as micelio-cms stores them since bogd3v/micelio-cms#516 (merge 17a21f3)"
+      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40); defaultOpen added to section.faq-item as micelio-cms stores it since bogd3v/micelio-cms#515 (merge 7405cbc); sourceUrl, logo and rating added to section.testimonial as micelio-cms stores them since bogd3v/micelio-cms#516 (merge 17a21f3); section.reusable, the section.group component and the group attribute of the thirteen page sections added as the shape bogd3v/micelio-cms#527 stores (from bogd3v/micelio-plugin-core#201)"
     }
   },
   "components": {
@@ -30,7 +30,8 @@
         "title": { "type": "string", "required": true },
         "text": { "type": "text" },
         "primaryLink": { "type": "component", "repeatable": false, "component": "section.link" },
-        "secondaryLink": { "type": "component", "repeatable": false, "component": "section.link" }
+        "secondaryLink": { "type": "component", "repeatable": false, "component": "section.link" },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.faq-item": {
@@ -72,7 +73,8 @@
           "repeatable": true,
           "component": "section.faq-item",
           "min": 1
-        }
+        },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.feature-grid": {
@@ -101,7 +103,8 @@
           "component": "section.feature-item",
           "min": 3,
           "max": 6
-        }
+        },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.feature-item": {
@@ -143,7 +146,21 @@
           "multiple": true,
           "allowedTypes": ["images"],
           "required": true
-        }
+        },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
+      }
+    },
+    "section.group": {
+      "collectionName": "components_section_groups",
+      "info": {
+        "displayName": "Group",
+        "icon": "layer",
+        "description": "The group of a page section: consecutive sections that share a groupId form one band on the surface of its tone (ADR-0022, section 2)"
+      },
+      "options": {},
+      "attributes": {
+        "groupId": { "type": "string", "required": true },
+        "tone": { "type": "enumeration", "enum": ["default", "raised", "accent"], "required": true }
       }
     },
     "section.hero": {
@@ -168,7 +185,8 @@
         "text": { "type": "text" },
         "primaryLink": { "type": "component", "repeatable": false, "component": "section.link" },
         "secondaryLink": { "type": "component", "repeatable": false, "component": "section.link" },
-        "media": { "type": "media", "multiple": false, "allowedTypes": ["images", "videos"] }
+        "media": { "type": "media", "multiple": false, "allowedTypes": ["images", "videos"] },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.link": {
@@ -203,7 +221,8 @@
           "required": true
         },
         "title": { "type": "string" },
-        "logos": { "type": "component", "repeatable": true, "component": "section.logo", "min": 1 }
+        "logos": { "type": "component", "repeatable": true, "component": "section.logo", "min": 1 },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.logo": {
@@ -250,7 +269,8 @@
           "allowedTypes": ["images", "videos"],
           "required": true
         },
-        "link": { "type": "component", "repeatable": false, "component": "section.link" }
+        "link": { "type": "component", "repeatable": false, "component": "section.link" },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.newsletter": {
@@ -276,7 +296,8 @@
         "buttonLabel": { "type": "string" },
         "consentText": { "type": "text" },
         "successMessage": { "type": "string" },
-        "placeholder": { "type": "string" }
+        "placeholder": { "type": "string" },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.plan": {
@@ -318,7 +339,8 @@
           "target": "api::category.category"
         },
         "tag": { "type": "relation", "relation": "oneToOne", "target": "api::tag.tag" },
-        "count": { "type": "integer", "min": 1, "max": 12, "default": 3, "required": true }
+        "count": { "type": "integer", "min": 1, "max": 12, "default": 3, "required": true },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.pricing": {
@@ -341,7 +363,26 @@
         },
         "title": { "type": "string" },
         "text": { "type": "text" },
-        "plans": { "type": "component", "repeatable": true, "component": "section.plan", "min": 1 }
+        "plans": { "type": "component", "repeatable": true, "component": "section.plan", "min": 1 },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
+      }
+    },
+    "section.reusable": {
+      "collectionName": "components_section_reusables",
+      "info": {
+        "displayName": "Reusable",
+        "icon": "link",
+        "description": "A reference to a reusable block of the site (ADR-0022, section 1)"
+      },
+      "options": {},
+      "attributes": {
+        "blockId": { "type": "string" },
+        "reusableBlock": {
+          "type": "relation",
+          "relation": "oneToOne",
+          "target": "plugin::micelio.reusable-block"
+        },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.rich-text": {
@@ -389,7 +430,8 @@
         },
         "alt": { "type": "string", "required": true },
         "title": { "type": "string" },
-        "text": { "type": "text" }
+        "text": { "type": "text" },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.stat": {
@@ -431,7 +473,8 @@
           "component": "section.stat",
           "min": 2,
           "max": 4
-        }
+        },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "section.testimonial": {
@@ -477,7 +520,8 @@
           "repeatable": true,
           "component": "section.testimonial",
           "min": 1
-        }
+        },
+        "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },
     "shared.image-credit": {
