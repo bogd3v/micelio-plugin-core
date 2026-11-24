@@ -591,8 +591,8 @@ stack's `page` is site-scoped and holds every block, so it shows what the page d
      -d "{\"data\":{\"title\":\"$1\",\"slug\":\"$1\",\"sections\":[$2]}}"; }
    ```
 
-2. Open the page. The table lists the 18 blocks of the catalogue, all on, and the line above it
-   reads "0 disabled on default · 18 enabled". `PALETTE` lists 18 ids, `hero` among them.
+2. Open the page. The table lists the 19 blocks of the catalogue, all on, and the line above it
+   reads "0 disabled on default · 19 enabled". `PALETTE` lists 19 ids, `hero` among them.
 3. Switch **Hero** off. The row turns grey and the line reads "1 disabled on default · 18
    enabled". `PALETTE` lists 18 ids and no `hero`. **Disabled only** leaves that one row.
 4. Try to add the disabled block:
@@ -688,6 +688,30 @@ stack's `page` is site-scoped and holds every block, so it shows what the page d
    `"body":"## One\n\n# Again"` answers `"reason":"h1"`. A heading inside a fenced code block is not a heading.
 
 5. In Content Manager → Page, add a **Prose** section to a page and type `### Deep` as its first line: **Save** answers Strapi's `ValidationError`, with the code in `error.details`, and nothing is saved.
+
+## Try the groups of a page
+
+Every page section of the stack has the optional `group` key (`groupId` and `tone`), written into the stack's components from `test/fixtures/micelio-cms-components-with-ids.json` ([`docs/blocks.md`](../blocks.md#groups)). A save whose group is split into two runs, or whose members set two tones, is refused with `blockGroupInvalid`, naming the position. `section.reusable` is in the stack's components but not yet in its page zone.
+
+1. Create the first admin and an API token of type **Full access**, as in [Try the block options](#try-the-block-options): `read -rs TOKEN && export TOKEN`, and the `NEW` function of [Try the block catalogue](#try-the-block-catalogue).
+2. A block of another group between two members of `band` splits it:
+
+   ```bash
+   NEW groups-split '{"__component":"section.cta","title":"A","variant":"banner","group":{"groupId":"band","tone":"accent"}},{"__component":"section.cta","title":"B","variant":"banner","group":{"groupId":"band","tone":"accent"}},{"__component":"section.cta","title":"C","variant":"banner","group":{"groupId":"other","tone":"raised"}},{"__component":"section.cta","title":"D","variant":"banner","group":{"groupId":"band","tone":"accent"}}'
+   # 400, application/problem+json: "code":"blockGroupInvalid","reason":"split","groupId":"band","position":3,
+   # "member":{"zone":"sections","position":1,...},"between":{"zone":"sections","position":2,...}
+   # "detail":"Not saved: the group \"band\" would be split. The cta block at sections.2, outside it, sits between sections.1 and sections.3."
+   ```
+
+3. Two members of one group with different tones: the same with two blocks of `band`, one `raised` and one `accent`, answers `"reason":"tone"`, `"position":1`, `"groupTone":"raised"` and `"tone":"accent"`. No page is created by either.
+4. A group of one, and a member whose own `tone` option differs from its group's, are accepted (201), and the member keeps its own `tone` as stored:
+
+   ```bash
+   NEW groups-ok '{"__component":"section.cta","title":"Solo","variant":"banner","group":{"groupId":"solo","tone":"accent"}},{"__component":"section.cta","title":"Own","variant":"banner","tone":"raised","group":{"groupId":"band","tone":"default"}},{"__component":"section.cta","title":"Next","variant":"banner","group":{"groupId":"band","tone":"default"}}'
+   # 201
+   ```
+
+5. In Content Manager → Page, a section shows **group** as an optional component with **groupId** and **tone**: give two consecutive sections the same `groupId` and different tones and **Save**: Strapi's `ValidationError` carries `blockGroupInvalid` in `error.details`, and nothing is saved.
 
 ## Try the icon field
 

@@ -257,6 +257,21 @@ describe('the palette', () => {
     ])
   })
 
+  it('lists the reusable entry in no group, a search included', () => {
+    const rows = [
+      row(entry('hero')),
+      row(entry('reusable')),
+      row(entry('quote', { group: 'article' })),
+    ]
+    expect(
+      groupRows(rows, '', ['reusable']).map((g) => [g.id, g.rows.map((r) => r.entry.id)])
+    ).toEqual([
+      ['section', ['hero']],
+      ['article', ['quote']],
+    ])
+    expect(groupRows(rows, 'reus', [])).toEqual([{ id: 'results', rows: [] }])
+  })
+
   it('keeps a block of both zones in the page family and in the article family', () => {
     const block = (id: string, group: CatalogueBlock['group']) =>
       ({

@@ -1,6 +1,8 @@
 // What an import checks and resolves before it writes anything (`docs/export-format.md`,
 // "Integrity" and "Import").
 import type { Core, UID } from '@strapi/strapi'
+import { BlockGroupError } from '../block-groups/error'
+import { findGroupViolation } from '../block-groups/rules'
 import { findBlockOptionViolation } from '../block-options/rules'
 import { findBackgroundSceneExcess } from '../islands/rules'
 import { ProseHeadingError } from '../prose-headings/error'
@@ -286,6 +288,14 @@ function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, wh
     throw new ExportError(
       'exportDocumentInvalid',
       `${where}: ${new TestimonialRatingError(rating).message}`
+    )
+  }
+  // And the groups of ADR-0022: one run each, with one tone.
+  const group = findGroupViolation(zones)
+  if (group) {
+    throw new ExportError(
+      'exportDocumentInvalid',
+      `${where}: ${new BlockGroupError(group).message}`
     )
   }
 }

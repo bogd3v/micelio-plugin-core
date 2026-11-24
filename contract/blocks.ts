@@ -142,6 +142,18 @@ const EYEBROW = string()
  */
 const ANCHOR = string()
 
+/**
+ * The group key of a page section (ADR-0022, section 2): consecutive blocks that share a `groupId`
+ * form one band on the surface of its `tone`. Optional; one level, so a member is never a group. At
+ * save a group must be one run with one `tone`; a member's own `tone` option is ignored, not refused.
+ */
+const GROUP = component(
+  part('section.group', {
+    groupId: string({ required: true }),
+    tone: enumeration(OPTIONS.tone.values, { required: true }),
+  })
+)
+
 // Parts (ADR-0018, section 6, "Parts and fields"): they are nested in the blocks that use them and
 // are never entries of the catalogue.
 const link = part('section.link', {
@@ -223,7 +235,10 @@ const slide = part('shared.slide', {
   credit: component(imageCredit),
 })
 
-/** The block catalogue: the blocks of ADR-0018, section 6 (`rich-text` left it for `prose`, micelio-cms#445), read only. */
+/**
+ * The block catalogue, read only: the blocks of ADR-0018, section 6 (`rich-text` left it for `prose`,
+ * micelio-cms#445), and `reusable` of ADR-0022, section 1. Every page section may carry a `group` key.
+ */
 export const BLOCKS: readonly Block[] = [
   {
     id: 'hero',
@@ -237,6 +252,7 @@ export const BLOCKS: readonly Block[] = [
       primaryLink: component(link),
       secondaryLink: component(link),
       media: media(['images', 'videos']),
+      group: GROUP,
     }),
     options: {
       variant: variant('centered', 'split', 'full-bleed'),
@@ -255,6 +271,7 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       text: text(),
       items: component(featureItem, { repeatable: true, min: 3, max: 6 }),
+      group: GROUP,
     }),
     options: {
       variant: variant('grid', 'list', 'bento'),
@@ -272,6 +289,7 @@ export const BLOCKS: readonly Block[] = [
       text: richtext(),
       media: media(['images', 'videos'], { required: true }),
       link: component(link),
+      group: GROUP,
     }),
     options: {
       variant: variant('left', 'right', 'stacked'),
@@ -289,6 +307,7 @@ export const BLOCKS: readonly Block[] = [
       anchor: ANCHOR,
       title: string(),
       items: component(stat, { repeatable: true, min: 2, max: 4 }),
+      group: GROUP,
     }),
     options: {
       variant: variant('row', 'cards'),
@@ -306,6 +325,7 @@ export const BLOCKS: readonly Block[] = [
       anchor: ANCHOR,
       title: string(),
       logos: component(logo, { repeatable: true, min: 1 }),
+      group: GROUP,
     }),
     options: {
       variant: variant('row', 'marquee'),
@@ -324,6 +344,7 @@ export const BLOCKS: readonly Block[] = [
       anchor: ANCHOR,
       title: string(),
       items: component(testimonial, { repeatable: true, min: 1 }),
+      group: GROUP,
     }),
     options: {
       variant: variant('single', 'grid'),
@@ -342,6 +363,7 @@ export const BLOCKS: readonly Block[] = [
       title: string(),
       text: text(),
       plans: component(plan, { repeatable: true, min: 1 }),
+      group: GROUP,
     }),
     options: {
       variant: variant('cards', 'table'),
@@ -359,6 +381,7 @@ export const BLOCKS: readonly Block[] = [
       anchor: ANCHOR,
       title: string(),
       items: component(faqItem, { repeatable: true, min: 1 }),
+      group: GROUP,
     }),
     options: {
       variant: variant('list', 'two-columns'),
@@ -378,6 +401,7 @@ export const BLOCKS: readonly Block[] = [
       text: text(),
       primaryLink: component(link),
       secondaryLink: component(link),
+      group: GROUP,
     }),
     options: {
       variant: variant('banner', 'card'),
@@ -397,6 +421,7 @@ export const BLOCKS: readonly Block[] = [
       category: relation('api::category.category'),
       tag: relation('api::tag.tag'),
       count: integer({ required: true, min: 1, max: 12, default: 3 }),
+      group: GROUP,
     }),
     options: {
       variant: variant('cards', 'list'),
@@ -418,6 +443,7 @@ export const BLOCKS: readonly Block[] = [
       consentText: text(),
       successMessage: string(),
       placeholder: string(),
+      group: GROUP,
     }),
     options: {
       variant: variant('inline', 'card'),
@@ -439,6 +465,7 @@ export const BLOCKS: readonly Block[] = [
       anchor: ANCHOR,
       title: string(),
       images: media(['images'], { required: true, multiple: true }),
+      group: GROUP,
     }),
     options: {
       variant: variant('grid', 'masonry'),
@@ -459,6 +486,7 @@ export const BLOCKS: readonly Block[] = [
       alt: string({ required: true }),
       title: string(),
       text: text(),
+      group: GROUP,
     }),
     options: {
       variant: variant('background', 'inline'),
@@ -553,6 +581,24 @@ export const BLOCKS: readonly Block[] = [
       },
     },
     static: 'The highlighted code and its expected output.',
+  },
+  {
+    // A reference to a reusable block of the page's site (ADR-0022, section 1). Its target keeps its
+    // own options, so it has none; in a group it is a member like any other block.
+    id: 'reusable',
+    group: 'section',
+    schema: part('section.reusable', {
+      blockId: BLOCK_ID,
+      reusableBlock: relation('plugin::micelio.reusable-block'),
+      group: GROUP,
+    }),
+    options: {},
+    // Not measured yet (the renderer is micelio#896): the most a page section without an island adds,
+    // `pricing`'s CSS and `newsletter`'s JS, since the target is one of them. `docs/blocks.md`, "Reusable".
+    cost: { css: 805, js: 1822, island: null },
+    static:
+      'The block it references, as that block renders with no JavaScript; nothing while the target ' +
+      "has no published version in the page's locale.",
   },
 ]
 

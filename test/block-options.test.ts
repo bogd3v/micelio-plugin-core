@@ -8,7 +8,10 @@ import { catalogueFingerprint, diffFingerprints } from '../server/src/utils/bloc
 const featureGrid = block('feature-grid')
 
 // The fourteen components of `page.sections`: each offers `tone` and `align`.
-const PAGE_SECTIONS = BLOCKS.filter((entry) => entry.group === 'section').map((entry) => entry.id)
+// `reusable` is a page section with no presentation options of its own (ADR-0022, section 1).
+const PAGE_SECTIONS = BLOCKS.filter(
+  (entry) => entry.group === 'section' && entry.id !== 'reusable'
+).map((entry) => entry.id)
 
 function block(id: string): Block {
   const found = BLOCKS.find((entry) => entry.id === id)

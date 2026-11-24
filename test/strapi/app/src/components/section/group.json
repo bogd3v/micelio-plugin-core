@@ -1,0 +1,20 @@
+{
+  "collectionName": "components_section_groups",
+  "info": {
+    "displayName": "Group",
+    "icon": "layer",
+    "description": "The group key of a page section (ADR-0022, section 2), as the catalogue describes it, for the groups suite"
+  },
+  "options": {},
+  "attributes": {
+    "groupId": {
+      "type": "string",
+      "required": true
+    },
+    "tone": {
+      "type": "enumeration",
+      "enum": ["default", "raised", "accent"],
+      "required": true
+    }
+  }
+}

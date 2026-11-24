@@ -3,7 +3,7 @@
   "info": {
     "displayName": "Scene",
     "icon": "globe",
-    "description": "A 3D scene, a heavy island: a glTF model with a required poster (its static alternative) and alt text, as in micelio-cms"
+    "description": "A 3D scene, a heavy island: a glTF model with a required poster (its static alternative) and alt text, as in micelio-cms; with the `tone` option (no default here) and the `group` key for the groups suite"
   },
   "options": {},
   "attributes": {
@@ -15,6 +15,10 @@
       "enum": ["background", "inline"],
       "default": "background",
       "required": true
+    },
+    "tone": {
+      "type": "enumeration",
+      "enum": ["default", "raised", "accent"]
     },
     "model": {
       "type": "media",
@@ -37,6 +41,11 @@
     },
     "text": {
       "type": "text"
+    },
+    "group": {
+      "type": "component",
+      "repeatable": false,
+      "component": "section.group"
     }
   }
 }

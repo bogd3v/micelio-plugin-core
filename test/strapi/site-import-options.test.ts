@@ -58,6 +58,23 @@ describe('the options of the blocks, in an import', () => {
     return tar(new Map([...files].sort(([a], [b]) => (a < b ? -1 : 1))))
   }
 
+  // The page with one inline Scene per group key given (`undefined`: none), as `[groupId, tone]`.
+  const grouped = (keys: ([string, string] | undefined)[]): Buffer => {
+    const files = new Map(exported)
+    rewrite<ContentFile>(files, 'content/landing.json', (content) => {
+      for (const version of content.documents[0]!.versions) {
+        version.data.sections = keys.map((key) => ({
+          __component: 'section.scene',
+          variant: 'inline',
+          alt: 'A scene',
+          ...(key ? { group: { groupId: key[0], tone: key[1] } } : {}),
+        }))
+      }
+      return content
+    })
+    return tar(new Map([...files].sort(([a], [b]) => (a < b ? -1 : 1))))
+  }
+
   // The page with `variants` Scenes, each of the variant named: the archive of a page with islands.
   const scenes = (variants: string[]): Buffer => {
     const files = new Map(exported)
@@ -187,6 +204,38 @@ describe('the options of the blocks, in an import', () => {
     await service().import(Readable.from([prosed(['## One\n\n### Two', 'Plain text'])]), {
       into: 'default',
     })
+    expect(await strapi.db.query(LANDING).count()).toBeGreaterThan(0)
+  })
+
+  it('refuses a group split into two runs or with two tones, in the dry run and in the import, and writes nothing', async () => {
+    const before = await strapi.db.query(LANDING).count()
+    const cases: [Buffer, string][] = [
+      [grouped([['band', 'accent'], undefined, ['band', 'accent']]), 'would be split'],
+      [
+        grouped([
+          ['band', 'raised'],
+          ['band', 'accent'],
+        ]),
+        'sets the tone accent',
+      ],
+    ]
+    for (const [archive, sentence] of cases) {
+      for (const run of [
+        () => service().preview(Readable.from([archive]), { into: 'default' }),
+        () => service().import(Readable.from([archive]), { into: 'default' }),
+      ]) {
+        await expect(run()).rejects.toMatchObject({
+          code: 'exportDocumentInvalid',
+          message: expect.stringContaining(sentence) as unknown,
+        })
+      }
+    }
+    expect(await strapi.db.query(LANDING).count()).toBe(before)
+  })
+
+  it('imports a page whose groups are one run with one tone, a group of one included', async () => {
+    const archive = grouped([['band', 'accent'], ['band', 'accent'], undefined, ['solo', 'raised']])
+    await service().import(Readable.from([archive]), { into: 'default' })
     expect(await strapi.db.query(LANDING).count()).toBeGreaterThan(0)
   })
 })

@@ -44,6 +44,12 @@ export function offeredEntries<T extends Pick<CatalogueEntry, 'offered'>>(entrie
   return entries.filter((entry) => entry.offered !== false)
 }
 
+/**
+ * The catalogue `id` of a reference to a reusable block (ADR-0022, section 1): a bare reference has
+ * no target, so the palette never lists it among the catalogue's groups.
+ */
+const REUSABLE = 'reusable'
+
 /** Why a row of the palette is not a plain one. */
 export type RowState = 'ok' | 'notAllowed' | 'overBudget'
 
@@ -134,11 +140,13 @@ export function highlight(
 /**
  * The groups of the palette: with a search, one group of results; without, the recently used
  * blocks and then the catalogue's own groups, "Sections" and "Shared", and last the blocks that
- * cost more than what is left on the page, apart from the rest.
+ * cost more than what is left on the page, apart from the rest. The `reusable` entry is in none:
+ * a reference is inserted from the site's reusable blocks, never from the catalogue.
  *
  * @param recent - The `id`s the editor inserted last, newest first.
  */
-export function groupRows(rows: PaletteRow[], search: string, recent: string[]): PaletteGroup[] {
+export function groupRows(allRows: PaletteRow[], search: string, recent: string[]): PaletteGroup[] {
+  const rows = allRows.filter((row) => row.entry.id !== REUSABLE)
   if (search.trim() !== '')
     return [{ id: 'results', rows: rows.filter((row) => matches(row, search)) }]
   const within = rows.filter((row) => row.state !== 'overBudget')

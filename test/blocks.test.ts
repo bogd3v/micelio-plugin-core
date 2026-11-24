@@ -5,6 +5,7 @@ import {
   ISLAND_KINDS,
   SITE_MODULES,
   blockContentSchema,
+  optionsOf,
   type Block,
 } from '../contract/blocks'
 import { ICON_KEYWORD, component, icon, iconFields, part, string, text } from '../contract/fields'
@@ -36,6 +37,8 @@ const CATALOGUE: [string, string, string[]][] = [
   ['media', 'shared.media', []],
   ['slider', 'shared.slider', []],
   ['playground', 'shared.playground', []],
+  // ADR-0022, section 1: a reference to a reusable block.
+  ['reusable', 'section.reusable', []],
 ]
 
 // "Parts and fields": each part and the blocks it is nested in. `section.link` reaches `pricing`
@@ -84,7 +87,7 @@ const ENTRY = z.object({
 const components = fixture.components as Record<string, { attributes: StrapiAttributes }>
 
 describe('the block catalogue', () => {
-  it('has exactly the 18 blocks of the catalogue (ADR-0018, section 6, less `rich-text`), in its order', () => {
+  it('has exactly the 19 blocks of the catalogue (ADR-0018, section 6, less `rich-text`, and `reusable` of ADR-0022), in its order', () => {
     expect(BLOCKS.map((block) => [block.id, block.schema.component])).toEqual(
       CATALOGUE.map(([id, component]) => [id, component])
     )
@@ -105,7 +108,8 @@ describe('the block catalogue', () => {
   })
 
   it("every page section offers tone and align with the vocabulary's defaults", () => {
-    const sections = BLOCKS.filter((block) => block.group === 'section')
+    // `reusable` has no presentation options of its own (ADR-0022, section 1).
+    const sections = BLOCKS.filter((block) => block.group === 'section' && block.id !== 'reusable')
     expect(sections.map((block) => block.id)).toEqual(CATALOGUE.slice(0, 13).map(([id]) => id))
     for (const block of sections) {
       expect(block.options.tone, `${block.id}.tone`).toEqual({
@@ -163,16 +167,53 @@ describe('the block catalogue', () => {
   })
 
   // `section.rich-text` is left out with its block; it stays a component of the host until it is retired.
-  it('accounts for the 32 components of the fixture', () => {
+  it('accounts for the 34 components of the fixture', () => {
     const described = new Set(
       BLOCKS.flatMap((block) => Object.keys(strapiComponents(block).components))
     )
-    expect(Object.keys(components)).toHaveLength(32)
+    expect(Object.keys(components)).toHaveLength(34)
     expect(
       Object.keys(components)
         .filter((uid) => !described.has(uid))
         .sort()
     ).toEqual([...FIELDS, 'section.rich-text'].sort())
+  })
+
+  it('the reusable block has one relation and no presentation options', () => {
+    const reusable = blockOf('reusable')
+    expect(reusable.group).toBe('section')
+    expect(reusable.options).toEqual({})
+    expect(optionsOf(reusable)).toEqual([])
+    const attributes = strapiComponents(reusable).components['section.reusable']
+    const relations = Object.entries(attributes).filter(([, field]) => field.type === 'relation')
+    expect(relations).toEqual([
+      [
+        'reusableBlock',
+        { type: 'relation', relation: 'oneToOne', target: 'plugin::micelio.reusable-block' },
+      ],
+    ])
+    // Its other fields are the instance id and the group key, as on every page section.
+    expect(Object.keys(attributes).sort()).toEqual(['blockId', 'group', 'reusableBlock'])
+    expect(reusable.cost.island).toBeNull()
+  })
+
+  it('gives every page section an optional group key with a required groupId and tone, and no default', () => {
+    for (const block of BLOCKS) {
+      const { component, components: own } = strapiComponents(block)
+      if (block.group !== 'section') {
+        expect(own[component].group, block.id).toBeUndefined()
+        continue
+      }
+      expect(own[component].group, block.id).toEqual({
+        type: 'component',
+        repeatable: false,
+        component: 'section.group',
+      })
+      expect(own['section.group'], block.id).toEqual({
+        groupId: { type: 'string', required: true },
+        tone: { type: 'enumeration', enum: [...OPTIONS.tone.values], required: true },
+      })
+    }
   })
 
   it('gives a faq item an optional defaultOpen that is false by default and no default to the options', () => {
