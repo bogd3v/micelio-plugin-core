@@ -1,7 +1,7 @@
 {
   "source": {
     "repository": "bogd3v/micelio-cms",
-    "commit": "17a21f39eb05e468d6e5ac8ce9c4a3853db3f54e",
+    "commit": "c7afe9ef6632b569d2c79b15e9b78368edd341f9",
     "derivedFrom": {
       "tag": "v0.4.0",
       "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
@@ -599,6 +599,51 @@
           "allowedTypes": ["images", "files", "videos"],
           "type": "media",
           "multiple": false
+        }
+      }
+    },
+    "shared.code": {
+      "collectionName": "components_shared_codes",
+      "info": {
+        "displayName": "Code",
+        "icon": "code",
+        "description": "Code shown with its file name, highlighted lines and a caption, highlighted on the server"
+      },
+      "options": {},
+      "attributes": {
+        "blockId": {
+          "type": "string"
+        },
+        "code": {
+          "type": "text"
+        },
+        "language": {
+          "type": "enumeration",
+          "enum": [
+            "bash",
+            "shell",
+            "javascript",
+            "typescript",
+            "json",
+            "yaml",
+            "xml",
+            "css",
+            "python",
+            "sql",
+            "diff",
+            "dockerfile",
+            "ini",
+            "markdown"
+          ]
+        },
+        "filename": {
+          "type": "string"
+        },
+        "highlight": {
+          "type": "json"
+        },
+        "caption": {
+          "type": "text"
         }
       }
     },

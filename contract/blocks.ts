@@ -10,6 +10,7 @@ import {
   component,
   enumeration,
   integer,
+  json,
   media,
   part,
   relation,
@@ -236,8 +237,30 @@ const slide = part('shared.slide', {
 })
 
 /**
+ * The languages the server's highlighter registers (the maintainer's decision on micelio-cms#448:
+ * highlight.js, its core with these languages; `micelio` generates its list from the highlighter, and
+ * `shared.code` of `micelio-cms` stores the same enumeration).
+ */
+export const CODE_LANGUAGES = [
+  'bash',
+  'shell',
+  'javascript',
+  'typescript',
+  'json',
+  'yaml',
+  'xml',
+  'css',
+  'python',
+  'sql',
+  'diff',
+  'dockerfile',
+  'ini',
+  'markdown',
+] as const
+
+/**
  * The block catalogue, read only: the blocks of ADR-0018, section 6 (`rich-text` left it for `prose`,
- * micelio-cms#445), and `reusable` of ADR-0022, section 1. Every page section may carry a `group` key.
+ * micelio-cms#445), `reusable` of ADR-0022, section 1, and `code` (micelio-cms#448). Every page section may carry a `group` key.
  */
 export const BLOCKS: readonly Block[] = [
   {
@@ -583,6 +606,28 @@ export const BLOCKS: readonly Block[] = [
       },
     },
     static: 'The highlighted code and its expected output.',
+  },
+  {
+    // Code with a file name, highlighted lines and a caption (micelio-cms#448), highlighted on the
+    // server. Every field is optional and none has a default. At save a `highlight` line must fall
+    // inside `code` (`codeHighlightInvalid`).
+    id: 'code',
+    group: 'both',
+    schema: part('shared.code', {
+      blockId: BLOCK_ID,
+      code: text(),
+      language: enumeration(CODE_LANGUAGES),
+      filename: string(),
+      highlight: json(z.array(z.int().min(1))),
+      caption: text(),
+    }),
+    options: { ...presentation('code', 'both', 'width') },
+    // Not measured yet (the renderer is micelio's third pull request of #448): the cost of `prose`,
+    // which already styles code. `docs/blocks.md`, "Code".
+    cost: { css: 1895, js: 610, island: null },
+    static:
+      'Itself: the code is highlighted on the server and needs no JavaScript. A copy button, if the ' +
+      'theme offers one, is a progressive enhancement and is absent without JavaScript.',
   },
   {
     // A reference to a reusable block of the page's site (ADR-0022, section 1). Its target keeps its

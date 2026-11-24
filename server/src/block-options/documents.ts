@@ -7,6 +7,8 @@ import { ProseHeadingError } from '../prose-headings/error'
 import { findProseHeadingViolation } from '../prose-headings/rules'
 import { SectionAnchorError } from '../section-anchor/error'
 import { findAnchorViolation } from '../section-anchor/rules'
+import { CodeHighlightError } from '../code-highlight/error'
+import { findHighlightViolation } from '../code-highlight/rules'
 import { TestimonialRatingError } from '../testimonial-rating/error'
 import { findRatingViolation } from '../testimonial-rating/rules'
 import { BlockOptionError } from './error'
@@ -29,11 +31,12 @@ type Params = Record<string, unknown> & { data?: Record<string, unknown> }
  * It also refuses a zone with more than one `scene` block of `variant: background`, and a section
  * `anchor` that is not a kebab-case slug or that two blocks of the page share (`sectionAnchorInvalid`), and a `prose` block whose Markdown body opens below `h2`, has an `h1` or
  * skips a level (`proseHeadingInvalid`), and a `testimonials` item whose `rating` is not a whole number from 1 to 5
- * (`testimonialRatingInvalid`), and a group of blocks (ADR-0022, section 2) split into two runs or
+ * (`testimonialRatingInvalid`), and a `code` block that highlights a line outside its code
+ * (`codeHighlightInvalid`), and a group of blocks (ADR-0022, section 2) split into two runs or
  * whose members set two tones (`blockGroupInvalid`).
  *
  * @throws {@link BlockOptionError} with the block, the option and the values it allows, or
- * `SceneBackgroundLimitError` {@link SectionAnchorError} {@link ProseHeadingError} {@link TestimonialRatingError} or {@link BlockGroupError}.
+ * `SceneBackgroundLimitError` {@link SectionAnchorError} {@link ProseHeadingError} {@link TestimonialRatingError} {@link CodeHighlightError} or {@link BlockGroupError}.
  */
 export function blockOptionsDocuments(
   strapi: Core.Strapi
@@ -59,6 +62,8 @@ export function blockOptionsDocuments(
       if (heading) throw new ProseHeadingError(heading)
       const rating = findRatingViolation(zones)
       if (rating) throw new TestimonialRatingError(rating)
+      const highlight = findHighlightViolation(zones)
+      if (highlight) throw new CodeHighlightError(highlight)
       const group = findGroupViolation(zones)
       if (group) throw new BlockGroupError(group)
     }

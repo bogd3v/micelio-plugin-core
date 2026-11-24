@@ -37,6 +37,8 @@ const CATALOGUE: [string, string, string[]][] = [
   ['media', 'shared.media', []],
   ['slider', 'shared.slider', []],
   ['playground', 'shared.playground', []],
+  // micelio-cms#448: code with a file name, highlighted lines and a caption.
+  ['code', 'shared.code', []],
   // ADR-0022, section 1: a reference to a reusable block.
   ['reusable', 'section.reusable', []],
 ]
@@ -87,7 +89,7 @@ const ENTRY = z.object({
 const components = fixture.components as Record<string, { attributes: StrapiAttributes }>
 
 describe('the block catalogue', () => {
-  it('has exactly the 19 blocks of the catalogue (ADR-0018, section 6, less `rich-text`, and `reusable` of ADR-0022), in its order', () => {
+  it('has exactly the 20 blocks of the catalogue (ADR-0018, section 6, less `rich-text`, and `reusable` of ADR-0022 and `code`), in its order', () => {
     expect(BLOCKS.map((block) => [block.id, block.schema.component])).toEqual(
       CATALOGUE.map(([id, component]) => [id, component])
     )
@@ -167,11 +169,11 @@ describe('the block catalogue', () => {
   })
 
   // `section.rich-text` is left out with its block; it stays a component of the host until it is retired.
-  it('accounts for the 34 components of the fixture', () => {
+  it('accounts for the 35 components of the fixture', () => {
     const described = new Set(
       BLOCKS.flatMap((block) => Object.keys(strapiComponents(block).components))
     )
-    expect(Object.keys(components)).toHaveLength(34)
+    expect(Object.keys(components)).toHaveLength(35)
     expect(
       Object.keys(components)
         .filter((uid) => !described.has(uid))
