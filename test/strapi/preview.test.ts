@@ -3,7 +3,11 @@ import { createHash } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import type { Core, UID } from '@strapi/strapi'
 import { PREVIEW_CREDENTIAL_UID, PREVIEW_PERMISSION } from '../../server/src/constants/preview'
+import { REUSABLE_BLOCK_UID } from '../../server/src/constants/reusable-blocks'
+import type { Actor } from '../../server/src/editorial/machine'
 import type { PreviewService } from '../../server/src/services/preview'
+import type { TransitionsService } from '../../server/src/services/transitions'
+import type { PreviewTarget } from '../../server/src/types/preview'
 import { SITE_UID } from '../../server/src/constants/site'
 import { cleanupStrapi, setupStrapi } from './harness'
 
@@ -199,7 +203,9 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
   /** Mints a system grant as plugin code does, for an article's current draft unless told otherwise. */
   async function systemGrantFor(
     documentId = articleId,
-    overrides: Partial<Parameters<PreviewService['issueSystemGrant']>[0]> = {}
+    overrides: Partial<
+      Extract<Parameters<PreviewService['issueSystemGrant']>[0], { entryVersion: string }>
+    > = {}
   ): Promise<string> {
     const grant = await (
       strapi.plugin('micelio').service('preview') as PreviewService
@@ -873,6 +879,431 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
       )
       const previewPaths = routes.map((route) => route.path).filter((path) => /preview/.test(path))
       expect(previewPaths.sort()).toEqual(['/preview/draft', '/preview/exchange', '/preview/token'])
+    })
+  })
+
+  describe('a system grant bound to a reference on GET /api/micelio/preview/draft', () => {
+    // The page fixture (test/strapi/app/src/api/page/) references reusable blocks through its
+    // `section.reusable` component (ADR-0019 and ADR-0022, amendments of 2026-11-23).
+    const PAGE_UID = 'api::page.page'
+    const POPULATE = { 'populate[sections][on][section.reusable][populate]': 'reusableBlock' }
+    let actor: Actor
+    const reusables = () => strapi.documents(REUSABLE_BLOCK_UID as UID.ContentType)
+    const pages = () => strapi.documents(PAGE_UID as UID.ContentType)
+    const previews = () => strapi.plugin('micelio').service('preview') as PreviewService
+    const cta = (title: string) => ({ __component: 'section.cta', title })
+    const reference = (documentId: string) => ({
+      __component: 'section.reusable',
+      reusableBlock: documentId,
+    })
+
+    async function createBlock(name: string, inSite = site): Promise<string> {
+      const created = await reusables().create({
+        locale: 'en',
+        data: { name, blocks: [cta(name)], site: inSite },
+      } as never)
+      return created.documentId
+    }
+
+    async function publishBlock(documentId: string): Promise<void> {
+      const transitions = strapi.plugin('micelio').service('transitions') as TransitionsService
+      for (const to of ['in_review', 'published'] as const) {
+        await transitions.perform({
+          uid: REUSABLE_BLOCK_UID,
+          documentId,
+          locale: 'en',
+          to,
+          actor,
+        })
+      }
+    }
+
+    const saveBlock = (documentId: string, name: string) =>
+      reusables().update({ documentId, locale: 'en', data: { name } } as never)
+
+    async function createPage(slug: string, sections: unknown[]): Promise<string> {
+      const created = await pages().create({
+        locale: 'en',
+        data: { title: slug, slug, sections, site },
+      } as never)
+      return created.documentId
+    }
+
+    const publishPage = (documentId: string) =>
+      pages().publish({ documentId, locale: 'en' } as never)
+
+    /** Mints, as plugin code does, a grant for a page with the block's current draft in place. */
+    async function referenceGrantFor(
+      page: string,
+      block: string,
+      overrides: Partial<PreviewTarget> = {}
+    ): Promise<string> {
+      const grant = await previews().issueSystemGrant({
+        siteDocumentId: site,
+        contentType: PAGE_UID,
+        entryDocumentId: page,
+        entryLocale: 'en',
+        reusableBlock: {
+          documentId: block,
+          version: await versionOf(block, REUSABLE_BLOCK_UID, 'en'),
+        },
+        ...overrides,
+      })
+      issued.push(grant)
+      return grant
+    }
+
+    const read = (grant: string, page: string, query: Record<string, string> = {}) =>
+      draftOf(grant, { documentId: page, locale: 'en', ...POPULATE, ...query })
+
+    beforeAll(async () => {
+      const email = `reference-${Date.now()}@example.com`
+      const id = await createUser(email, await roleId('strapi-super-admin'))
+      actor = { kind: 'user', id, roles: ['strapi-super-admin'] }
+    })
+
+    it("the draft read of a reference grant answers the published page with the reusable block's draft in its place", async () => {
+      const block = await createBlock('Banner published')
+      const other = await createBlock('Other published')
+      await publishBlock(block)
+      await publishBlock(other)
+      const page = await createPage('shows-a-banner', [reference(block), reference(other)])
+      await publishPage(page)
+      // Drafts that are not published: the page's own, the block's and another block's.
+      await pages().update({
+        documentId: page,
+        locale: 'en',
+        data: { title: 'Page draft' },
+      } as never)
+      await saveBlock(block, 'Banner draft')
+      await saveBlock(other, 'Other draft')
+      const version = await versionOf(block, REUSABLE_BLOCK_UID, 'en')
+
+      const answer = await read(await referenceGrantFor(page, block), page)
+      expect(answer.status).toBe(200)
+      expect(answer.headers.get('cache-control')).toBe('private, no-store')
+      const { data, meta } = (await answer.json()) as {
+        data: {
+          title: string
+          sections: { reusableBlock: { documentId: string; name: string } | null }[]
+        }
+        meta: unknown
+      }
+      expect(data.title).toBe('shows-a-banner')
+      expect(data.sections.map((section) => section.reusableBlock)).toEqual([
+        expect.objectContaining({ documentId: block, name: 'Banner draft' }),
+        expect.objectContaining({ documentId: other, name: 'Other published' }),
+      ])
+      expect(meta).toEqual({
+        actor: 'system',
+        measure: 'reference',
+        reusableBlock: { documentId: block, version },
+      })
+      // The grant of the page's own draft still answers the draft, with its meta unchanged.
+      const own = await systemGrantFor(page, {
+        contentType: PAGE_UID,
+        entryLocale: 'en',
+        entryVersion: await versionOf(page, PAGE_UID, 'en'),
+      })
+      const ownAnswer = await draftOf(own, { documentId: page, locale: 'en', ...POPULATE })
+      const ownBody = (await ownAnswer.json()) as { data: { title: string }; meta: unknown }
+      expect(ownBody.data.title).toBe('Page draft')
+      expect(ownBody.meta).toEqual({ actor: 'system' })
+      // The row holds the block and its version, no version of the page, and not the grant.
+      const grant = await referenceGrantFor(page, block)
+      expect(await rowOf(grant)).toMatchObject({
+        kind: 'system',
+        adminUser: null,
+        entryVersion: null,
+        reusableBlockDocumentId: block,
+        reusableBlockVersion: version,
+      })
+    })
+
+    it("the draft read of a reference grant refuses a page with no published version, a page that no longer references the block, another site's block, another page or locale, a spent grant, an expired grant and a saved block", async () => {
+      const block = await createBlock('Shared banner')
+      await publishBlock(block)
+      const live = await createPage('live-page', [reference(block)])
+      await publishPage(live)
+      const unpublished = await createPage('never-published', [reference(block)])
+      const dropped = await createPage('dropped-the-banner', [reference(block)])
+      await publishPage(dropped)
+      await pages().update({
+        documentId: dropped,
+        locale: 'en',
+        data: { sections: [cta('No banner')] },
+      } as never)
+      await publishPage(dropped)
+      // A block the page references, moved to another site since.
+      const moved = await createBlock('Moved banner')
+      await publishBlock(moved)
+      const keeps = await createPage('keeps-the-moved-banner', [reference(moved)])
+      await publishPage(keeps)
+      await reusables().update({
+        documentId: moved,
+        locale: 'en',
+        data: { site: otherSite },
+      } as never)
+
+      const spent = await referenceGrantFor(live, block)
+      expect((await read(spent, live)).status).toBe(200)
+      const expired = await referenceGrantFor(live, block)
+      await credentials().updateMany({
+        where: { hash: (await rowOf(expired)).hash },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      })
+      const attempts: [string, string, Record<string, string>?][] = [
+        [await referenceGrantFor(unpublished, block), unpublished],
+        [await referenceGrantFor(dropped, block), dropped],
+        [await referenceGrantFor(keeps, moved), keeps],
+        [await referenceGrantFor(live, block), dropped],
+        [await referenceGrantFor(live, block), live, { locale: 'es' }],
+        [spent, live],
+        [expired, live],
+      ]
+      const answers = []
+      for (const [grant, page, query] of attempts) answers.push(await read(grant, page, query))
+      // A save of the block's draft after minting, read after the others so it refuses only this one.
+      const saved = await referenceGrantFor(live, block)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      await saveBlock(block, 'Saved after minting')
+      answers.push(await read(saved, live))
+      expect(answers.map((answer) => answer.status)).toEqual(Array(attempts.length + 1).fill(404))
+      const texts = await Promise.all(answers.map((answer) => answer.text()))
+      expect(new Set(texts).size).toBe(1)
+      expect(JSON.parse(texts[0]!) as Problem).toMatchObject({ code: 'previewRefused' })
+      // The save was refused before the grant was claimed; one minted for it now is served.
+      expect((await rowOf(saved)).usedAt).toBeNull()
+      expect((await read(await referenceGrantFor(live, block), live)).status).toBe(200)
+
+      // A save between the claim and the read is refused too: the version is read after the page.
+      const resolveGrant = previews().resolveGrant.bind(previews())
+      const between = vi
+        .spyOn(previews(), 'resolveGrant')
+        .mockImplementationOnce(async (...args) => {
+          const resolved = await resolveGrant(...args)
+          await new Promise((resolve) => setTimeout(resolve, 20))
+          await saveBlock(block, 'Saved between')
+          return resolved
+        })
+      try {
+        const answer = await read(await referenceGrantFor(live, block), live)
+        expect(between).toHaveBeenCalledTimes(1)
+        expect(answer.status).toBe(404)
+      } finally {
+        between.mockRestore()
+      }
+    })
+
+    it('a reference grant is refused by the token exchange', async () => {
+      const block = await createBlock('Exchanged banner')
+      await publishBlock(block)
+      const page = await createPage('exchanged-page', [reference(block)])
+      await publishPage(page)
+      const grant = await referenceGrantFor(page, block)
+      const answer = await exchange(grant)
+      expect(answer.status).toBe(404)
+      expect((await answer.json()) as Problem).toMatchObject({ code: 'previewRefused' })
+      expect((await exchange(grant, '?site=other')).status).toBe(404)
+      // Not spent by it: the draft read still takes it once.
+      expect((await rowOf(grant)).usedAt).toBeNull()
+      expect((await read(grant, page)).status).toBe(200)
+    })
+
+    /** The block's own zone, under the reference: what only a reference grant may populate. */
+    const BLOCKS = {
+      'populate[sections][on][section.reusable][populate][reusableBlock][populate][blocks]': 'true',
+    }
+
+    it("the draft read of a reference grant answers the reusable block's draft with its own blocks populated", async () => {
+      const link = (label: string) => ({ label, url: `https://example.com/${label}` })
+      const block = await createBlock('Blocks published')
+      await publishBlock(block)
+      // Another reusable block of the page, published with a link and then edited.
+      const other = await createBlock('Other blocks')
+      await reusables().update({
+        documentId: other,
+        locale: 'en',
+        data: { blocks: [{ ...cta('Other published'), primaryLink: link('other-published') }] },
+      } as never)
+      await publishBlock(other)
+      const page = await createPage('shows-the-blocks', [reference(block), reference(other)])
+      await publishPage(page)
+      await reusables().update({
+        documentId: block,
+        locale: 'en',
+        data: { blocks: [{ ...cta('Blocks draft'), primaryLink: link('draft') }] },
+      } as never)
+      await reusables().update({
+        documentId: other,
+        locale: 'en',
+        data: { blocks: [cta('Other draft')] },
+      } as never)
+      type Answer = {
+        data: { sections: { reusableBlock: { name: string; blocks: unknown[] } | null }[] }
+      }
+      const answer = await draftOf(await referenceGrantFor(page, block), {
+        documentId: page,
+        locale: 'en',
+        ...BLOCKS,
+      })
+      expect(answer.status).toBe(200)
+      const { data } = (await answer.json()) as Answer
+      expect(data.sections[0]!.reusableBlock).toMatchObject({
+        name: 'Blocks published',
+        blocks: [expect.objectContaining({ __component: 'section.cta', title: 'Blocks draft' })],
+      })
+      // The rules of a zone of the page itself: `on`, with the fields of a component.
+      const fragment = await draftOf(await referenceGrantFor(page, block), {
+        documentId: page,
+        locale: 'en',
+        'populate[sections][on][section.reusable][populate][reusableBlock][populate][blocks][on][section.cta][fields][0]':
+          'title',
+      })
+      expect(fragment.status).toBe(200)
+      const blocks = ((await fragment.json()) as Answer).data.sections[0]!.reusableBlock!.blocks
+      expect(blocks).toEqual([expect.objectContaining({ title: 'Blocks draft' })])
+      // A component inside a block, at any depth; another reusable block stays published.
+      const nested = await draftOf(await referenceGrantFor(page, block), {
+        documentId: page,
+        locale: 'en',
+        'populate[sections][on][section.reusable][populate][reusableBlock][populate][blocks][on][section.cta][populate][primaryLink]':
+          'true',
+      })
+      expect(nested.status).toBe(200)
+      const sections = ((await nested.json()) as Answer).data.sections
+      expect(sections.map((section) => section.reusableBlock!.blocks)).toEqual([
+        [
+          expect.objectContaining({
+            title: 'Blocks draft',
+            primaryLink: expect.objectContaining({ label: 'draft' }),
+          }),
+        ],
+        [
+          expect.objectContaining({
+            title: 'Other published',
+            primaryLink: expect.objectContaining({ label: 'other-published' }),
+          }),
+        ],
+      ])
+    })
+
+    it("a dynamic zone under a relation stays refused with 400 previewRequestInvalid for an admin grant, a page's own system grant, and a reference grant under any relation but the one to the reusable block", async () => {
+      admin = await freshSuperAdmin()
+      const block = await createBlock('Zone banner')
+      await publishBlock(block)
+      const page = await createPage('zone-page', [reference(block)])
+      await publishPage(page)
+      const post = (
+        await strapi.documents('api::post.post' as UID.ContentType).create({
+          data: { title: 'A post', site },
+        } as never)
+      ).documentId
+      const query = { documentId: page, locale: 'en', ...BLOCKS }
+      const answers = [
+        await draftOf(
+          await grantFor(admin, { uid: PAGE_UID, documentId: page, locale: 'en' }),
+          query
+        ),
+        await draftOf(
+          await systemGrantFor(page, {
+            contentType: PAGE_UID,
+            entryLocale: 'en',
+            entryVersion: await versionOf(page, PAGE_UID, 'en'),
+          }),
+          query
+        ),
+        await draftOf(
+          await referenceGrantFor(post, block, {
+            contentType: 'api::post.post',
+            entryLocale: null,
+          }),
+          { documentId: post, 'populate[related][populate][blocks]': 'true' }
+        ),
+      ]
+      expect(answers.map((answer) => answer.status)).toEqual([400, 400, 400])
+      for (const answer of answers) {
+        expect((await answer.json()) as Problem).toMatchObject({ code: 'previewRequestInvalid' })
+      }
+      // The relation to the reusable block, under a reference grant, is the one it serves.
+      expect((await draftOf(await referenceGrantFor(page, block), query)).status).toBe(200)
+    })
+
+    /** The reference of `section.reusable`, the level of the reusable block in a populate. */
+    const BLOCK_LEVEL = 'populate[sections][on][section.reusable][populate][reusableBlock]'
+
+    it('the draft read of a reference grant refuses *, site, localizations and every other attribute of the reusable block but its blocks and fields, with 400 previewRequestInvalid', async () => {
+      const block = await createBlock('Narrow banner')
+      await publishBlock(block)
+      const page = await createPage('narrow-page', [reference(block)])
+      await publishPage(page)
+      const ask = async (query: Record<string, string>) =>
+        draftOf(await referenceGrantFor(page, block), { documentId: page, locale: 'en', ...query })
+      const refused: Record<string, string>[] = [
+        { [`${BLOCK_LEVEL}[populate]`]: '*' },
+        { [`${BLOCK_LEVEL}[populate][site]`]: 'true' },
+        { [`${BLOCK_LEVEL}[populate][localizations]`]: 'true' },
+        { [`${BLOCK_LEVEL}[populate][name]`]: 'true' },
+        { [`${BLOCK_LEVEL}[populate][0]`]: 'blocks', [`${BLOCK_LEVEL}[populate][1]`]: 'site' },
+      ]
+      const answers = []
+      for (const query of refused) answers.push(await ask(query))
+      expect(answers.map((answer) => answer.status)).toEqual(Array(refused.length).fill(400))
+      for (const answer of answers) {
+        expect((await answer.json()) as Problem).toMatchObject({ code: 'previewRequestInvalid' })
+      }
+      // Its fields and its blocks are what it serves.
+      const served = await ask({
+        [`${BLOCK_LEVEL}[fields][0]`]: 'name',
+        [`${BLOCK_LEVEL}[populate][blocks]`]: 'true',
+      })
+      expect(served.status).toBe(200)
+      const { data } = (await served.json()) as {
+        data: { sections: { reusableBlock: Record<string, unknown> }[] }
+      }
+      expect(data.sections[0]!.reusableBlock).toMatchObject({
+        name: 'Narrow banner',
+        blocks: [expect.objectContaining({ title: 'Narrow banner' })],
+      })
+      expect(data.sections[0]!.reusableBlock).not.toHaveProperty('site')
+    })
+
+    it("the draft read of a reference grant reads the reusable block's populate within the API token's abilities", async () => {
+      const block = await createBlock('Sanitised banner')
+      await publishBlock(block)
+      const page = await createPage('sanitised-page', [reference(block)])
+      await publishPage(page)
+      const sanitize = strapi.contentAPI.sanitize as unknown as {
+        query: (query: object, schema: { uid?: string }, options: object) => Promise<object>
+      }
+      const original = sanitize.query.bind(sanitize)
+      const seen: { query: object; options: object }[] = []
+      // A token that may not read the block's zone: its sanitising drops the populate.
+      const spy = vi.spyOn(sanitize, 'query').mockImplementation(async (query, schema, options) => {
+        const result = await original(query, schema, options)
+        if (schema.uid !== REUSABLE_BLOCK_UID) return result
+        seen.push({ query, options })
+        return { ...result, populate: {} }
+      })
+      try {
+        const answer = await draftOf(await referenceGrantFor(page, block), {
+          documentId: page,
+          locale: 'en',
+          [`${BLOCK_LEVEL}[populate][blocks]`]: 'true',
+        })
+        expect(answer.status).toBe(200)
+        const { data } = (await answer.json()) as {
+          data: { sections: { reusableBlock: Record<string, unknown> }[] }
+        }
+        expect(data.sections[0]!.reusableBlock).toMatchObject({ name: 'Sanitised banner' })
+        expect(data.sections[0]!.reusableBlock).not.toHaveProperty('blocks')
+      } finally {
+        spy.mockRestore()
+      }
+      // Sanitised once, with the request's API token and the populate the query asked for.
+      expect(seen).toHaveLength(1)
+      expect(seen[0]!.query).toMatchObject({ populate: { blocks: true } })
+      expect(seen[0]!.options).toMatchObject({ auth: { strategy: expect.anything() } })
     })
   })
 

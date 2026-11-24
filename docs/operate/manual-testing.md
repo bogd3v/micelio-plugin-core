@@ -691,7 +691,7 @@ stack's `page` is site-scoped and holds every block, so it shows what the page d
 
 ## Try the groups of a page
 
-Every page section of the stack has the optional `group` key (`groupId` and `tone`), written into the stack's components from `test/fixtures/micelio-cms-components-with-ids.json` ([`docs/blocks.md`](../blocks.md#groups)). A save whose group is split into two runs, or whose members set two tones, is refused with `blockGroupInvalid`, naming the position. `section.reusable` is in the stack's components but not yet in its page zone.
+Every page section of the stack has the optional `group` key (`groupId` and `tone`), written into the stack's components from `test/fixtures/micelio-cms-components-with-ids.json` ([`docs/blocks.md`](../blocks.md#groups)). A save whose group is split into two runs, or whose members set two tones, is refused with `blockGroupInvalid`, naming the position. `section.reusable` is in the stack's page zone too, so a page references a reusable block of its site.
 
 1. Create the first admin and an API token of type **Full access**, as in [Try the block options](#try-the-block-options): `read -rs TOKEN && export TOKEN`, and the `NEW` function of [Try the block catalogue](#try-the-block-catalogue).
 2. A block of another group between two members of `band` splits it:

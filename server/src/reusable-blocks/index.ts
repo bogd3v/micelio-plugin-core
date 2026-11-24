@@ -77,6 +77,27 @@ export async function siteOfReusableBlock(
 }
 
 /**
+ * The `updatedAt` of the draft of a reusable block in a locale (any locale when `null`), as an ISO
+ * 8601 date: the version a system grant bound to a reference names (ADR-0019, amendment of
+ * 2026-11-23). `undefined` when the block has no draft there or belongs to another site.
+ */
+export async function reusableBlockDraftVersion(
+  strapi: Core.Strapi,
+  target: { documentId: string; locale: string | null; siteDocumentId: string }
+): Promise<string | undefined> {
+  const row = (await strapi.db.query(REUSABLE_BLOCK_UID as UID.ContentType).findOne({
+    select: ['updatedAt'],
+    where: {
+      documentId: target.documentId,
+      publishedAt: null,
+      ...(target.locale === null ? {} : { locale: target.locale }),
+      [SITE_ATTRIBUTE]: { documentId: target.siteDocumentId },
+    },
+  })) as { updatedAt?: string | Date | null } | null
+  return row?.updatedAt ? new Date(row.updatedAt).toISOString() : undefined
+}
+
+/**
  * Of the given reusable blocks, those that belong to the site: a document belongs to it when one of
  * its rows does.
  */
@@ -127,17 +148,22 @@ function referencesOf(
 
 /**
  * The `documentId`s of the reusable blocks a stored document of a referencing type references, in
- * any of its rows of `locale` (every row when omitted).
+ * any of its rows of `locale` (every row when omitted), or with `published` in its published
+ * version only.
  */
 export async function storedReferences(
   strapi: Core.Strapi,
   uid: string,
   fields: readonly ReferenceField[],
-  target: { documentId: string; locale?: string }
+  target: { documentId: string; locale?: string; published?: boolean }
 ): Promise<string[]> {
   const rows = (await strapi.db.query(uid as UID.ContentType).findMany({
     select: ['documentId'],
-    where: { documentId: target.documentId, ...(target.locale ? { locale: target.locale } : {}) },
+    where: {
+      documentId: target.documentId,
+      ...(target.locale ? { locale: target.locale } : {}),
+      ...(target.published ? { publishedAt: { $notNull: true } } : {}),
+    },
     populate: referencePopulate(fields),
   })) as Row[]
   const ids = rows.flatMap((row) => referencesOf(row, fields)).map((item) => item.documentId)

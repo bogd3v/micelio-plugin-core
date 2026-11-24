@@ -183,3 +183,74 @@ describe('a system grant', () => {
     expect(mayUseCredential(record, 'system', { ...expected, entryLocale: 'es' }, at)).toBe(false)
   })
 })
+
+const REFERENCE_BINDING: PreviewSystemBinding = {
+  siteDocumentId: 'site-a',
+  contentType: 'api::page.page',
+  entryDocumentId: 'page-1',
+  entryLocale: 'en',
+  reusableBlock: { documentId: 'block-1', version: '2026-11-23T09:00:00.000Z' },
+}
+const OWN_EXPECTED = { siteDocumentId: 'site-a', entryDocumentId: 'doc-1', entryLocale: 'en' }
+const REFERENCE_EXPECTED = {
+  siteDocumentId: 'site-a',
+  entryDocumentId: 'page-1',
+  entryLocale: 'en',
+}
+
+it('a system grant bound to a reference holds the reusable block and its version, and only its hash', () => {
+  const { value, record } = issueCredential('system', REFERENCE_BINDING, NOW)
+  expect(record).toEqual({
+    kind: 'system',
+    hash: hashCredential(value),
+    adminUser: null,
+    adminOrigin: null,
+    siteDocumentId: 'site-a',
+    contentType: 'api::page.page',
+    entryDocumentId: 'page-1',
+    entryLocale: 'en',
+    // The page's own version is not bound: what is measured is what it publishes at the read.
+    entryVersion: null,
+    reusableBlockDocumentId: 'block-1',
+    reusableBlockVersion: '2026-11-23T09:00:00.000Z',
+    expiresAt: after(60),
+    usedAt: null,
+    revokedAt: null,
+  })
+  expect(value).toMatch(/^[A-Za-z0-9_-]{43}$/)
+  expect(value).not.toContain('block-1')
+  expect(JSON.stringify(record)).not.toContain(value)
+  // A system grant of a page's own draft and a token name no reusable block.
+  for (const other of [
+    issueCredential('system', SYSTEM_BINDING, NOW).record,
+    issueCredential('token', BINDING, NOW).record,
+  ]) {
+    expect(other).toMatchObject({ reusableBlockDocumentId: null, reusableBlockVersion: null })
+  }
+})
+
+it("a system grant bound to a reference is refused once the reusable block's version differs", () => {
+  const { record } = issueCredential('system', REFERENCE_BINDING, NOW)
+  const at = after(1)
+  const use = (reusableBlockVersion?: string | null) =>
+    mayUseCredential(record, 'system', { ...REFERENCE_EXPECTED, reusableBlockVersion }, at)
+  expect(use('2026-11-23T09:00:00.000Z')).toBe(true)
+  // The same instant written another way is the same version.
+  expect(use('2026-11-23T09:00:00Z')).toBe(true)
+  // The block's draft saved since, gone, or not looked up at all.
+  expect(use('2026-11-23T09:00:00.001Z')).toBe(false)
+  expect(use(null)).toBe(false)
+  expect(use(undefined)).toBe(false)
+  expect(use('not a date')).toBe(false)
+  // The rules of every system grant still hold.
+  const current = { ...REFERENCE_EXPECTED, reusableBlockVersion: '2026-11-23T09:00:00.000Z' }
+  expect(mayUseCredential({ ...record, usedAt: NOW }, 'system', current, at)).toBe(false)
+  expect(mayUseCredential(record, 'system', current, after(60))).toBe(false)
+  expect(mayUseCredential(record, 'system', { ...current, entryLocale: 'es' }, at)).toBe(false)
+  expect(mayUseCredential(record, 'grant', current, at)).toBe(false)
+  // A version asked of a system grant that names no reusable block is not read.
+  const own = issueCredential('system', SYSTEM_BINDING, NOW).record
+  expect(
+    mayUseCredential(own, 'system', { ...OWN_EXPECTED, reusableBlockVersion: 'not a date' }, at)
+  ).toBe(true)
+})
