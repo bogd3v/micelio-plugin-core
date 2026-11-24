@@ -5,7 +5,7 @@
     "derivedFrom": {
       "tag": "v0.4.0",
       "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
-      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40); defaultOpen added to section.faq-item as micelio-cms stores it since bogd3v/micelio-cms#515 (merge 7405cbc); sourceUrl, logo and rating added to section.testimonial as micelio-cms stores them since bogd3v/micelio-cms#516 (merge 17a21f3); section.reusable, the section.group component and the group attribute of the thirteen page sections added as the shape bogd3v/micelio-cms#527 stores (from bogd3v/micelio-plugin-core#201)"
+      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40); defaultOpen added to section.faq-item as micelio-cms stores it since bogd3v/micelio-cms#515 (merge 7405cbc); sourceUrl, logo and rating added to section.testimonial as micelio-cms stores them since bogd3v/micelio-cms#516 (merge 17a21f3); section.reusable, the section.group component and the group attribute of the thirteen page sections added as the shape bogd3v/micelio-cms#527 stores (from bogd3v/micelio-plugin-core#201); the variant featured, showExcerpt and sort added to section.post-list as micelio-cms stores them since bogd3v/micelio-cms#528 (merge a80ebd6), and its category and tag relations pointed at plugin::micelio.category and plugin::micelio.tag as micelio-cms 0.5 stores them"
     }
   },
   "components": {
@@ -328,7 +328,7 @@
         "anchor": { "type": "string" },
         "variant": {
           "type": "enumeration",
-          "enum": ["cards", "list"],
+          "enum": ["cards", "list", "featured"],
           "default": "cards",
           "required": true
         },
@@ -336,10 +336,16 @@
         "category": {
           "type": "relation",
           "relation": "oneToOne",
-          "target": "api::category.category"
+          "target": "plugin::micelio.category"
         },
-        "tag": { "type": "relation", "relation": "oneToOne", "target": "api::tag.tag" },
+        "tag": { "type": "relation", "relation": "oneToOne", "target": "plugin::micelio.tag" },
         "count": { "type": "integer", "min": 1, "max": 12, "default": 3, "required": true },
+        "showExcerpt": { "type": "boolean", "default": true },
+        "sort": {
+          "type": "enumeration",
+          "enum": ["newest", "oldest", "alphabetical"],
+          "default": "newest"
+        },
         "group": { "type": "component", "repeatable": false, "component": "section.group" }
       }
     },

@@ -90,6 +90,14 @@ const contentTypes = Object.fromEntries([
     slug: { type: 'uid' },
     articles: { type: 'relation', target: 'api::article.article' },
   }),
+  contentType('plugin::micelio.category', {
+    name: { type: 'string' },
+    slug: { type: 'uid' },
+  }),
+  contentType('plugin::micelio.tag', {
+    name: { type: 'string' },
+    slug: { type: 'uid' },
+  }),
   [
     'plugin::upload.file',
     {

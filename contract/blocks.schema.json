@@ -1204,7 +1204,7 @@
               "x-strapi": {
                 "type": "relation",
                 "relation": "oneToOne",
-                "target": "api::category.category"
+                "target": "plugin::micelio.category"
               }
             },
             { "type": "null" }
@@ -1217,7 +1217,11 @@
               "properties": { "documentId": { "type": "string" } },
               "required": ["documentId"],
               "additionalProperties": {},
-              "x-strapi": { "type": "relation", "relation": "oneToOne", "target": "api::tag.tag" }
+              "x-strapi": {
+                "type": "relation",
+                "relation": "oneToOne",
+                "target": "plugin::micelio.tag"
+              }
             },
             { "type": "null" }
           ]
@@ -1228,6 +1232,23 @@
           "maximum": 12,
           "x-strapi": { "type": "integer" },
           "default": 3
+        },
+        "showExcerpt": {
+          "anyOf": [
+            { "type": "boolean", "x-strapi": { "type": "boolean" }, "default": true },
+            { "type": "null" }
+          ]
+        },
+        "sort": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["newest", "oldest", "alphabetical"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "newest"
+            },
+            { "type": "null" }
+          ]
         },
         "group": {
           "anyOf": [
@@ -1249,9 +1270,20 @@
         },
         "variant": {
           "type": "string",
-          "enum": ["cards", "list"],
+          "enum": ["cards", "list", "featured"],
           "x-strapi": { "type": "enumeration" },
           "default": "cards"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["2", "3", "4"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "3"
+            },
+            { "type": "null" }
+          ]
         },
         "density": {
           "anyOf": [
