@@ -17,14 +17,35 @@ export interface PreviewBinding extends PreviewTarget {
   adminOrigin: string
 }
 
-/**
- * What a system grant is bound to (ADR-0019, amendment of 2026-10-25): a document and the version
- * of its draft, and no admin user.
- */
-export interface PreviewSystemBinding extends PreviewTarget {
-  /** The `updatedAt` of the draft at the moment of minting, as an ISO 8601 date. */
-  entryVersion: string
+/** A reusable block and the version of its draft: the `updatedAt` of the draft, as an ISO 8601 date. */
+export interface PreviewReusableBlockVersion {
+  documentId: string
+  version: string
 }
+
+/**
+ * What a system grant is bound to, with no admin user: a document and the version of its draft
+ * (ADR-0019, amendment of 2026-10-25), or a page and a reusable block its published version
+ * references, with the version of the block's draft (the grant bound to a reference, amendment of
+ * 2026-11-23). It carries one of `entryVersion` and `reusableBlock`, never both and never neither.
+ */
+export type PreviewSystemBinding = PreviewTarget &
+  (
+    | {
+        /** The `updatedAt` of the draft at the moment of minting, as an ISO 8601 date. */
+        entryVersion: string
+        reusableBlock?: never
+      }
+    | {
+        /**
+         * The reusable block the page's published version references, and the `updatedAt` of the
+         * block's draft in the page's locale at the moment of minting. The page's own version is not
+         * bound.
+         */
+        reusableBlock: PreviewReusableBlockVersion
+        entryVersion?: never
+      }
+  )
 
 /** Which of the credentials a record is: a token, a grant, or the plugin's own system grant. */
 export type PreviewCredentialKind = 'token' | 'grant' | 'system'
@@ -41,8 +62,15 @@ export interface PreviewCredentialRecord extends PreviewTarget {
   adminUser: number | null
   /** The admin origin a token or grant is bound to; `null` for a system grant. */
   adminOrigin: string | null
-  /** The `updatedAt` of the draft a system grant was minted for; `null` for the other kinds. */
+  /**
+   * The `updatedAt` of the draft a system grant was minted for; `null` for the other kinds and for a
+   * grant bound to a reference.
+   */
   entryVersion: string | null
+  /** The reusable block a system grant bound to a reference names; `null` for every other credential. */
+  reusableBlockDocumentId: string | null
+  /** The `updatedAt` of that block's draft at minting; `null` for every other credential. */
+  reusableBlockVersion: string | null
   expiresAt: Date
   /** When a token was exchanged or a system grant was used; `null` while unused, and always `null` for a grant. */
   usedAt: Date | null
@@ -53,8 +81,10 @@ export interface PreviewCredentialRecord extends PreviewTarget {
 /** The grant a request presented, once it checked out: what it names and who it acts for. */
 export interface PreviewResolvedGrant extends PreviewTarget {
   actor: PreviewActor
-  /** The version a `system` grant was minted for; `null` for an `admin` grant. */
+  /** The version a `system` grant was minted for; `null` for an `admin` grant and a grant bound to a reference. */
   entryVersion: string | null
+  /** The reusable block and version a grant bound to a reference names; `null` for every other grant. */
+  reusableBlock: PreviewReusableBlockVersion | null
 }
 
 /** What a request presents a credential for. Absent fields are not checked. */
@@ -63,6 +93,12 @@ export interface PreviewExpectation {
   entryDocumentId?: string
   /** `null` expects a draft that is not localised. */
   entryLocale?: string | null
+  /**
+   * The `updatedAt` its draft has now, in the grant's locale and site, of the reusable block a grant
+   * bound to a reference names; `null` when there is no such draft. Required to use such a grant,
+   * and not read for any other credential.
+   */
+  reusableBlockVersion?: string | null
 }
 
 /** What `POST /micelio/preview/token` answers. */

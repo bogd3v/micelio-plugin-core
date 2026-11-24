@@ -7,6 +7,7 @@ import {
 import { SITE_UID } from '../constants/site'
 import { abilityOf, readableDraft } from '../preview/access'
 import { hashCredential, issueCredential, mayUseCredential } from '../preview/credentials'
+import { reusableBlockDraftVersion } from '../reusable-blocks'
 import type {
   PreviewBinding,
   PreviewCredentialKind,
@@ -14,6 +15,7 @@ import type {
   PreviewExpectation,
   PreviewGrantAnswer,
   PreviewResolvedGrant,
+  PreviewReusableBlockVersion,
   PreviewSystemBinding,
   PreviewTarget,
   PreviewTokenAnswer,
@@ -41,14 +43,17 @@ export interface PreviewService {
   exchange(token: string, siteDocumentId: string): Promise<PreviewGrantAnswer | null>
 
   /**
-   * Makes a system grant for one version of a draft, and returns its value once.
+   * Makes a system grant for one version of a draft, or for a page's published version with one
+   * version of a reusable block's draft in place of its reference, and returns its value once.
    *
    * @remarks
-   * For plugin code that measures a draft at publish (ADR-0019, amendment of 2026-10-25); no
-   * route mints one. The grant lives 60 s, is used once, is bound to the site, type, document,
-   * locale and `binding.entryVersion`, and has no admin user. It is stored hashed; expired
-   * credentials past their retention are removed on the way. The caller sends it to the
-   * frontend's weight route only, never to a browser, and never logs it.
+   * For plugin code that measures a draft at publish (ADR-0019, amendment of 2026-10-25), or a
+   * page that shows a reusable block at the block's publish (`binding.reusableBlock`, amendment of
+   * 2026-11-23); no route mints one. The grant lives 60 s, is used once, is bound to the site,
+   * type, document, locale and `binding.entryVersion`, or to `binding.reusableBlock` instead of the
+   * entry's version, and has no admin user. It is stored hashed; expired credentials past their
+   * retention are removed on the way. The caller sends it to the frontend's weight route only,
+   * never to a browser, and never logs it.
    */
   issueSystemGrant(binding: PreviewSystemBinding): Promise<string>
 
@@ -60,7 +65,9 @@ export interface PreviewService {
    * every grant of that user and draft is revoked. A `system` grant is claimed with one
    * conditional update, so of two checks at once one finds it spent, and it has no user to ask.
    * Whether the draft is still the version the system grant was minted for is for the caller to
-   * check (`entryVersion`).
+   * check (`entryVersion`). A grant bound to a reference is refused, unspent, when the draft of its
+   * reusable block, in its locale and site, is not the version it was minted for; whether the page
+   * still references the block is for the caller to check (`reusableBlock`).
    */
   resolveGrant(grant: string, expected: PreviewExpectation): Promise<PreviewResolvedGrant | null>
 
@@ -190,7 +197,20 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewService => {
 
     async resolveGrant(grant, expected) {
       const row = await find(['grant', 'system'], grant)
-      if (!row || !mayUseCredential(toRecord(row), row.kind, expected)) return null
+      if (!row) return null
+      const record = toRecord(row)
+      const reusableBlock = referenceOf(record)
+      const current = reusableBlock
+        ? await reusableBlockDraftVersion(strapi, {
+            documentId: reusableBlock.documentId,
+            locale: record.entryLocale,
+            siteDocumentId: record.siteDocumentId,
+          })
+        : undefined
+      const asked = reusableBlock
+        ? { ...expected, reusableBlockVersion: current ?? null }
+        : expected
+      if (!mayUseCredential(record, row.kind, asked)) return null
       if (row.kind === 'system') {
         // The claim is one conditional update: of two checks at once, one finds no unused row.
         const claimed = (await store().updateMany({
@@ -198,11 +218,11 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewService => {
           data: { usedAt: new Date() },
         })) as { count: number }
         if (claimed.count !== 1) return null
-        return { ...targetOf(row), actor: 'system', entryVersion: row.entryVersion }
+        return { ...targetOf(row), actor: 'system', entryVersion: row.entryVersion, reusableBlock }
       }
       const binding = adminBindingOf(row)
       if (!binding || !(await stillReadable(binding))) return null
-      return { ...targetOf(row), actor: 'admin', entryVersion: null }
+      return { ...targetOf(row), actor: 'admin', entryVersion: null, reusableBlock: null }
     },
 
     revoke,
@@ -239,6 +259,12 @@ function adminBindingOf(row: CredentialRow): PreviewBinding | null {
   return { ...targetOf(row), adminUser: row.adminUser, adminOrigin: row.adminOrigin }
 }
 
+/** The reusable block and version a system grant bound to a reference names; `null` for any other credential. */
+function referenceOf(record: PreviewCredentialRecord): PreviewReusableBlockVersion | null {
+  if (record.kind !== 'system' || record.reusableBlockDocumentId == null) return null
+  return { documentId: record.reusableBlockDocumentId, version: record.reusableBlockVersion ?? '' }
+}
+
 function toRecord(row: CredentialRow): PreviewCredentialRecord {
   return {
     ...targetOf(row),
@@ -247,6 +273,8 @@ function toRecord(row: CredentialRow): PreviewCredentialRecord {
     adminUser: row.adminUser,
     adminOrigin: row.adminOrigin,
     entryVersion: row.entryVersion,
+    reusableBlockDocumentId: row.reusableBlockDocumentId,
+    reusableBlockVersion: row.reusableBlockVersion,
     expiresAt: new Date(row.expiresAt),
     usedAt: row.usedAt ? new Date(row.usedAt) : null,
     revokedAt: row.revokedAt ? new Date(row.revokedAt) : null,

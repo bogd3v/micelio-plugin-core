@@ -8,11 +8,13 @@ import {
   PREVIEW_RATE_WINDOW_SECONDS,
   PREVIEW_TOKEN_RATE_LIMIT,
 } from '../constants/preview'
+import { REUSABLE_BLOCK_UID } from '../constants/reusable-blocks'
 import { readableDraft, type UserAbility } from '../preview/access'
 import { readDraft, readDraftQuery } from '../preview/draft-query'
+import { referenceFields, reusableBlockDraftVersion, storedReferences } from '../reusable-blocks'
 import type { SiteScopeState } from '../site-scope'
 import { PreviewUnavailableError, type PreviewService } from '../services/preview'
-import type { PreviewResolvedGrant } from '../types/preview'
+import type { PreviewResolvedGrant, PreviewReusableBlockVersion } from '../types/preview'
 import { createRateLimiter } from '../utils/rate-limit'
 import { sendProblem } from '../utils/problem'
 
@@ -64,6 +66,33 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
     } as never)) as { updatedAt?: string | Date } | null
     if (!current?.updatedAt || !binding.entryVersion) return false
     return new Date(current.updatedAt).getTime() === new Date(binding.entryVersion).getTime()
+  }
+
+  /**
+   * Whether the page's published version, in the grant's locale, still references the grant's
+   * reusable block, and the block's draft is still the version the grant names. Read after the
+   * page, so a save of the block between the claim and the read is not served.
+   */
+  async function isReferenceOf(
+    uid: UID.ContentType,
+    binding: PreviewResolvedGrant & { reusableBlock: PreviewReusableBlockVersion }
+  ): Promise<boolean> {
+    const fields = referenceFields(strapi).filter((field) => field.uid === uid)
+    const references = await storedReferences(strapi, uid, fields, {
+      documentId: binding.entryDocumentId,
+      locale: binding.entryLocale ?? undefined,
+      published: true,
+    })
+    if (!references.includes(binding.reusableBlock.documentId)) return false
+    const current = await reusableBlockDraftVersion(strapi, {
+      documentId: binding.reusableBlock.documentId,
+      locale: binding.entryLocale,
+      siteDocumentId: binding.siteDocumentId,
+    })
+    return (
+      current !== undefined &&
+      new Date(current).getTime() === new Date(binding.reusableBlock.version).getTime()
+    )
   }
 
   return {
@@ -172,21 +201,40 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
       }
       const uid = binding.contentType as UID.ContentType
       const schema = strapi.contentType(uid)
-      const read = readDraftQuery(strapi, query, schema)
+      // Only a grant bound to a reference may populate the reusable block it serves as a draft.
+      const read = readDraftQuery(
+        strapi,
+        query,
+        schema,
+        binding.reusableBlock ? (REUSABLE_BLOCK_UID as UID.ContentType) : undefined
+      )
       if ('problem' in read) {
         refuse(ctx, 400, 'previewRequestInvalid', read.problem)
         return
       }
       const auth = ctx.state.auth
+      const { reusableBlock } = binding
+      const grantLocale = binding.entryLocale ?? undefined
       let entry
       try {
         entry = await readDraft(strapi, {
           uid,
           documentId: binding.entryDocumentId,
-          locale: binding.entryLocale ?? undefined,
+          locale: grantLocale,
           populate: read.populate,
           siteDocumentId: siteOf(ctx),
           auth,
+          // A grant bound to a reference reads the page as published, with the block's draft in place.
+          ...(reusableBlock
+            ? {
+                status: 'published' as const,
+                draftReference: {
+                  uid: REUSABLE_BLOCK_UID as UID.ContentType,
+                  documentId: reusableBlock.documentId,
+                  locale: grantLocale,
+                },
+              }
+            : {}),
         })
       } catch (error) {
         // The query passed the allowlist and Strapi still refuses it: that is the client's, not a 500.
@@ -196,14 +244,20 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
         refuse(ctx, 400, 'previewRequestInvalid', error.message)
         return
       }
-      if (!entry || (binding.actor === 'system' && !(await isVersionOf(uid, binding)))) {
+      const isCurrent = async (): Promise<boolean> =>
+        reusableBlock
+          ? isReferenceOf(uid, { ...binding, reusableBlock })
+          : binding.actor !== 'system' || isVersionOf(uid, binding)
+      if (!entry || !(await isCurrent())) {
         refuse(ctx, 404, 'previewRefused', REFUSED)
         return
       }
       ctx.set('Cache-Control', 'private, no-store')
       ctx.body = {
         data: await strapi.contentAPI.sanitize.output(entry, schema, { auth }),
-        meta: { actor: binding.actor },
+        meta: reusableBlock
+          ? { actor: binding.actor, measure: 'reference', reusableBlock }
+          : { actor: binding.actor },
       }
     },
   }

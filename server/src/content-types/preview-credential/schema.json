@@ -5,7 +5,7 @@
     "singularName": "preview-credential",
     "pluralName": "preview-credentials",
     "displayName": "Preview credential",
-    "description": "A preview token, grant or system grant of ADR-0019, stored as the hash of its value and bound to one draft (and, but for a system grant, to one admin user)"
+    "description": "A preview token, grant or system grant of ADR-0019, stored as the hash of its value and bound to one document (and, but for a system grant, to one admin user; a system grant bound to a reference also names a reusable block and its version)"
   },
   "options": {
     "draftAndPublish": false
@@ -43,6 +43,12 @@
       "type": "string"
     },
     "entryVersion": {
+      "type": "string"
+    },
+    "reusableBlockDocumentId": {
+      "type": "string"
+    },
+    "reusableBlockVersion": {
       "type": "string"
     },
     "siteDocumentId": {

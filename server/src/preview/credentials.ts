@@ -32,7 +32,8 @@ export function hashCredential(value: string): string {
  * and never logs it.
  *
  * @param binding - An admin user's binding for a token or grant; a system grant's for `system`,
- * which has no admin user and holds the draft's version instead.
+ * which has no admin user and holds the draft's version instead, or, bound to a reference, the
+ * reusable block and the version of its draft.
  * @param now - The moment of issue; the credential expires 60 s later for a token or a system
  * grant and 15 min later for a grant.
  */
@@ -42,11 +43,14 @@ export function issueCredential(
   now: Date = new Date()
 ): { value: string; record: PreviewCredentialRecord } {
   const value = randomBytes(32).toString('base64url')
+  const { reusableBlock, ...bound } = binding as PreviewSystemBinding
   const record: PreviewCredentialRecord = {
     adminUser: null,
     adminOrigin: null,
-    entryVersion: null,
-    ...binding,
+    ...bound,
+    entryVersion: bound.entryVersion ?? null,
+    reusableBlockDocumentId: reusableBlock?.documentId ?? null,
+    reusableBlockVersion: reusableBlock?.version ?? null,
     kind,
     hash: hashCredential(value),
     expiresAt: new Date(now.getTime() + LIFETIME_SECONDS[kind] * 1000),
@@ -62,7 +66,9 @@ export function issueCredential(
  * @remarks
  * One answer for every reason: an unknown, used, revoked, expired or wrong-kind credential, and
  * one of another site, document or locale, are all `false`, so a refusal names nothing. Only the
- * fields present in `expected` are compared; `entryLocale` compares `null` too.
+ * fields present in `expected` are compared; `entryLocale` compares `null` too. A system grant bound
+ * to a reference is the exception: it is usable only while `expected.reusableBlockVersion` is the
+ * version it was minted for, so a save of the block's draft since, or a missing version, refuses it.
  */
 export function mayUseCredential(
   record: PreviewCredentialRecord | null | undefined,
@@ -80,5 +86,17 @@ export function mayUseCredential(
   ) {
     return false
   }
-  return expected.entryLocale === undefined || record.entryLocale === expected.entryLocale
+  if (expected.entryLocale !== undefined && record.entryLocale !== expected.entryLocale) {
+    return false
+  }
+  return (
+    record.reusableBlockDocumentId == null ||
+    isSameInstant(record.reusableBlockVersion, expected.reusableBlockVersion)
+  )
+}
+
+/** Whether two dates name the same instant; `false` when either is missing or not a date. */
+function isSameInstant(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false
+  return new Date(a).getTime() === new Date(b).getTime()
 }

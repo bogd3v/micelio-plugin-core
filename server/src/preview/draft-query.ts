@@ -29,6 +29,19 @@ export interface PopulateNode {
   on?: Map<string, PopulateNode>
 }
 
+/**
+ * The one related document a read serves as its draft, in a locale, instead of its published
+ * version: the reusable block of a grant bound to a reference (ADR-0019, amendment of 2026-11-23).
+ */
+export interface DraftReference {
+  uid: UID.ContentType
+  documentId: string
+  locale: string | undefined
+}
+
+/** A `DraftReference` with the content API's authentication of the request, which its populate is sanitised for. */
+type DraftRead = DraftReference & { auth: unknown }
+
 /** The answer of {@link readDraftQuery}: why the query cannot be served, or what it asks for. */
 export type DraftQuery = { problem: string } | { populate: PopulateSpec }
 
@@ -55,12 +68,17 @@ class QueryProblem extends Error {}
  * attribute it is `fields` only, so the file's `related` relation is never reached. A name that is
  * not an attribute, a private attribute and a relation to an admin user or to no type are refused.
  *
+ * @param draftTarget - The type whose entries the read serves as a draft (the reusable block of a
+ * grant bound to a reference, ADR-0019, amendment of 2026-11-23). Under a relation to it, `fields`
+ * and its dynamic zones (the block's `blocks`) may be named, each with the rules of a dynamic zone
+ * of the document itself; `*` and every other attribute are refused. Absent for every other grant.
  * @returns The reason when the query is refused, else the populate to serve.
  */
 export function readDraftQuery(
   strapi: Core.Strapi,
   query: Record<string, unknown>,
-  schema: Schema.ContentType
+  schema: Schema.ContentType,
+  draftTarget?: UID.ContentType
 ): DraftQuery {
   try {
     for (const key of Object.keys(query)) {
@@ -70,7 +88,9 @@ export function readDraftQuery(
         )
       }
     }
-    return { populate: parsePopulate(strapi, query.populate, schema, 'document', 'populate') }
+    return {
+      populate: parsePopulate(strapi, query.populate, schema, 'document', 'populate', draftTarget),
+    }
   } catch (error) {
     if (error instanceof QueryProblem) return { problem: error.message }
     throw error
@@ -87,6 +107,11 @@ export function readDraftQuery(
  * published version, one of another site and a polymorphic relation are left out. The API token's
  * abilities still decide which relations the answer keeps (`sanitize.query` and `sanitize.output`).
  *
+ * With `status: 'published'` the document itself is read as its published version instead, and
+ * `null` answers when it has none. Every entry of `draftReference` it populates, at any depth, is
+ * read as that document's draft in its locale instead of its published version; it stays only when
+ * its published version belongs to the site, as any other.
+ *
  * @param auth - The content API's authentication of the request, for the token's abilities.
  * @throws `ValidationError` or `PaginationError` when Strapi refuses the query after all; the caller answers `400`.
  */
@@ -99,6 +124,9 @@ export async function readDraft(
     populate: PopulateSpec
     siteDocumentId: string
     auth: unknown
+    /** @defaultValue `'draft'` */
+    status?: 'draft' | 'published'
+    draftReference?: DraftReference
   }
 ): Promise<Entry | null> {
   const schema = strapi.contentType(options.uid)
@@ -111,10 +139,11 @@ export async function readDraft(
     ...params,
     documentId: options.documentId,
     locale: options.locale,
-    status: 'draft',
+    status: options.status ?? 'draft',
   } as never)) as Entry | null
   if (!entry) return null
-  await publishedRelations(strapi, entry, schema, options.populate)
+  const draft = options.draftReference && { ...options.draftReference, auth: options.auth }
+  await publishedRelations(strapi, entry, schema, options.populate, draft)
   await keepToSite(strapi, entry, schema, options.siteDocumentId)
   return entry
 }
@@ -169,12 +198,13 @@ function parsePopulate(
   strapi: Core.Strapi,
   value: unknown,
   schema: Schema.ContentType | Schema.Component,
-  scope: 'document' | 'related',
-  path: string
+  scope: 'document' | 'related' | 'zones',
+  path: string,
+  draftTarget: UID.ContentType | undefined
 ): PopulateSpec {
   const { all, pairs } = expand(value, path)
   if (all && pairs.length > 0) fail(`${path} cannot mix "*" with names`)
-  if (all && scope === 'related') fail(`${path} cannot be "*" under a relation`)
+  if (all && scope !== 'document') fail(`${path} cannot be "*" under a relation`)
   const children = new Map<string, PopulateNode>()
   for (const [name, sub] of pairs) {
     const here = `${path}[${name}]`
@@ -183,8 +213,11 @@ function parsePopulate(
     if (scope === 'related' && attribute.type !== 'media') {
       fail(`${here}: under a relation only a media attribute may be populated`)
     }
+    if (scope === 'zones' && attribute.type !== 'dynamiczone') {
+      fail(`${here}: under the reusable block only its blocks may be populated`)
+    }
     if (children.has(name)) fail(`${here} is named twice`)
-    const node = parseNode(strapi, sub, attribute, here)
+    const node = parseNode(strapi, sub, attribute, here, draftTarget)
     if (node) children.set(name, node)
   }
   return { all, children }
@@ -194,7 +227,8 @@ function parseNode(
   strapi: Core.Strapi,
   sub: unknown,
   attribute: AttributeLike,
-  path: string
+  path: string,
+  draftTarget: UID.ContentType | undefined
 ): PopulateNode | undefined {
   if (sub === false || sub === 'false') return undefined
   const options = sub === true || sub === 'true' || sub === '' ? {} : sub
@@ -217,19 +251,21 @@ function parseNode(
       const schema = strapi.contentType(target)
       const node: PopulateNode = { fields: fieldsOf(given.fields, schema, path) }
       if (given.populate !== undefined) {
+        // Of the draft a grant bound to a reference serves, only its blocks, as a zone of the document.
         node.populate = parsePopulate(
           strapi,
           given.populate,
           schema,
-          'related',
-          `${path}[populate]`
+          target === draftTarget ? 'zones' : 'related',
+          `${path}[populate]`,
+          undefined
         )
       }
       return node
     }
     case 'component':
       only('fields', 'populate')
-      return componentNode(strapi, given, attribute.component as UID.Component, path)
+      return componentNode(strapi, given, attribute.component as UID.Component, path, draftTarget)
     case 'dynamiczone': {
       only('on')
       if (given.on === undefined) return {}
@@ -244,7 +280,8 @@ function parseNode(
           strapi,
           fragment,
           { type: 'component', component: uid },
-          `${path}[on][${uid}]`
+          `${path}[on][${uid}]`,
+          draftTarget
         )
         if (node) on.set(uid, node)
       }
@@ -259,7 +296,8 @@ function componentNode(
   strapi: Core.Strapi,
   given: Record<string, unknown>,
   uid: UID.Component,
-  path: string
+  path: string,
+  draftTarget: UID.ContentType | undefined
 ): PopulateNode {
   const component = strapi.components[uid]
   const node: PopulateNode = { fields: fieldsOf(given.fields, component, path) }
@@ -269,7 +307,8 @@ function componentNode(
       given.populate,
       component,
       'document',
-      `${path}[populate]`
+      `${path}[populate]`,
+      draftTarget
     )
   }
   return node
@@ -354,12 +393,16 @@ function componentPopulate(strapi: Core.Strapi, node: PopulateNode, uid: UID.Com
   return Object.keys(options).length > 0 ? options : true
 }
 
-/** Replaces each entry a relation populated with its published version, read with the fields asked. */
+/**
+ * Replaces each entry a relation populated with its published version, read with the fields asked;
+ * an entry of `draft` with that document's draft instead.
+ */
 async function publishedRelations(
   strapi: Core.Strapi,
   entry: Entry,
   schema: Schema.ContentType | Schema.Component,
-  spec: PopulateSpec
+  spec: PopulateSpec,
+  draft: DraftRead | undefined
 ): Promise<void> {
   for (const [name, attribute] of Object.entries(schema.attributes) as [string, AttributeLike][]) {
     const value = entry[name]
@@ -374,14 +417,14 @@ async function publishedRelations(
       const target = attribute.target as UID.ContentType
       const published: Entry[] = []
       for (const related of Array.isArray(value) ? (value as Entry[]) : [value as Entry]) {
-        const read = await publishedOf(strapi, target, related, node ?? {})
+        const read = await publishedOf(strapi, target, related, node ?? {}, draft)
         if (read) published.push(read)
       }
       entry[name] = Array.isArray(value) ? published : (published[0] ?? null)
     } else if (attribute.type === 'component') {
       const component = strapi.components[attribute.component as UID.Component]
       for (const child of Array.isArray(value) ? (value as Entry[]) : [value as Entry]) {
-        await publishedRelations(strapi, child, component, node?.populate ?? NO_POPULATE)
+        await publishedRelations(strapi, child, component, node?.populate ?? NO_POPULATE, draft)
       }
     } else if (attribute.type === 'dynamiczone') {
       for (const child of value as Entry[]) {
@@ -391,7 +434,8 @@ async function publishedRelations(
           strapi,
           child,
           strapi.components[uid],
-          node?.on?.get(uid)?.populate ?? NO_POPULATE
+          node?.on?.get(uid)?.populate ?? NO_POPULATE,
+          draft
         )
       }
     }
@@ -402,9 +446,21 @@ async function publishedOf(
   strapi: Core.Strapi,
   target: UID.ContentType,
   related: Entry,
-  node: PopulateNode
+  node: PopulateNode,
+  draft: DraftRead | undefined
 ): Promise<Entry | null> {
   if (typeof related.documentId !== 'string') return null
+  if (draft?.uid === target) {
+    const isDraft = draft.documentId === related.documentId
+    const locale = typeof related.locale === 'string' ? related.locale : undefined
+    return asDocument(strapi, target, {
+      documentId: related.documentId,
+      locale: isDraft ? draft.locale : locale,
+      status: isDraft ? 'draft' : 'published',
+      node,
+      auth: draft.auth,
+    })
+  }
   const media: Record<string, unknown> = {}
   for (const [name, child] of node.populate?.children ?? []) {
     media[name] = child.fields ? { fields: child.fields } : true
@@ -416,6 +472,45 @@ async function publishedOf(
     fields: node.fields,
     populate: Object.keys(media).length > 0 ? media : undefined,
   } as never)) as Entry | null
+}
+
+/**
+ * An entry of the type a grant bound to a reference serves as a draft (`DraftReference`): the
+ * document it names as its draft, any other as its published version, with the `fields` and
+ * `blocks` asked, sanitised for the request's API token as the document's own populate is, and the
+ * entries their own relations hold read as their published versions.
+ */
+async function asDocument(
+  strapi: Core.Strapi,
+  target: UID.ContentType,
+  read: {
+    documentId: string
+    locale: string | undefined
+    status: 'draft' | 'published'
+    node: PopulateNode
+    auth: unknown
+  }
+): Promise<Entry | null> {
+  const schema = strapi.contentType(target)
+  const { node } = read
+  // Within the token's abilities, as the populate of the document itself in `readDraft`.
+  const params = await strapi.contentAPI.sanitize.query(
+    {
+      fields: node.fields,
+      populate: node.populate ? draftPopulate(strapi, node.populate, schema) : undefined,
+    },
+    schema,
+    { auth: read.auth } as never
+  )
+  const entry = (await strapi.documents(target).findOne({
+    ...params,
+    documentId: read.documentId,
+    locale: read.locale,
+    status: read.status,
+  } as never)) as Entry | null
+  if (entry && node.populate)
+    await publishedRelations(strapi, entry, schema, node.populate, undefined)
+  return entry
 }
 
 /** Receives the entries a relation holds and answers the ones to keep. */
