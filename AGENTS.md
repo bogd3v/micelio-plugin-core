@@ -106,6 +106,7 @@ npm run build -w @micelio/icons  # the glyphs, NOTICE and LICENSES of @micelio/i
     (`ProseHeadingError`, which the `site-scope` route middleware answers as the problem detail, naming the zone, position and
     heading); the `block-options` document service middleware and the dry run of an import run it. `docs/blocks.md`, "Prose".
   - `testimonial-rating/` is the rating of a testimonial at save (micelio-cms#451): `rules.ts` (pure: the first `rating` of a `testimonials` item that is not a whole number from 1 to 5) and `error.ts` (`TestimonialRatingError`, which the `site-scope` route middleware answers as the problem detail `testimonialRatingInvalid`, naming the position and the rating); the `block-options` document service middleware and the dry run of an import run it. `docs/api.md`, `docs/blocks.md`.
+  - `code-highlight/` is the highlighted lines of the `code` block at save (micelio-cms#448): `rules.ts` (pure: the first `highlight` line of a `shared.code` block that is not a whole number from 1 to the lines of its `code`) and `error.ts` (`CodeHighlightError`, which the `site-scope` route middleware answers as the problem detail `codeHighlightInvalid`, naming the position and the line); the `block-options` document service middleware and the dry run of an import run it. `docs/api.md`, `docs/blocks.md`, "Code".
   - `islands/` is the rule of the islands (#56): `rules.ts` (pure: the island blocks of a zone whose
     static alternative lacks a field, `islandAlternativeMissing`, and a zone with more than one
     `scene` of `variant: background`, `sceneBackgroundLimit`), `check.ts` (reads a draft's zones
@@ -165,7 +166,7 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
     a site's settings of a block and a page that holds one) it is the shared folder of section 4 of
     the standard.
 - `contract/` — the block catalogue (ADR-0018) and the icon catalogue (ADR-0021: `icons.ts`, the pinned Tabler version, its names and the alias table; `icons.names.json` and `icons.schema.json` generated, the schema published as `./icons.schema.json`): `seo.ts` (the SEO and social limits, derivations and
-  checks the server and the admin share), `blocks.ts` (the 19 entries, `reusable` and the `group` key of a page section among them),
+  checks the server and the admin share), `blocks.ts` (the 20 entries, `code`, `reusable` and the `group` key of a page section among them),
   `islands.ts` (what the catalogue and the admin share about islands: the five kinds, the 1 MB
   rule that decides the trigger, and what counts as a filled field), `options.ts` (the
   presentation options vocabulary: nine names,

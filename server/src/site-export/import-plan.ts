@@ -8,6 +8,8 @@ import { findBackgroundSceneExcess } from '../islands/rules'
 import { ProseHeadingError } from '../prose-headings/error'
 import { findProseHeadingViolation } from '../prose-headings/rules'
 import { SectionAnchorError } from '../section-anchor/error'
+import { CodeHighlightError } from '../code-highlight/error'
+import { findHighlightViolation } from '../code-highlight/rules'
 import { TestimonialRatingError } from '../testimonial-rating/error'
 import { findRatingViolation } from '../testimonial-rating/rules'
 import { findAnchorViolation } from '../section-anchor/rules'
@@ -288,6 +290,14 @@ function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, wh
     throw new ExportError(
       'exportDocumentInvalid',
       `${where}: ${new TestimonialRatingError(rating).message}`
+    )
+  }
+  // And a highlighted line of a `code` block.
+  const highlight = findHighlightViolation(zones)
+  if (highlight) {
+    throw new ExportError(
+      'exportDocumentInvalid',
+      `${where}: ${new CodeHighlightError(highlight).message}`
     )
   }
   // And the groups of ADR-0022: one run each, with one tone.

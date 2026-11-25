@@ -1980,6 +1980,70 @@
       "required": ["runtime", "code"],
       "x-strapi": { "type": "component", "component": "shared.playground", "repeatable": false }
     },
+    "code": {
+      "type": "object",
+      "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "code": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "text" } }, { "type": "null" }]
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "bash",
+                "shell",
+                "javascript",
+                "typescript",
+                "json",
+                "yaml",
+                "xml",
+                "css",
+                "python",
+                "sql",
+                "diff",
+                "dockerfile",
+                "ini",
+                "markdown"
+              ],
+              "x-strapi": { "type": "enumeration" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "filename": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "highlight": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+              "x-strapi": { "type": "json" }
+            },
+            { "type": "null" }
+          ]
+        },
+        "caption": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "text" } }, { "type": "null" }]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["prose", "wide", "full"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "prose"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "x-strapi": { "type": "component", "component": "shared.code", "repeatable": false }
+    },
     "reusable": {
       "type": "object",
       "properties": {

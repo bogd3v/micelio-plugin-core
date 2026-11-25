@@ -100,7 +100,7 @@ describe('the options of the catalogue', () => {
   // The artboard's "blocks shown" for each option.
   it.each<[OptionName, string[]]>([
     ['layout', ['hero', 'cta', 'testimonials']],
-    ['width', ['media', 'quote', 'gallery']],
+    ['width', ['media', 'quote', 'gallery', 'code']],
     ['columns', ['feature-grid', 'stats', 'pricing', 'logo-cloud', 'testimonials', 'post-list']],
     ['density', ['feature-grid', 'gallery', 'logo-cloud', 'testimonials', 'faq', 'post-list']],
     ['align', ['quote', ...PAGE_SECTIONS]],

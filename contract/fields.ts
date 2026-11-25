@@ -6,7 +6,7 @@ import { ICON_FIELD } from './icons'
 
 /** What JSON Schema does not say about a Strapi attribute: the `x-strapi` keyword of a field. */
 export type StrapiAnnotation =
-  | { type: 'string' | 'text' | 'richtext' | 'integer' | 'boolean' | 'enumeration' }
+  | { type: 'string' | 'text' | 'richtext' | 'integer' | 'boolean' | 'enumeration' | 'json' }
   | { type: 'media'; multiple: boolean; allowedTypes: readonly MediaType[] }
   | { type: 'relation'; relation: 'oneToOne'; target: string }
   | { type: 'component'; component: string; repeatable: boolean }
@@ -103,6 +103,14 @@ export function boolean(options: Presence & { default?: boolean } = {}): Field {
     z.boolean().meta({ [STRAPI_KEYWORD]: { type: 'boolean' }, ...defaultOf(options.default) }),
     options
   )
+}
+
+/**
+ * A JSON value the content API answers as stored: Strapi's `json`. `schema` is the shape its value
+ * has; Strapi itself checks none of it, so a rule on the shape is the server's check at save.
+ */
+export function json(schema: z.ZodType, options: Presence = {}): Field {
+  return presence(schema.meta({ [STRAPI_KEYWORD]: { type: 'json' } }), options)
 }
 
 /** One of a closed list of stored values: Strapi's `enumeration`. */

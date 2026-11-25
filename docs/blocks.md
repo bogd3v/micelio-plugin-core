@@ -2,7 +2,7 @@
 
 The blocks a page is made of, as a contract ([ADR-0018](https://github.com/bogd3v/micelio/blob/main/docs/adr/0018-blocks-as-a-contract.md)): each block has a stable `id`, the `schema` of the Strapi component that stores its content, its presentation `options`, its `cost` and its `static` alternative, and optionally the `module` of `site.modules` it needs. The catalogue is the builder's palette and the theme creator's reference.
 
-The first catalogue was the 19 blocks of ADR-0018, section 6, read from `micelio-cms` `v0.4.0`; it has 19 now: `rich-text` (`section.rich-text`, the page's Markdown section) left it and `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page and in an article ([Prose](#prose), micelio-cms#445), and `reusable` (`section.reusable`) references a reusable block ([Reusable](#reusable), ADR-0022). It changes no block's content: the components stay in `micelio-cms` until the cut-over of release line 0.7. The presentation options of the vocabulary ([below](#presentation-options)) are the one addition.
+The first catalogue was the 19 blocks of ADR-0018, section 6, read from `micelio-cms` `v0.4.0`; it has 20 now: `rich-text` (`section.rich-text`, the page's Markdown section) left it and `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page and in an article ([Prose](#prose), micelio-cms#445), `reusable` (`section.reusable`) references a reusable block ([Reusable](#reusable), ADR-0022), and `code` (`shared.code`) shows code with a file name, highlighted lines and a caption ([Code](#code), micelio-cms#448). It changes no block's content: the components stay in `micelio-cms` until the cut-over of release line 0.7. The presentation options of the vocabulary ([below](#presentation-options)) are the one addition.
 
 ## Where it lives
 
@@ -30,7 +30,7 @@ A block's `options` are a closed set of presentation values (ADR-0018, section 1
 | Option      | Values, in the artboard's order (default in bold) | Exposed by                                                                    |
 | ----------- | ------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `layout`    | **`centered`**, `split`, `stacked`                | `hero`, `cta`, `testimonials`                                                 |
-| `width`     | **`prose`**, `wide`, `full`                       | `gallery`, `media`, `quote`                                                   |
+| `width`     | **`prose`**, `wide`, `full`                       | `code`, `gallery`, `media`, `quote`                                           |
 | `columns`   | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`, `testimonials`, `post-list` |
 | `density`   | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list`   |
 | `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the thirteen page sections other than `reusable`                  |
@@ -91,6 +91,14 @@ The twelve sections whose renderer uses `SectionHead` (`hero`, `feature-grid`, `
 Every page section (the blocks whose `group` is `section`, `reusable` included) has an optional `group` key, the part `section.group` with two required fields: `groupId`, an opaque string unique in the page, and `tone`, a value of the `tone` option (`default`, `raised`, `accent`) with no default (ADR-0022, section 2). Consecutive blocks that share a `groupId` form one band on the surface of its `tone`; the sequence stays one flat list, so a block keeps its `blockId` and position (ADR-0019 is unaffected). Groups are one level: a block has one key, so a member is never a group. The article blocks and `prose` take no key. Adding it is a MINOR of the contract; a block without it renders as before.
 
 **Validation at save.** On `create`, `update` and `clone` the plugin refuses with `blockGroupInvalid` ([`docs/api.md`](api.md#errors)) a save where a `groupId` appears in two separate runs (a block of another group, of none, or a host's own component sits between its members, or it is in two zones) or two members of one `groupId` set different `tone`s; the problem detail names the position of the refused block and the earlier member. A key that is absent, `null` or has an empty `groupId` makes no member. A group of one is valid, so removing a block never makes a save fail. A member's own `tone` option is ignored while it is in the group, not refused: it keeps its value. The dry run and the apply of an import check it too. Stored content is not re-checked.
+
+## Code
+
+`code` (`shared.code`) shows code with a file name, highlighted lines and a caption, allowed in a page's zone and in an article's (its `group` is `both`; micelio-cms#448). Every field is optional and none has a default. `language` enumerates the languages the server's highlighter registers (highlight.js, run on the server only): `bash`, `shell`, `javascript`, `typescript`, `json`, `yaml`, `xml`, `css`, `python`, `sql`, `diff`, `dockerfile`, `ini` and `markdown`. `highlight` is a list of line numbers, counted from 1; an editor may type a range (`2-3, 7`), but what is stored is the list. Its one presentation option is `width`, with the values of the vocabulary: because the block is in both zones, an article is offered `full` too.
+
+**Highlighted lines at save.** On `create`, `update` and `clone`, and in the dry run and the apply of an import, the plugin refuses with `codeHighlightInvalid` ([`docs/api.md`](api.md#errors)) a `highlight` that is not a list or has an entry that is not a whole number from 1 to the number of lines of `code`. A final line break does not open another line, and a `highlight` with a line and no `code` is refused. `null`, an absent `highlight` and an empty list are no lines and are accepted.
+
+Its `cost` is not measured yet (the renderer is the third pull request of micelio-cms#448): it declares that of `prose`, which already styles code, until `npm run perf` of `micelio` measures it.
 
 ## Reusable
 
@@ -168,6 +176,7 @@ Each block's JSON Schema describes its content as the content API answers it, it
 | `richtext`                                              | `string` with `contentMediaType: text/markdown`                                 |
 | `integer`, `boolean`                                    | `integer` with `minimum` and `maximum`, `boolean`                               |
 | `enumeration`                                           | `string` with `enum`                                                            |
+| `json`                                                  | The value's own schema (`highlight`: a list of integers from 1)                 |
 | `media`, with `multiple` and `allowedTypes`             | An uploaded file (`url`, `mime` and more), or a list of them                    |
 | `relation`, with `relation` and `target`                | An entry with its `documentId`                                                  |
 | `component`, with `component` and `repeatable`          | The part's object, or a list of them with `minItems`, `maxItems`                |
@@ -257,6 +266,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `media`          | `shared.media`           |                                   | `width`, `ratio`                                | 543          | 1400        | No                     |
 | `slider`         | `shared.slider`          |                                   | `ratio`                                         | 1545         | 2615        | No                     |
 | `playground`     | `shared.playground`      |                                   | `height`                                        | 633          | 1758        | `playground` (runtime) |
+| `code`           | `shared.code`            |                                   | `width`                                         | 1895         | 610         | No                     |
 | `reusable`       | `section.reusable`       |                                   |                                                 | 805          | 1822        | No                     |
 
 ### `hero`
@@ -621,6 +631,23 @@ The measurement of 2026-10-23, in gzip bytes:
 | `expectedOutput` | text        | No       | at most 5000 characters       |
 | `setup`          | text        | No       | at most 20000 characters      |
 | `caption`        | text        | No       |                               |
+
+### `code`
+
+- **Component:** `shared.code` (page sections, and article and About blocks)
+- **Options:**
+  - `width`: `prose`, `wide`, `full`; default `prose`
+- **Cost:** 1895 B of CSS and 610 B of JS, gzip
+- **Static:** Itself: the code is highlighted on the server and needs no JavaScript. A copy button, if the theme offers one, is a progressive enhancement and is absent without JavaScript.
+
+| Field       | Type        | Required | Details                                                                                                                             |
+| ----------- | ----------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `blockId`   | string      | No       |                                                                                                                                     |
+| `code`      | text        | No       |                                                                                                                                     |
+| `language`  | enumeration | No       | `bash`, `shell`, `javascript`, `typescript`, `json`, `yaml`, `xml`, `css`, `python`, `sql`, `diff`, `dockerfile`, `ini`, `markdown` |
+| `filename`  | string      | No       |                                                                                                                                     |
+| `highlight` | json        | No       |                                                                                                                                     |
+| `caption`   | text        | No       |                                                                                                                                     |
 
 ### `reusable`
 
