@@ -18,6 +18,13 @@ export interface WeightRequest {
   documentId: string
   /** The locale the system grant was minted for; `null` for a type that is not localised. */
   locale: string | null
+  /**
+   * Set when the request's grant is bound to a reference (a reusable block's draft in place of
+   * the block of a published page). `weightUrl` then adds `measure=reference`, which tells the
+   * frontend which `populate` to send in its one read. It is no credential and names no document
+   * or version. Unset, the URL is the one a page's own publish asks.
+   */
+  boundToReference?: boolean
 }
 
 /** What the client uses from outside, so a test can stand in for the network and the clock. */
@@ -51,7 +58,10 @@ export function retryDelayMs(header: string | null, now: Date = new Date()): num
   return Math.min(seconds, WEIGHT_RETRY_CAP_SECONDS) * 1000
 }
 
-/** The URL of a document's weight report in the dynamic mode, on the site's own origin and path. */
+/**
+ * The URL of a document's weight report in the dynamic mode, on the site's own origin and path;
+ * `measure=reference` follows the locale for a grant bound to a reference.
+ */
 export function weightUrl(request: WeightRequest): URL {
   const url = new URL(request.siteUrl)
   const prefix = url.pathname.replace(/\/+$/, '')
@@ -61,6 +71,7 @@ export function weightUrl(request: WeightRequest): URL {
   url.searchParams.set('mode', 'dynamic')
   // The locale the grant was minted for: the frontend serves the grant's and does not compare.
   if (request.locale) url.searchParams.set('locale', request.locale)
+  if (request.boundToReference) url.searchParams.set('measure', 'reference')
   return url
 }
 
