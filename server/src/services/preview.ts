@@ -6,7 +6,13 @@ import {
 } from '../constants/preview'
 import { SITE_UID } from '../constants/site'
 import { abilityOf, readableDraft } from '../preview/access'
-import { hashCredential, issueCredential, mayUseCredential } from '../preview/credentials'
+import {
+  bindingOf,
+  hashCredential,
+  issueCredential,
+  mayUseCredential,
+  overridesOf,
+} from '../preview/credentials'
 import { reusableBlockDraftVersion } from '../reusable-blocks'
 import type {
   PreviewBinding,
@@ -88,8 +94,13 @@ export class PreviewUnavailableError extends Error {
   }
 }
 
-type CredentialRow = Omit<PreviewCredentialRecord, 'expiresAt' | 'usedAt' | 'revokedAt'> & {
+type CredentialRow = Omit<
+  PreviewCredentialRecord,
+  'expiresAt' | 'usedAt' | 'revokedAt' | 'theme' | 'accentOverrides'
+> & {
   id: number
+  theme: PreviewCredentialRecord['theme'] | null
+  accentOverrides: PreviewCredentialRecord['accentOverrides'] | null
   expiresAt: string | Date
   usedAt: string | Date | null
   revokedAt: string | Date | null
@@ -174,7 +185,8 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewService => {
         data: { usedAt: new Date() },
       })) as { count: number }
       if (claimed.count !== 1) return null
-      const binding = adminBindingOf(row)
+      // The grant is bound like the token, its override included.
+      const binding = bindingOf(toRecord(row))
       if (!binding || !(await stillReadable(binding))) return null
       const { value, record } = issueCredential('grant', binding)
       await save(record)
@@ -185,6 +197,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewService => {
         contentType: row.contentType,
         documentId: row.entryDocumentId,
         locale: row.entryLocale,
+        ...(binding.overrides ? { overrides: binding.overrides } : {}),
       }
     },
 
@@ -218,11 +231,24 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewService => {
           data: { usedAt: new Date() },
         })) as { count: number }
         if (claimed.count !== 1) return null
-        return { ...targetOf(row), actor: 'system', entryVersion: row.entryVersion, reusableBlock }
+        // A system grant is minted by plugin code, never from a body: it binds no override.
+        return {
+          ...targetOf(row),
+          actor: 'system',
+          entryVersion: row.entryVersion,
+          reusableBlock,
+          overrides: null,
+        }
       }
-      const binding = adminBindingOf(row)
+      const binding = bindingOf(record)
       if (!binding || !(await stillReadable(binding))) return null
-      return { ...targetOf(row), actor: 'admin', entryVersion: null, reusableBlock: null }
+      return {
+        ...targetOf(row),
+        actor: 'admin',
+        entryVersion: null,
+        reusableBlock: null,
+        overrides: overridesOf(record),
+      }
     },
 
     revoke,
@@ -253,12 +279,6 @@ function targetOf(row: PreviewTarget): PreviewTarget {
   }
 }
 
-/** The binding of a token or grant row; `null` for a row without an admin user or origin, which no token or grant is. */
-function adminBindingOf(row: CredentialRow): PreviewBinding | null {
-  if (row.adminUser === null || row.adminOrigin === null) return null
-  return { ...targetOf(row), adminUser: row.adminUser, adminOrigin: row.adminOrigin }
-}
-
 /** The reusable block and version a system grant bound to a reference names; `null` for any other credential. */
 function referenceOf(record: PreviewCredentialRecord): PreviewReusableBlockVersion | null {
   if (record.kind !== 'system' || record.reusableBlockDocumentId == null) return null
@@ -275,6 +295,9 @@ function toRecord(row: CredentialRow): PreviewCredentialRecord {
     entryVersion: row.entryVersion,
     reusableBlockDocumentId: row.reusableBlockDocumentId,
     reusableBlockVersion: row.reusableBlockVersion,
+    // A column without an override reads back as `null`; the record leaves the key out.
+    ...(row.theme != null ? { theme: row.theme } : {}),
+    ...(row.accentOverrides != null ? { accentOverrides: row.accentOverrides } : {}),
     expiresAt: new Date(row.expiresAt),
     usedAt: row.usedAt ? new Date(row.usedAt) : null,
     revokedAt: row.revokedAt ? new Date(row.revokedAt) : null,

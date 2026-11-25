@@ -6,9 +6,11 @@ import {
   PREVIEW_TOKEN_TTL_SECONDS,
 } from '../server/src/constants/preview'
 import {
+  bindingOf,
   hashCredential,
   issueCredential,
   mayUseCredential,
+  overridesOf,
 } from '../server/src/preview/credentials'
 import type { PreviewBinding, PreviewSystemBinding } from '../server/src/types/preview'
 
@@ -46,6 +48,45 @@ describe('a preview credential', () => {
   it('is bound to the admin user, origin, site, type, document and locale', () => {
     const { record } = issueCredential('grant', BINDING, NOW)
     expect(record).toMatchObject(BINDING)
+  })
+
+  it('copies the overrides of a token to its grant, and binds none by default', () => {
+    const overrides: NonNullable<PreviewBinding['overrides']> = {
+      theme: { id: 'sendero', version: '1.2.0' },
+      accentOverrides: [
+        { mode: 'light', color: '#1A2B3C' },
+        { mode: 'dark', color: '#ffeedd' },
+      ],
+    }
+    const token = issueCredential('token', { ...BINDING, overrides }, NOW).record
+    // Stored as given, next to the other bindings, and not hashed.
+    expect(token).toMatchObject({ ...BINDING, ...overrides })
+    expect(overridesOf(token)).toEqual(overrides)
+    // The exchange issues the grant from the token's binding: the same override.
+    const grant = issueCredential('grant', bindingOf(token)!, NOW).record
+    expect(grant).toMatchObject({ kind: 'grant', ...BINDING, ...overrides })
+    expect(overridesOf(grant)).toEqual(overrides)
+    // Either field alone is carried alone.
+    const themeOnly = issueCredential(
+      'token',
+      { ...BINDING, overrides: { theme: overrides.theme } },
+      NOW
+    )
+    expect(bindingOf(themeOnly.record)?.overrides).toEqual({ theme: overrides.theme })
+    const accentsOnly = { accentOverrides: overrides.accentOverrides }
+    const accentToken = issueCredential('token', { ...BINDING, overrides: accentsOnly }, NOW)
+    expect(bindingOf(accentToken.record)?.overrides).toEqual(accentsOnly)
+    // A token asked without one, its grant and a system grant bind none.
+    const plain = issueCredential('token', BINDING, NOW).record
+    const plainGrant = issueCredential('grant', bindingOf(plain)!, NOW).record
+    const system = issueCredential('system', SYSTEM_BINDING, NOW).record
+    for (const record of [plain, plainGrant, system]) {
+      expect(record).not.toHaveProperty('theme')
+      expect(record).not.toHaveProperty('accentOverrides')
+      expect(overridesOf(record)).toBeNull()
+    }
+    expect(bindingOf(plain)).toEqual(BINDING)
+    expect(bindingOf(system)).toBeNull()
   })
 
   it('lives 60 seconds as a token and 15 minutes as a grant', () => {

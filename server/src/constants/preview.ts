@@ -30,3 +30,6 @@ export const PREVIEW_TOKEN_RATE_LIMIT = 20
 
 /** Exchanges an API token may make in a window. */
 export const PREVIEW_EXCHANGE_RATE_LIMIT = 60
+
+/** The most accent overrides a preview token may carry (ADR-0019, amendment of 2026-11-25). */
+export const PREVIEW_ACCENT_OVERRIDES_MAX = 16
