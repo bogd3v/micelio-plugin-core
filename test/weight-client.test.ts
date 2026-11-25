@@ -111,6 +111,34 @@ describe('when the frontend rate limits', () => {
   })
 })
 
+describe('the marker of a grant bound to a reference', () => {
+  const bound: WeightRequest = { ...request, boundToReference: true }
+
+  it('adds measure=reference to the weight URL of a request whose grant is bound to a reference', () => {
+    expect(weightUrl(bound).href).toBe(
+      'https://example.com/api/preview/api%3A%3Apage.page/abc123/weight?mode=dynamic&locale=es&measure=reference'
+    )
+    expect(weightUrl({ ...bound, locale: null }).href).toBe(
+      'https://example.com/api/preview/api%3A%3Apage.page/abc123/weight?mode=dynamic&measure=reference'
+    )
+  })
+
+  it('keeps measure=reference on every retry, each with a new grant', async () => {
+    const { value, grants, calls } = deps(tooMany('0'), tooMany('0'), ok())
+    await requestWeight(value, bound)
+    expect(grants).toEqual(['grant-1', 'grant-2', 'grant-3'])
+    const urls = (calls.mock.calls as unknown as [URL][]).map(([url]) => url.href)
+    expect(urls).toHaveLength(3)
+    for (const url of urls) expect(new URL(url).searchParams.get('measure')).toBe('reference')
+    expect(new Set(urls).size).toBe(1)
+  })
+
+  it('adds no measure to the weight URL of any other request', () => {
+    expect(weightUrl(request).searchParams.has('measure')).toBe(false)
+    expect(weightUrl({ ...request, boundToReference: false }).href).toBe(weightUrl(request).href)
+  })
+})
+
 describe('when the weight cannot be had', () => {
   it.each([
     ['the connection fails', new TypeError('fetch failed')],
