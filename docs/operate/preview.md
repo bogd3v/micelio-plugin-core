@@ -21,12 +21,21 @@ No shared secret is involved: the plugin needs no new variable, and the frontend
 
 | Credential                        | Valid for | Use                      | Bound to                                                                                                                                                  |
 | --------------------------------- | --------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Token                             | 60 s      | Once                     | The admin user, site, content type, `documentId`, locale and the admin's origin                                                                           |
+| Token                             | 60 s      | Once                     | The admin user, site, content type, `documentId`, locale and the admin's origin, and the override it was asked with, if any                               |
 | Grant                             | 15 min    | Until it expires or ends | The same as the token it came from                                                                                                                        |
 | System grant                      | 60 s      | Once                     | The site, content type, `documentId`, locale and the version (`updatedAt`) of the draft; no admin user                                                    |
 | System grant bound to a reference | 60 s      | Once                     | The site, the page's content type, `documentId` and locale, and a reusable block's `documentId` and the version (`updatedAt`) of its draft; no admin user |
 
 All four are random, opaque values (not JWTs), and the CMS stores only their hash. A used, expired, unknown, revoked or wrong-site token gets the same refusal, `404` `previewRefused`, which names nothing; do the same for the draft route and answer it as for a draft that does not exist, with `private, no-store`.
+
+## Preview overrides
+
+A token may carry an **override**: a theme to render with instead of the site's active one, accents per mode instead of the saved ones, or both (ADR-0019, amendment of 2026-11-25). The Themes page and the customizer ask for one to preview a candidate before anything is saved; [api.md](../api.md#preview-overrides) has the body, its grammar and the refusal.
+
+- **What it is.** One more binding of the token, set by the CMS from the token's body. The frontend learns it only from the exchange (`data.overrides`) and the draft read (`meta.overrides`), never from the frame's URL, a cookie or a message, and renders with it only the draft responses of the admin grant that carries it. The CMS checks only its grammar; a theme the frontend does not hold, or an accent that fails contrast, is the frontend's to handle.
+- **How long it lives.** As long as the token and then its grant: 60 seconds, then the 15 minutes of the grant, ending as any grant ends (below). It never changes during that life; another candidate is another token, an exchange and a reload of the frame, within the limits below. It changes no content and no setting of the site.
+- **Where it is kept.** In the token's row of the credential store and then the grant's (`theme` and `accentOverrides`), as given and not hashed: it is no secret. The rows go when expired credentials are deleted (below).
+- **What has none.** A token asked without an override, its grant and every system grant: their answers carry no `overrides`, so a weight report is always of the site's own theme and accents.
 
 ## The system grant
 

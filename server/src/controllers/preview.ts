@@ -1,7 +1,10 @@
 import type { Core, UID } from '@strapi/strapi'
 import { errors } from '@strapi/utils'
 import type { Context } from 'koa'
+import accentOverrideSchema from '../components/site/accent-override.json'
+import themeSchema from '../components/site/theme.json'
 import {
+  PREVIEW_ACCENT_OVERRIDES_MAX,
   PREVIEW_EXCHANGE_RATE_LIMIT,
   PREVIEW_GRANT_HEADER,
   PREVIEW_PERMISSION,
@@ -14,7 +17,11 @@ import { readDraft, readDraftQuery } from '../preview/draft-query'
 import { referenceFields, reusableBlockDraftVersion, storedReferences } from '../reusable-blocks'
 import type { SiteScopeState } from '../site-scope'
 import { PreviewUnavailableError, type PreviewService } from '../services/preview'
-import type { PreviewResolvedGrant, PreviewReusableBlockVersion } from '../types/preview'
+import type {
+  PreviewOverrides,
+  PreviewResolvedGrant,
+  PreviewReusableBlockVersion,
+} from '../types/preview'
 import { createRateLimiter } from '../utils/rate-limit'
 import { sendProblem } from '../utils/problem'
 
@@ -25,6 +32,15 @@ const TITLES: Record<number, string> = {
   409: 'Conflict',
   429: 'Too Many Requests',
 }
+
+/**
+ * The grammar of a preview override: the regexes of the site's theme and accent override
+ * components, read from their schemas so the two never drift (ADR-0019, amendment of 2026-11-25).
+ */
+const THEME_ID = new RegExp(themeSchema.attributes.themeId.regex)
+const THEME_VERSION = new RegExp(themeSchema.attributes.themeVersion.regex)
+const ACCENT_MODE = new RegExp(accentOverrideSchema.attributes.mode.regex)
+const ACCENT_COLOR = new RegExp(accentOverrideSchema.attributes.color.regex)
 
 /** One answer for every refusal of a token or a grant, so it names nothing. */
 const REFUSED = 'There is nothing to preview with this credential.'
@@ -115,7 +131,9 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
           ctx,
           400,
           'previewRequestInvalid',
-          'The body needs uid and documentId as strings; locale is a string or null'
+          'The body needs uid and documentId as strings; locale is a string or null; theme is ' +
+            `{ id, version } and accentOverrides at most ${PREVIEW_ACCENT_OVERRIDES_MAX} ` +
+            '{ mode, color } with distinct modes, in the grammar of the site theme'
         )
         return
       }
@@ -152,6 +170,7 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
           entryDocumentId: body.documentId,
           // The locale found, not the one asked: a request without `locale` gets the default one.
           entryLocale: access.draft.locale,
+          ...(body.overrides ? { overrides: body.overrides } : {}),
         })
         // The URL carries the token: no cache keeps it.
         ctx.set('Cache-Control', 'private, no-store')
@@ -257,7 +276,10 @@ export default ({ strapi }: { strapi: Core.Strapi }): PreviewController => {
         data: await strapi.contentAPI.sanitize.output(entry, schema, { auth }),
         meta: reusableBlock
           ? { actor: binding.actor, measure: 'reference', reusableBlock }
-          : { actor: binding.actor },
+          : {
+              actor: binding.actor,
+              ...(binding.overrides ? { overrides: binding.overrides } : {}),
+            },
       }
     },
   }
@@ -291,12 +313,62 @@ function originOf(ctx: Context): string {
   return ctx.get('origin') || ctx.request.origin
 }
 
-function readTokenBody(
-  body: unknown
-): { uid: string; documentId: string; locale: string | null | undefined } | undefined {
+interface TokenBody {
+  uid: string
+  documentId: string
+  locale: string | null | undefined
+  overrides?: PreviewOverrides
+}
+
+function readTokenBody(body: unknown): TokenBody | undefined {
   if (typeof body !== 'object' || body === null) return undefined
-  const { uid, documentId, locale } = body as Record<string, unknown>
+  const { uid, documentId, locale, theme, accentOverrides } = body as Record<string, unknown>
   if (typeof uid !== 'string' || typeof documentId !== 'string') return undefined
   if (locale !== undefined && locale !== null && typeof locale !== 'string') return undefined
-  return { uid, documentId, locale }
+  const overrides = readOverrides(theme, accentOverrides)
+  if (overrides === false) return undefined
+  return { uid, documentId, locale, ...(overrides ? { overrides } : {}) }
+}
+
+/**
+ * The override of a token body, checked against its grammar only: `undefined` when the body has
+ * none, `false` when a field has another key or a value outside the grammar.
+ */
+function readOverrides(
+  theme: unknown,
+  accentOverrides: unknown
+): PreviewOverrides | undefined | false {
+  const overrides: PreviewOverrides = {}
+  if (theme !== undefined) {
+    if (!hasOnlyKeys(theme, ['id', 'version'])) return false
+    const { id, version } = theme as Record<string, unknown>
+    if (!matches(id, THEME_ID) || !matches(version, THEME_VERSION)) return false
+    overrides.theme = { id, version }
+  }
+  if (accentOverrides !== undefined) {
+    if (!Array.isArray(accentOverrides)) return false
+    if (accentOverrides.length > PREVIEW_ACCENT_OVERRIDES_MAX) return false
+    const modes = new Set<string>()
+    const accents = []
+    for (const accent of accentOverrides as unknown[]) {
+      if (!hasOnlyKeys(accent, ['mode', 'color'])) return false
+      const { mode, color } = accent as Record<string, unknown>
+      if (!matches(mode, ACCENT_MODE) || !matches(color, ACCENT_COLOR)) return false
+      if (modes.has(mode)) return false
+      modes.add(mode)
+      accents.push({ mode, color })
+    }
+    overrides.accentOverrides = accents
+  }
+  return theme === undefined && accentOverrides === undefined ? undefined : overrides
+}
+
+/** Whether a value is a plain object whose keys are all among `keys`. */
+function hasOnlyKeys(value: unknown, keys: string[]): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  return Object.keys(value).every((key) => keys.includes(key))
+}
+
+function matches(value: unknown, pattern: RegExp): value is string {
+  return typeof value === 'string' && pattern.test(value)
 }

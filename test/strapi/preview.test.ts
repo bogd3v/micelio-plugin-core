@@ -47,6 +47,8 @@ interface Credential {
   contentType: string
   entryDocumentId: string
   entryLocale: string | null
+  theme: unknown
+  accentOverrides: unknown
   expiresAt: string
   usedAt: string | null
   revokedAt: string | null
@@ -1304,6 +1306,135 @@ describe('the preview token, the grant exchange and the draft by grant', () => {
       expect(seen).toHaveLength(1)
       expect(seen[0]!.query).toMatchObject({ populate: { blocks: true } })
       expect(seen[0]!.options).toMatchObject({ auth: { strategy: expect.anything() } })
+    })
+  })
+
+  describe('preview overrides (ADR-0019, amendment of 2026-11-25)', () => {
+    const THEME = { id: 'sendero', version: '2.1.0-rc.1' }
+    const ACCENTS = [
+      { mode: 'light', color: '#1A2B3C' },
+      { mode: 'dark', color: '#ffeedd' },
+    ]
+    const OVERRIDES = { theme: THEME, accentOverrides: ACCENTS }
+
+    beforeAll(async () => {
+      admin = await freshSuperAdmin()
+    })
+
+    it('stores a theme and accent overrides with the token, as given', async () => {
+      const both = await tokenFor(admin, body(articleId, OVERRIDES))
+      expect(await rowOf(both)).toMatchObject({
+        kind: 'token',
+        siteDocumentId: site,
+        entryDocumentId: articleId,
+        theme: THEME,
+        accentOverrides: ACCENTS,
+      })
+      const themeOnly = await tokenFor(admin, body(articleId, { theme: THEME }))
+      expect(await rowOf(themeOnly)).toMatchObject({ theme: THEME, accentOverrides: null })
+      const accentsOnly = await tokenFor(admin, body(articleId, { accentOverrides: ACCENTS }))
+      expect(await rowOf(accentsOnly)).toMatchObject({ theme: null, accentOverrides: ACCENTS })
+      const none = await tokenFor(admin)
+      expect(await rowOf(none)).toMatchObject({ theme: null, accentOverrides: null })
+      // The token itself is still stored only as its hash.
+      const rows = JSON.stringify(await credentials().findMany({}))
+      for (const value of [both, themeOnly, accentsOnly, none]) expect(rows).not.toContain(value)
+    })
+
+    it('refuses an override outside the grammar, or with another key, with previewRequestInvalid', async () => {
+      // A user of its own: every request below counts against the token route's limit.
+      const asker = await freshSuperAdmin()
+      const accents = (count: number) =>
+        Array.from({ length: count }, (_, index) => ({ mode: `mode-${index}`, color: '#000000' }))
+      const refused: Record<string, unknown>[] = [
+        { theme: { ...THEME, digest: 'sha256-abc' } },
+        { theme: { id: 'Sendero', version: '1.0.0' } },
+        { theme: { id: 'sendero', version: 'v1.0.0' } },
+        { theme: { id: 'sendero', version: '1.0' } },
+        { theme: { id: 'sendero' } },
+        { theme: null },
+        { theme: 'sendero' },
+        { accentOverrides: { mode: 'light', color: '#000000' } },
+        { accentOverrides: [{ mode: 'light', color: '#000000', role: 'surface' }] },
+        { accentOverrides: [{ mode: 'Light', color: '#000000' }] },
+        { accentOverrides: [{ mode: 'light', color: '#000' }] },
+        { accentOverrides: [{ mode: 'light', color: 'red' }] },
+        { accentOverrides: [{ mode: 'light' }] },
+        {
+          accentOverrides: [
+            { mode: 'light', color: '#000000' },
+            { mode: 'light', color: '#ffffff' },
+          ],
+        },
+        { accentOverrides: accents(17) },
+      ]
+      const before = await credentials().count({})
+      for (const extra of refused) {
+        const response = await askToken(asker, body(articleId, extra))
+        expect(response.status, JSON.stringify(extra)).toBe(400)
+        expect((await response.json()) as Problem).toMatchObject({ code: 'previewRequestInvalid' })
+      }
+      expect(await credentials().count({})).toBe(before)
+      // Sixteen accents are the most a token carries.
+      const sixteen = await tokenFor(asker, body(articleId, { accentOverrides: accents(16) }))
+      expect((await rowOf(sixteen)).accentOverrides).toEqual(accents(16))
+    })
+
+    it('answers the overrides on the exchange, and no overrides key for a token without them', async () => {
+      const withOverrides = await exchange(await tokenFor(admin, body(articleId, OVERRIDES)))
+      expect(withOverrides.status).toBe(200)
+      const { data } = (await withOverrides.json()) as {
+        data: { grant: string; overrides?: unknown }
+      }
+      issued.push(data.grant)
+      expect(data.overrides).toEqual(OVERRIDES)
+      // The grant carries the token's override in its own row.
+      expect(await rowOf(data.grant)).toMatchObject({
+        kind: 'grant',
+        theme: THEME,
+        accentOverrides: ACCENTS,
+      })
+      const themeOnly = await exchange(await tokenFor(admin, body(articleId, { theme: THEME })))
+      expect(
+        ((await themeOnly.json()) as { data: { overrides?: unknown } }).data.overrides
+      ).toEqual({ theme: THEME })
+      const plain = await exchange(await tokenFor(admin))
+      expect(plain.status).toBe(200)
+      expect((await plain.json()) as { data: object }).not.toHaveProperty('data.overrides')
+    })
+
+    it('answers the overrides in the meta of the draft read for the grant that carries them', async () => {
+      const grant = await grantFor(admin, body(articleId, OVERRIDES))
+      // Every read of the grant answers them: a reload keeps the override.
+      for (let read = 0; read < 2; read += 1) {
+        const response = await draftOf(grant, { documentId: articleId })
+        expect(response.status).toBe(200)
+        expect(response.headers.get('cache-control')).toBe('private, no-store')
+        const answer = (await response.json()) as { data: { title: string }; meta: unknown }
+        expect(answer.data.title).toBe('A draft')
+        expect(answer.meta).toEqual({ actor: 'admin', overrides: OVERRIDES })
+      }
+      const accentsOnly = await grantFor(admin, body(articleId, { accentOverrides: ACCENTS }))
+      const accentRead = await draftOf(accentsOnly, { documentId: articleId })
+      expect(((await accentRead.json()) as { meta: unknown }).meta).toEqual({
+        actor: 'admin',
+        overrides: { accentOverrides: ACCENTS },
+      })
+      const plain = await draftOf(await grantFor(admin), { documentId: articleId })
+      expect(((await plain.json()) as { meta: unknown }).meta).toEqual({ actor: 'admin' })
+    })
+
+    it('answers no overrides on the draft read of a system grant', async () => {
+      const grant = await systemGrantFor()
+      expect(await rowOf(grant)).toMatchObject({ theme: null, accentOverrides: null })
+      // Even a system row that held one, which no code writes, answers none.
+      await credentials().updateMany({
+        where: { hash: createHash('sha256').update(grant).digest('hex') },
+        data: { theme: THEME, accentOverrides: ACCENTS },
+      })
+      const response = await draftOf(grant, { documentId: articleId })
+      expect(response.status).toBe(200)
+      expect(((await response.json()) as { meta: unknown }).meta).toEqual({ actor: 'system' })
     })
   })
 

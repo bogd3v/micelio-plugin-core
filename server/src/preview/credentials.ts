@@ -9,6 +9,7 @@ import type {
   PreviewCredentialKind,
   PreviewCredentialRecord,
   PreviewExpectation,
+  PreviewOverrides,
   PreviewSystemBinding,
 } from '../types/preview'
 
@@ -33,7 +34,8 @@ export function hashCredential(value: string): string {
  *
  * @param binding - An admin user's binding for a token or grant; a system grant's for `system`,
  * which has no admin user and holds the draft's version instead, or, bound to a reference, the
- * reusable block and the version of its draft.
+ * reusable block and the version of its draft. A token or grant stores `binding.overrides` as given,
+ * not hashed: it is no secret (ADR-0019, amendment of 2026-11-25).
  * @param now - The moment of issue; the credential expires 60 s later for a token or a system
  * grant and 15 min later for a grant.
  */
@@ -43,11 +45,15 @@ export function issueCredential(
   now: Date = new Date()
 ): { value: string; record: PreviewCredentialRecord } {
   const value = randomBytes(32).toString('base64url')
-  const { reusableBlock, ...bound } = binding as PreviewSystemBinding
+  const { reusableBlock, overrides, ...bound } = binding as PreviewSystemBinding & {
+    overrides?: PreviewOverrides
+  }
   const record: PreviewCredentialRecord = {
     adminUser: null,
     adminOrigin: null,
     ...bound,
+    ...(overrides?.theme ? { theme: overrides.theme } : {}),
+    ...(overrides?.accentOverrides ? { accentOverrides: overrides.accentOverrides } : {}),
     entryVersion: bound.entryVersion ?? null,
     reusableBlockDocumentId: reusableBlock?.documentId ?? null,
     reusableBlockVersion: reusableBlock?.version ?? null,
@@ -58,6 +64,35 @@ export function issueCredential(
     revokedAt: null,
   }
   return { value, record }
+}
+
+/**
+ * The binding of a stored token or grant, for the grant the exchange issues for it: the admin user,
+ * origin and target, and the override the token was asked with, so the grant carries the same one.
+ *
+ * @returns `null` for a record without an admin user or origin, which no token or grant is.
+ */
+export function bindingOf(record: PreviewCredentialRecord): PreviewBinding | null {
+  if (record.adminUser == null || record.adminOrigin == null) return null
+  const overrides = overridesOf(record)
+  return {
+    siteDocumentId: record.siteDocumentId,
+    contentType: record.contentType,
+    entryDocumentId: record.entryDocumentId,
+    entryLocale: record.entryLocale,
+    adminUser: record.adminUser,
+    adminOrigin: record.adminOrigin,
+    ...(overrides ? { overrides } : {}),
+  }
+}
+
+/** The override a stored token or grant carries, or `null` when it has none. */
+export function overridesOf(record: PreviewCredentialRecord): PreviewOverrides | null {
+  if (record.theme == null && record.accentOverrides == null) return null
+  return {
+    ...(record.theme != null ? { theme: record.theme } : {}),
+    ...(record.accentOverrides != null ? { accentOverrides: record.accentOverrides } : {}),
+  }
 }
 
 /**

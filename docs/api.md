@@ -754,23 +754,60 @@ The shapes are in `server/src/types/transfer.ts`, `server/src/types/about.ts` an
 
 Three routes carry a draft from the admin to the frontend's iframe without a long-lived credential (ADR-0019, section 3). [docs/operate/preview.md](operate/preview.md) sets it up and says what the frontend does with them. Every answer to a credential is `private, no-store`, and tokens and grants appear in no log, problem detail or message.
 
-| Method | Path                            | Who calls it                                   | Answers                                                                                                                                        |
-| ------ | ------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/micelio/preview/token`        | The admin page, with the admin's token         | `{ "data": { "url", "expiresAt" } }`                                                                                                           |
-| `POST` | `/api/micelio/preview/exchange` | The frontend, with its API token               | `{ "data": { "grant", "expiresAt", "adminOrigin", "contentType", "documentId", "locale" } }`                                                   |
-| `GET`  | `/api/micelio/preview/draft`    | The frontend, with its API token and the grant | `{ "data": <the draft>, "meta": { "actor": "admin" \| "system" } }`; a grant bound to a reference adds `measure` and `reusableBlock` to `meta` |
+| Method | Path                            | Who calls it                                   | Answers                                                                                                                                                                                          |
+| ------ | ------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST` | `/micelio/preview/token`        | The admin page, with the admin's token         | `{ "data": { "url", "expiresAt" } }`                                                                                                                                                             |
+| `POST` | `/api/micelio/preview/exchange` | The frontend, with its API token               | `{ "data": { "grant", "expiresAt", "adminOrigin", "contentType", "documentId", "locale" } }`; a token with an override adds `overrides`                                                          |
+| `GET`  | `/api/micelio/preview/draft`    | The frontend, with its API token and the grant | `{ "data": <the draft>, "meta": { "actor": "admin" \| "system" } }`; a grant bound to a reference adds `measure` and `reusableBlock` to `meta`, an admin grant with an override adds `overrides` |
 
 ### Preview token
 
-`POST /micelio/preview/token` is an admin route. It needs the admin permission `plugin::micelio.preview` (Settings → Roles → Plugins → Micelio; the super admin has it) and the permission to read the entry. The body is `{ "uid", "documentId", "locale" }`: `uid` is a content type made with `withSiteScope`, and `locale` is a string or `null`, or omitted for the default one.
+`POST /micelio/preview/token` is an admin route. It needs the admin permission `plugin::micelio.preview` (Settings → Roles → Plugins → Micelio; the super admin has it) and the permission to read the entry. The body is `{ "uid", "documentId", "locale" }`, and optionally `theme` and `accentOverrides` ([Preview overrides](#preview-overrides)): `uid` is a content type made with `withSiteScope`, and `locale` is a string or `null`, or omitted for the default one.
 
 `url` is `<site.url>/_preview?token=<token>` and `expiresAt` an ISO 8601 date 60 seconds ahead. The token is random and opaque, used once, and bound to the calling admin user, the site, the content type, the `documentId`, the locale of the draft found (the default locale when the request names none; `null` for a type that is not localised) and the admin's origin (the `Origin` header of the request). Only its hash is stored. A user may ask 20 times a minute.
+
+### Preview overrides
+
+A token may also carry what the frame renders with instead of the site's own theme and accents (ADR-0019, amendment of 2026-11-25): the Themes page previews a candidate theme, and the customizer candidate accents, before anything is saved. Two optional fields of the token's body, alone or together:
+
+```json
+{
+  "uid": "api::page.page",
+  "documentId": "…",
+  "theme": { "id": "sendero", "version": "2.1.0" },
+  "accentOverrides": [
+    { "mode": "light", "color": "#1A2B3C" },
+    { "mode": "dark", "color": "#FFEEDD" }
+  ]
+}
+```
+
+- `theme` is `{ id, version }`, with the grammar of `themeId` and `themeVersion` of the site's theme component (`server/src/components/site/theme.json`): a lowercase slug and an exact SemVer version. No digest.
+- `accentOverrides` is a list of at most 16 `{ mode, color }`, with the grammar of the site's accent override (`server/src/components/site/accent-override.json`): `mode` a lowercase slug, unique in the list, and `color` `#RRGGBB`.
+
+Any other key under them, or a value outside that grammar, is refused with `400` `previewRequestInvalid`, and no token is made. The CMS checks only the grammar: whether the frontend holds the theme, whether the theme has the mode and whether an accent passes contrast are the frontend's to decide. Asking for an override needs what any token needs, the permission `plugin::micelio.preview` and the right to read the entry, and it changes no content and no setting of the site.
+
+The override is stored as given, not hashed, in the token's row of `plugin::micelio.preview-credential` (`theme` and `accentOverrides`), and the exchange copies it to the grant. A token and its grant carry the same override for their whole life; another override is another token. The exchange and the draft read answer it as `overrides: { theme?, accentOverrides? }` (below); a token asked without one answers no `overrides` key at all. A system grant never carries one.
 
 ### Grant exchange
 
 `POST /api/micelio/preview/exchange?site=<slug>` takes `{ "token" }` and the frontend's API token. The token must be a full-access one or a custom one that allows `plugin::micelio.preview.exchange`: a read-only token is refused by Strapi with `403`. The `site` parameter works as for every content API route ([Which site a request is for](#which-site-a-request-is-for)).
 
-The plugin marks the token used, checks again that the admin user may read the draft and answers a grant: opaque, valid for 15 minutes, bound like the token and stored hashed. `adminOrigin` is the admin origin bound in the grant: the frontend compares it with its own configured admin origin and refuses the grant on a mismatch (ADR-0019, section 5). An API token may exchange 60 times a minute.
+The plugin marks the token used, checks again that the admin user may read the draft and answers a grant: opaque, valid for 15 minutes, bound like the token and stored hashed. `adminOrigin` is the admin origin bound in the grant: the frontend compares it with its own configured admin origin and refuses the grant on a mismatch (ADR-0019, section 5). An API token may exchange 60 times a minute. When the token carries an override, `data` also holds `overrides`, with the fields it was asked with:
+
+```json
+{
+  "data": {
+    "grant": "…",
+    "expiresAt": "…",
+    "adminOrigin": "https://admin.example.com",
+    "contentType": "api::page.page",
+    "documentId": "…",
+    "locale": "en",
+    "overrides": { "theme": { "id": "sendero", "version": "2.1.0" } }
+  }
+}
+```
 
 ### Draft by grant
 
@@ -785,7 +822,7 @@ The plugin marks the token used, checks again that the admin user may read the d
 
 The frontend's `populate` of an article (cover, author and its avatar, category, tags, blocks, references, localizations) and of a page is served whole.
 
-`meta.actor` says whose grant it was: `admin` for the grant of an admin user (above), `system` for a **system grant**, the credential the plugin mints for itself to measure one draft at publish (ADR-0019, amendment of 2026-10-25). No route mints a system grant, and no response carries one. It is bound to the site, content type, `documentId`, locale and the `updatedAt` of the draft at minting, lives 60 seconds and is used once: the first request that finds it unused claims it, and a second gets `previewRefused`, as does one that finds the draft saved since (another `updatedAt`). It has no admin user, so nothing is checked about one, logging out revokes nothing of it, and the exchange refuses it as a token. A frontend accepts `system` only on the route that measures a draft and refuses it everywhere else.
+`meta.actor` says whose grant it was: `admin` for the grant of an admin user (above, and its `meta` adds the grant's `overrides` next to `actor` when it carries one: `{ "actor": "admin", "overrides": { … } }`, on every read of the grant), `system` for a **system grant**, the credential the plugin mints for itself to measure one draft at publish (ADR-0019, amendment of 2026-10-25). No route mints a system grant, and no response carries one. It is bound to the site, content type, `documentId`, locale and the `updatedAt` of the draft at minting, lives 60 seconds and is used once: the first request that finds it unused claims it, and a second gets `previewRefused`, as does one that finds the draft saved since (another `updatedAt`). It has no admin user, so nothing is checked about one, logging out revokes nothing of it, and the exchange refuses it as a token. A frontend accepts `system` only on the route that measures a draft and refuses it everywhere else.
 
 A system grant may instead be **bound to a reference** (ADR-0019, amendment of 2026-11-23), to measure a published page with a reusable block's draft in its place when the block is published. It is bound to the site, the page's content type, `documentId` and locale, and the reusable block's `documentId` and the `updatedAt` of the block's draft in that locale at minting; the page's own version is not bound. Its draft read answers the page's **published** version in the grant's locale, with every reference to that block resolved to the block's **draft** in that locale (every other related entry stays published), and `meta` names the block and the version it resolved (below). For this grant only, a `populate` that reaches the relation to `plugin::micelio.reusable-block` may name the block's `fields` and its `blocks`, with the rules of a dynamic zone of the page itself (`reusableBlock: { fields: ['name'], populate: { blocks: { on: { 'section.cta': true } } } }`: `on`, components and zones at any depth, one level through a relation of a block, media with `fields` only), so the frontend renders the block from the answer. The weight request that carries such a grant is marked `measure=reference` (`GET /api/preview/<uid>/<documentId>/weight?mode=dynamic&locale=…&measure=reference`), so the frontend knows to send the block's `populate` in its one read; the marker is no credential and names no document or version, and a request for a page's own publish carries none. At the block's level `*`, `site`, `localizations` and every other attribute are refused with `400` `previewRequestInvalid`, and the block's populate is sanitised for the API token's abilities, as the page's is. Every other grant, every other relation and every other route keep the rules above. Its `meta`:
 
@@ -797,7 +834,7 @@ A system grant may instead be **bound to a reference** (ADR-0019, amendment of 2
 }
 ```
 
-It answers `previewRefused` when the page has no published version in the locale, when that version no longer references the block, when the block's draft was saved since it was minted (checked before the grant is claimed and again after the page is read), when the block belongs to another site, and like any system grant when it is spent or expired or names another page or locale. The `meta` of every other grant stays `{ "actor": "admin" }` or `{ "actor": "system" }`. Like the other system grant it lives 60 seconds, is used once, is minted only by plugin code (`issueSystemGrant` with `reusableBlock`), and is refused by the exchange.
+It answers `previewRefused` when the page has no published version in the locale, when that version no longer references the block, when the block's draft was saved since it was minted (checked before the grant is claimed and again after the page is read), when the block belongs to another site, and like any system grant when it is spent or expired or names another page or locale. The `meta` of every other grant stays `{ "actor": "admin" }` (with `overrides` for an admin grant that carries one) or `{ "actor": "system" }`. Like the other system grant it lives 60 seconds, is used once, is minted only by plugin code (`issueSystemGrant` with `reusableBlock`), and is refused by the exchange.
 
 Each use of an `admin` grant checks again that the admin user is active and may read the draft. Logging out of the admin revokes every token and grant of that user at once; losing the right to read a draft revokes the grants of that user and draft at the next exchange or draft request, and giving the right back does not bring them back.
 
@@ -807,7 +844,7 @@ Every refusal is `application/problem+json`:
 
 | Status | `code`                  | When                                                                                                                                                                                                                                                                                                                                              |
 | ------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400    | `previewRequestInvalid` | The body, the grant header or `documentId` is missing or malformed; on the draft route, a query the allowlist above refuses                                                                                                                                                                                                                       |
+| 400    | `previewRequestInvalid` | The body, the grant header or `documentId` is missing or malformed, or an override is outside its grammar; on the draft route, a query the allowlist above refuses                                                                                                                                                                                |
 | 400    | `previewTypeInvalid`    | The type does not belong to a site                                                                                                                                                                                                                                                                                                                |
 | 403    | `previewForbidden`      | The role lacks the preview permission, or may not read the entry                                                                                                                                                                                                                                                                                  |
 | 404    | `previewEntryNotFound`  | The token route found no such entry                                                                                                                                                                                                                                                                                                               |

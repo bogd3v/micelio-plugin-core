@@ -9,12 +9,45 @@ export interface PreviewTarget {
   entryLocale: string | null
 }
 
+/**
+ * A theme to preview with instead of the site's active one (ADR-0019, amendment of 2026-11-25),
+ * with the grammar of `themeId` and `themeVersion` of the site's theme component.
+ */
+export interface PreviewThemeOverride {
+  /** A lowercase slug. */
+  id: string
+  /** An exact SemVer version. */
+  version: string
+}
+
+/** An accent to preview with for one of the theme's modes, with the grammar of the site's accent override. */
+export interface PreviewAccentOverride {
+  /** A lowercase slug, unique in the list. */
+  mode: string
+  /** `#RRGGBB`. */
+  color: string
+}
+
+/**
+ * What a preview token, and the grant it is exchanged for, render with instead of the site's own
+ * theme and accents (ADR-0019, amendment of 2026-11-25). Either field, or both; a credential without
+ * an override has none. The CMS checks only the grammar: whether the frontend holds the theme and
+ * whether an accent passes contrast are the frontend's to decide.
+ */
+export interface PreviewOverrides {
+  theme?: PreviewThemeOverride
+  /** At most 16 entries. */
+  accentOverrides?: PreviewAccentOverride[]
+}
+
 /** What a preview token or grant is bound to (ADR-0019, section 3). */
 export interface PreviewBinding extends PreviewTarget {
   /** The `id` of the admin user who asked for the token. */
   adminUser: number
   /** The origin of the admin page that asked, which the frontend frames itself for. */
   adminOrigin: string
+  /** The override the token was asked with, which its grant carries too; absent when it has none. */
+  overrides?: PreviewOverrides
 }
 
 /** A reusable block and the version of its draft: the `updatedAt` of the draft, as an ISO 8601 date. */
@@ -71,6 +104,10 @@ export interface PreviewCredentialRecord extends PreviewTarget {
   reusableBlockDocumentId: string | null
   /** The `updatedAt` of that block's draft at minting; `null` for every other credential. */
   reusableBlockVersion: string | null
+  /** The theme override of a token or grant, stored as given; absent when it has none. */
+  theme?: PreviewThemeOverride
+  /** The accent overrides of a token or grant, stored as given; absent when it has none. */
+  accentOverrides?: PreviewAccentOverride[]
   expiresAt: Date
   /** When a token was exchanged or a system grant was used; `null` while unused, and always `null` for a grant. */
   usedAt: Date | null
@@ -85,6 +122,8 @@ export interface PreviewResolvedGrant extends PreviewTarget {
   entryVersion: string | null
   /** The reusable block and version a grant bound to a reference names; `null` for every other grant. */
   reusableBlock: PreviewReusableBlockVersion | null
+  /** The override an `admin` grant carries; `null` for a grant without one and for every `system` grant. */
+  overrides: PreviewOverrides | null
 }
 
 /** What a request presents a credential for. Absent fields are not checked. */
@@ -122,4 +161,6 @@ export interface PreviewGrantAnswer {
   documentId: string
   /** The locale of the draft; `null` for a type that is not localised. */
   locale: string | null
+  /** The override the token was asked with; absent, not empty, when it has none. */
+  overrides?: PreviewOverrides
 }
