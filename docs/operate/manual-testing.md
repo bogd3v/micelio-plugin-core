@@ -895,6 +895,26 @@ An edit of a live entry goes online with the transition `published → published
 
 The hooks are covered by the suite only (`test/strapi/hooks.test.ts`); this stack has no plugin that records them.
 
+## Try a reusable block
+
+Publishing a reusable block measures each published page that shows it, with the block's draft in place, and is refused, naming the page, when one would go over its budget ([budgets.md](budgets.md#a-reusable-block)). The stack's page type has `section.reusable`, so a page there references a reusable block. It needs a frontend whose weight route answers `measure=reference` (bogd3v/micelio#977): `FRONTEND_IMAGE=<an image of micelio with it> npm run dev:docker`.
+
+1. Create the first admin and log in on the API as in [Try the page budget](#try-the-page-budget), step 4, with a helper that names the type:
+
+   ```bash
+   MOVE() { curl -s -w '\n%{http_code}\n' -X POST localhost:1337/micelio/transitions \
+     -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+     -d "{\"uid\":\"$1\",\"documentId\":\"$2\",\"locale\":\"en\",\"to\":\"$3\"}"; }
+   ```
+
+2. In Content Manager → Reusable block, create one named `Banner` with one **cta** section whose text is short (a text section is not offered: `rich-text` left the catalogue for `prose`, an article block), pick the default site, save and copy its `documentId`. `MOVE plugin::micelio.reusable-block <block> in_review`, then `… published`: `200`, and nothing is measured (no page shows it yet).
+3. In Content Manager → Page, open "Open source, in plain words", add a **reusable** section that points to `Banner`, save, and publish the page: `MOVE api::page.page <page> in_review`, then `… published` (`200`).
+4. List the pages that show the block: `curl -s localhost:1337/micelio/reusable-blocks/<block>/used-on?locale=en -H "Authorization: Bearer $ADMIN" | jq`. It answers the page, `published: true`, and `meta.total` 1.
+5. Make the block heavy: paste the long text of "A heavy page" into the cta's text and save. `MOVE plugin::micelio.reusable-block <block> published` answers `409` `pageOverBudget`, with `page` naming "Open source, in plain words" and the blocks of that page, heaviest first. `Banner` stays published with its short text, and the page is unchanged (Content Manager shows the same state and update time).
+6. Put the short text back and save: the same `MOVE` answers `200`.
+7. Point the default site's **url** at `http://localhost:3999` (as in the page budget, step 6), save the block again and publish it: `409` `previewUnavailable` with `page`. Put `http://localhost:3000` back.
+8. `MOVE plugin::micelio.reusable-block <block> draft` unpublishes it with no weight request.
+
 ## Edit the plugin
 
 `server/`, `admin/` and `contract/` are mounted into the `cms` container. A process there rebuilds `dist/` when you save a file and restarts Strapi, which takes about ten seconds; reload the admin afterwards. You never rebuild the image, except when `package.json` or `package-lock.json` change: run `npm run dev:docker` again, which rebuilds it.

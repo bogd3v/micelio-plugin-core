@@ -162,6 +162,8 @@
   "refusal.link": "Open the preview",
   "refusal.pageOverBudget": "Its blocks weigh {weight} kB and its budget is {budget} kB, {over} kB over. Heaviest blocks: {blocks}.",
   "refusal.previewUnavailable": "It could not be measured against its budget, and a page is never published without that. {cause}",
+  "refusal.pageOverBudgetOn": "On \"{page}\", its blocks would weigh {weight} kB and its budget is {budget} kB, {over} kB over. Heaviest blocks: {blocks}.",
+  "refusal.previewUnavailableOn": "The page \"{page}\" could not be measured against its budget, and the reusable block is never published without that. {cause}",
   "nav.transfer": "Export and import",
   "about.loading": "Loading the details.",
   "about.error": "The details could not be loaded.",

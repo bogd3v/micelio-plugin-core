@@ -33,11 +33,19 @@ function toBlocks(value: unknown): Pick<BudgetBlock, 'id' | 'kb'>[] {
   )
 }
 
+/** The title of the page a reusable block's publish was refused on (the member `page`), or `undefined`. */
+function pageTitleOf(problem: Record<string, unknown>): string | undefined {
+  const page = problem.page
+  return isRecord(page) && typeof page.title === 'string' ? page.title : undefined
+}
+
 /**
  * The notification for a publish that `POST /micelio/transitions` refused, from the problem detail
  * it answered (`docs/api.md`): the blocks that weigh the most and by how much the page is over its
  * budget for `pageOverBudget`, the cause for `previewUnavailable`. The weights are written in the
- * editor's `locale`.
+ * editor's `locale`. When the problem names a `page` (the publish of a reusable block refused on a
+ * page that shows it), the message names that page too: `refusal.pageOverBudgetOn` and
+ * `refusal.previewUnavailableOn`, with the page's title as `page`.
  *
  * @remarks
  * The problem detail is `unknown` until narrowed here. A refusal that is neither answers
@@ -51,9 +59,15 @@ export function refusalNotice(
 ): RefusalNotice | undefined {
   if (!isRecord(problem)) return undefined
   const previewPath = previewPagePath(entry.uid, entry.documentId, entry.locale)
+  const page = pageTitleOf(problem)
+  const on: Record<string, string> = page === undefined ? {} : { page }
+  const suffix = page === undefined ? '' : 'On'
   if (problem.code === 'previewUnavailable') {
     const cause = typeof problem.detail === 'string' ? problem.detail : ''
-    return { message: { id: 'refusal.previewUnavailable', values: { cause } }, previewPath }
+    return {
+      message: { id: `refusal.previewUnavailable${suffix}`, values: { cause, ...on } },
+      previewPath,
+    }
   }
   if (
     problem.code === 'pageOverBudget' &&
@@ -67,8 +81,9 @@ export function refusalNotice(
       .join(', ')
     return {
       message: {
-        id: 'refusal.pageOverBudget',
+        id: `refusal.pageOverBudget${suffix}`,
         values: {
+          ...on,
           weight: formatKb(problem.blocksKb, locale),
           budget: formatKb(problem.budgetKb, locale),
           over: formatKb(problem.overByKb, locale),

@@ -162,6 +162,8 @@
   "refusal.link": "Abrir la vista previa",
   "refusal.pageOverBudget": "Sus bloques pesan {weight} kB y su presupuesto es de {budget} kB, {over} kB de más. Bloques más pesados: {blocks}.",
   "refusal.previewUnavailable": "No se pudo medir contra su presupuesto, y una página nunca se publica sin esa medición. {cause}",
+  "refusal.pageOverBudgetOn": "En «{page}», sus bloques pesarían {weight} kB y su presupuesto es de {budget} kB, {over} kB de más. Bloques más pesados: {blocks}.",
+  "refusal.previewUnavailableOn": "La página «{page}» no se pudo medir contra su presupuesto, y el bloque reutilizable nunca se publica sin esa medición. {cause}",
   "nav.transfer": "Exportar e importar",
   "about.loading": "Cargando los detalles.",
   "about.error": "No se pudieron cargar los detalles.",

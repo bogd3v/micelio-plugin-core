@@ -6,6 +6,7 @@ import {
   type EditorialState,
 } from '../constants/editorial'
 import { SLUG_ATTRIBUTE } from '../constants/page-settings'
+import { REUSABLE_BLOCK_UID } from '../constants/reusable-blocks'
 import type { BudgetService } from '../services/budget'
 import { hooksOf } from '../hooks'
 import { findMissingAlternativesIn } from '../islands/check'
@@ -150,6 +151,13 @@ interface EditorialEntry {
  * budget of its page type, or `previewUnavailable` when the measurement fails. It never publishes
  * without the measurement. Right before the write it checks that the draft was not saved since, and
  * refuses with `previewUnavailable` when it was.
+ *
+ * Moving a reusable block (`plugin::micelio.reusable-block`) to `published`, the scheduler's move
+ * included, first has the frontend measure each published page of a measured type that shows it in
+ * that locale, with the block's draft in place (`budget.assertPagesWithinBudget`), and refuses with
+ * `pageOverBudget` or `previewUnavailable`, naming the page in the member `page`. With no such page
+ * nothing is measured. Right before the write it checks that the block's draft was not saved since.
+ * The pages are never written. Unpublishing a reusable block measures nothing.
  *
  * Moving an entry out of `draft` first checks that every island block of its draft has its static
  * alternative filled in (`alternative` in `contract/blocks.ts`) and refuses with
@@ -352,6 +360,16 @@ export async function performTransition(
           locale: entry.locale,
         })
       : null
+  // A reusable block shows on every page that references it at once: each published one is
+  // measured with the block's draft in place, and none may go over its budget (ADR-0022, section 1).
+  const references =
+    transition.to === 'published' && request.uid === REUSABLE_BLOCK_UID
+      ? await budget.assertPagesWithinBudget({
+          uid: request.uid,
+          documentId: entry.documentId,
+          locale: entry.locale,
+        })
+      : null
   const result: TransitionResult = {
     uid: request.uid,
     documentId: entry.documentId,
@@ -371,6 +389,13 @@ export async function performTransition(
 
   if (measured) {
     await budget.assertUnchanged(measured, {
+      uid: request.uid,
+      documentId: entry.documentId,
+      locale: entry.locale,
+    })
+  }
+  if (references) {
+    await budget.assertReferenceUnchanged(references, {
       uid: request.uid,
       documentId: entry.documentId,
       locale: entry.locale,
