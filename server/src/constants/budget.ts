@@ -28,3 +28,9 @@ export const WEIGHT_RETRY_DEFAULT_SECONDS = 1
 
 /** How long one request to the weight route may take, in milliseconds; the system grant lives 60 s. */
 export const WEIGHT_TIMEOUT_MS = 30_000
+
+/**
+ * How many pages the publish of a reusable block has the frontend measure at once (ADR-0022,
+ * amendment of 2026-11-23, D5). There is no cap on how many pages are measured in all.
+ */
+export const REFERENCE_MEASURE_CONCURRENCY = 2

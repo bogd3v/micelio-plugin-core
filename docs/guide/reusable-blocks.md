@@ -47,6 +47,18 @@ publication, and the hooks of a page (the fediverse, a rebuild of that page) do 
 
 The plugin lists those pages in its log when you publish, republish or unpublish.
 
+### On many pages
+
+Before a reusable block is published, each published page that shows it, in that language, is
+weighed again with the change in place, two at a time. If one page would go over its weight budget,
+the block is not published and the refusal names that page (`pageOverBudget`); if a page cannot be
+weighed, it is not published either (`previewUnavailable`, naming the page). Make the block lighter,
+or lighten that page, and publish again. A block on many pages takes longer to publish, about as
+long as half as many page publishes; save nothing on the block while it publishes, or the publish
+is refused and you publish again. A scheduled block that is refused stays scheduled and is tried
+again. Unpublishing a block weighs nothing. The budgets are in `docs/operate/budgets.md`, "A
+reusable block".
+
 ## Delete one
 
 A reusable block that a page still references cannot be deleted. The refusal lists the pages, with

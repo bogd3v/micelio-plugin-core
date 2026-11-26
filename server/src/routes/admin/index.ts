@@ -183,6 +183,12 @@ export default (): Core.RouterInput => ({
     },
     {
       method: 'GET',
+      path: '/reusable-blocks/:documentId/used-on',
+      handler: 'reusableBlocks.usedOn',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'GET',
       path: '/budget/page-types',
       handler: 'budget.pageTypes',
       config: { policies: ['admin::isAuthenticatedAdmin'] },

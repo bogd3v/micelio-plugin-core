@@ -64,6 +64,39 @@ describe('the notification of a refused publish', () => {
     })
   })
 
+  it("names the page a reusable block's publish was refused on", () => {
+    const page = { uid: 'api::page.page', documentId: 'page1', locale: 'en', title: 'Home' }
+    const block = { uid: 'plugin::micelio.reusable-block', documentId: 'block1', locale: 'en' }
+    const over = refusalNotice({ ...OVER, page }, block, 'en')
+    expect(over?.message).toEqual({
+      id: 'refusal.pageOverBudgetOn',
+      values: {
+        page: 'Home',
+        weight: '170.0',
+        budget: '120.0',
+        over: '50.0',
+        blocks: 'gallery (80.0 kB), hero (50.5 kB), quote (30.0 kB)',
+      },
+    })
+    const unavailable = { code: 'previewUnavailable', detail: 'The frontend could not', page }
+    expect(refusalNotice(unavailable, block, 'en')?.message).toEqual({
+      id: 'refusal.previewUnavailableOn',
+      values: { page: 'Home', cause: 'The frontend could not' },
+    })
+    for (const messages of [en, es] as Record<string, string>[]) {
+      const used = (id: string) =>
+        [...(messages[id] ?? '').matchAll(/\{(\w+)\}/g)].map(([, name]) => name).sort()
+      expect(used('refusal.pageOverBudgetOn')).toEqual([
+        'blocks',
+        'budget',
+        'over',
+        'page',
+        'weight',
+      ])
+      expect(used('refusal.previewUnavailableOn')).toEqual(['cause', 'page'])
+    }
+  })
+
   it('links the preview of a type that is not localised without a locale', () => {
     const notice = refusalNotice(OVER, { ...ENTRY, locale: null }, 'en')
     expect(notice?.previewPath).toBe('/plugins/micelio/preview/api%3A%3Apage.page/doc1')

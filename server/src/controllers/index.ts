@@ -9,6 +9,7 @@ import budget from './budget'
 import pageTemplates from './page-templates'
 import preview from './preview'
 import redirects from './redirects'
+import reusableBlocks from './reusable-blocks'
 import extensions from './extensions'
 import icons from './icons'
 import status from './status'
@@ -28,6 +29,7 @@ export default {
   status,
   preview,
   redirects,
+  reusableBlocks,
   extensions,
   transfers,
   about,
