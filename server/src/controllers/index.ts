@@ -13,6 +13,7 @@ import reusableBlocks from './reusable-blocks'
 import extensions from './extensions'
 import icons from './icons'
 import status from './status'
+import themes from './themes'
 import transfers from './transfers'
 import transitions from './transitions'
 
@@ -34,4 +35,5 @@ export default {
   transfers,
   about,
   icons,
+  themes,
 }

@@ -7,6 +7,7 @@ import http from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { blocksScript, markBlocks, runScript, type RunBehaviour } from './preview-site-blocks'
 import { solidPng } from './png'
+import { themeRoutes, type ThemeRoutes } from './theme-site'
 import { answerWeight, newWeightBehaviour, type WeightBehaviour } from './weight-site'
 
 /** One pair of the contrast matrix, as the frontend's contrast route answers it. */
@@ -88,6 +89,12 @@ export interface PreviewSite {
    * by default.
    */
   run: RunBehaviour
+  /**
+   * Its theme routes (`GET /api/theme/status` and `/api/theme/catalogue`, `theme-site.ts`). A token bound to a
+   * theme no store holds answers `409` `themeNotInstalled` from `/_preview`, and a draft page names the theme it
+   * renders in `data-theme` of its `<html>`: the token's, else the active one (bogd3v/micelio#736).
+   */
+  themes: ThemeRoutes
   /** Its page never posts `ready`, as a frame that gets the 404 page of a refused cookie, or an older frontend. */
   isSilent: boolean
   /**
@@ -165,6 +172,7 @@ function sectionHtml(section: Section, isStatic: boolean, cmsBase: string): stri
 
 function pageHtml(
   draft: Draft,
+  theme: string,
   isStatic: boolean,
   cms: { base: string; adminOrigin: string },
   speaks: number[],
@@ -178,7 +186,7 @@ function pageHtml(
     payload: { v: speaks, documentId: draft.documentId, locale, version: draft.updatedAt },
   })
   return `<!doctype html>
-<html lang="${escapeHtml(locale ?? 'en')}">
+<html lang="${escapeHtml(locale ?? 'en')}" data-theme="${escapeHtml(theme)}">
 <head><meta charset="utf-8"><title>${escapeHtml(draft.title)}</title></head>
 <body>
 <main>
@@ -228,6 +236,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
       response.writeHead(503).end()
       return
     }
+    if (await site.themes.answer(request, response)) return
     const auth = { Authorization: `Bearer ${cms.apiToken}` }
     const populate = {
       'populate[sections][on][section.scene][populate]': '*',
@@ -282,10 +291,22 @@ export async function startPreviewSite(): Promise<PreviewSite> {
         response.writeHead(404).end('Page not found')
         return
       }
-      exchanges++
       const { data } = (await answer.json()) as {
-        data: { grant: string; documentId: string; locale: string | null }
+        data: {
+          grant: string
+          documentId: string
+          locale: string | null
+          overrides?: { theme?: { id: string; version: string } }
+        }
       }
+      const theme = data.overrides?.theme
+      if (theme && !site.themes.isInstalled(theme)) {
+        response
+          .writeHead(409, { 'Content-Type': 'application/problem+json' })
+          .end(JSON.stringify({ status: 409, code: 'themeNotInstalled', title: 'Conflict' }))
+        return
+      }
+      exchanges++
       const query = new URLSearchParams()
       if (data.locale) query.set('locale', data.locale)
       if (url.searchParams.get('mode') === 'static') query.set('mode', 'static')
@@ -342,11 +363,16 @@ export async function startPreviewSite(): Promise<PreviewSite> {
       return
     }
     draftLoads++
-    const { data } = (await answer.json()) as { data: Draft }
+    const { data, meta } = (await answer.json()) as {
+      data: Draft
+      meta?: { overrides?: { theme?: { id: string } } }
+    }
+    const theme = meta?.overrides?.theme?.id ?? (await site.themes.active()).id
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
     response.end(
       pageHtml(
         data,
+        theme,
         url.searchParams.get('mode') === 'static',
         cms,
         site.speaks,
@@ -440,6 +466,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     run: { kind: 'answer' },
     isSilent: false,
     isRefused: false,
+    themes: themeRoutes(),
     origin: `http://127.0.0.1:${port}`,
     connect: (next) => {
       cms = next

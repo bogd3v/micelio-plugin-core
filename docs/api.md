@@ -731,6 +731,25 @@ Admin API routes, behind the status page of the admin ([docs/operate/status-page
 
 The shape is `StatusReport` in `server/src/types/status.ts`. On both routes, a role without the permission gets `403` with the `code` `statusForbidden`, as `application/problem+json`; a request without an admin token gets Strapi's `401`.
 
+## Themes
+
+Admin API routes behind the Themes page and the theme preview ([docs/operate/themes-page.md](operate/themes-page.md)). They need the admin permission `plugin::micelio.themes.manage` (Settings → Roles → Plugins → Micelio); Strapi gives it to the super admin only.
+
+| Method | Path                       | Answers                                                                                            |
+| ------ | -------------------------- | -------------------------------------------------------------------------------------------------- |
+| `GET`  | `/micelio/themes`          | `?site=<slug>` (the default site without it): `{ "data": ThemesAnswer }`, `private, no-store`      |
+| `POST` | `/micelio/themes/activate` | Body `{ site?, id, version? }`: writes the site's theme pin. `{ "data": { site, before, after } }` |
+| `POST` | `/micelio/themes/revert`   | Body `{ site? }`: writes back the pin the last activation replaced. The same answer                |
+
+- `GET` asks the site's frontend for `GET <origin>/api/theme/status` and `GET <origin>/api/theme/catalogue` (bogd3v/micelio#403 and #993) on every call, at most two seconds each, and answers them as `status` and `catalogue`; each is `null` when the frontend did not answer it, answered outside `2xx` or answered another shape, and the route still answers `200`. It also answers `sites` (slug, name, isDefault; the default first), `site` (with the `origin` of its `url`), `pin` (`themeId`, `themeVersion`, `themeDigest` of the site's `theme` component, `null` when empty), `revert` (below) and `pages`: the newest draft of each page type (`pageType`, `standard` when it has none) of the site's types made with `withPageSettings`, one entry per page type, newest first (`uid`, `documentId`, `locale`, `title`, `pageType`), which the theme preview opens. The browser never calls the frontend.
+- `activate` reads the frontend's status and catalogue first. A theme of `status.available.builtIn` at the `version` asked, or with none, is pinned by `themeId` alone; a data-only theme of the deployment store or of the registry, at `version`, is pinned with `themeId`, `themeVersion` and `themeDigest`, the package digest the catalogue lists, and the frontend installs it at runtime (ADR-0009 of `micelio`, sections 3 and 5). The other fields of the `theme` component (`defaultMode`, `accentOverrides`, `displayFont`) are kept. A code theme that is not built in is refused with `409` `themeRebuildRequired` (ADR-0009, section 4); a theme the frontend neither holds nor lists at that version, or a version the registry says does not run on this core, with `404` `themeUnknown`.
+- `revert` writes back `pinBefore` of the site's newest activation, while the site still holds the pin that activation wrote and that activation was not itself a revert, and while the frontend still holds that theme (built in, or its `active` or `lastGood` package). Otherwise `409` `themeRevertUnavailable`. `GET` answers the same as `revert: { pin, isInstalled }`, or `null` when there is nothing to revert.
+- Each activation and revert writes a row of `plugin::micelio.theme-activation` (`action`, `pinBefore`, `pinAfter`, `adminUserId`, the site and `createdAt`) and one `info` line of the log. Neither waits for the frontend: the page reads `GET` until `status.active` is the theme asked for, or `status.error` says why not.
+- `activate` and `revert` are rate limited: 5 requests a minute per admin user, over the two routes together. Above it the answer is `429` `themeChangeLimited` with `Retry-After` (seconds), and nothing is read or written.
+- Errors are problem details: `400` `themeRequestInvalid` (an `id` outside the grammar of `themeId`, a `version` that is not an exact SemVer version, a `site` that is not a string), `404` `themeSiteNotFound`, `502` `themesFrontendUnavailable` when the frontend did not answer its status (nothing is written), and `403` `themesForbidden` without the permission. A request without an admin token gets Strapi's `401`.
+
+The shapes are in `server/src/types/themes.ts`.
+
 ## Export, import and About
 
 Admin API routes behind the Export and import page ([docs/operate/transfer-page.md](operate/transfer-page.md)) and the About page ([docs/operate/about-page.md](operate/about-page.md)). The transfer routes need the admin permission `plugin::micelio.transfer`; an export that holds personal data also needs `plugin::micelio.transfer.personal` and, for each section of a sibling plugin it names, the permission that section registered. The About routes are open to every admin user.

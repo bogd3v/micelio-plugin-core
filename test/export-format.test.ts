@@ -23,11 +23,13 @@ import {
 // plugin, and the `category` and `tag` types it took over (the legacy UIDs stay: the `v0.4.0` rows),
 // and the `reusable-block` type it added (#200). `docs/export-format.md` must give each one a row: the
 // acceptance criterion of #9.
+// The log of theme activations (#59) has one too, though it is never written.
 const CONTENT_TYPES = [
   'plugin::micelio.site',
   'plugin::micelio.category',
   'plugin::micelio.tag',
   'plugin::micelio.reusable-block',
+  'plugin::micelio.theme-activation',
   'api::about.about',
   'api::article.article',
   'api::article-stat.article-stat',

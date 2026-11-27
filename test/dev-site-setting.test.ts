@@ -50,7 +50,7 @@ const site = {
 
 type Image = Record<string, unknown>
 type Data = Record<string, unknown> & { logo: Image }
-type Params = { locale?: string; filters?: unknown; uid?: string }
+type Params = { locale?: string; filters?: unknown; populate?: unknown; uid?: string }
 
 async function run(
   rows: Record<string, unknown>[],
@@ -99,7 +99,8 @@ describe('the site-setting fixture of compose.dev.yml', () => {
     expect(data.socialLinks).toEqual([
       { network: 'mastodon', url: 'https://example.social/@a', id: 4 },
     ])
-    // What the core's site does not hold answers empty, so the frontend keeps its defaults.
+    // What the core's site does not hold answers empty, so the frontend keeps its defaults; a site
+    // with no theme component answers no pin.
     expect([data.modules, data.theme, data.homePage]).toEqual([null, null, null])
     expect(data.tagline).toBeNull()
   })
@@ -149,6 +150,33 @@ describe('the site-setting fixture of compose.dev.yml', () => {
       defaultMode: 'dark',
       displayFont: 'newsreader',
       accentOverrides: [{ mode: 'light', color: '#1f5a34' }],
+    })
+  })
+
+  it('the site-setting fixture answers the theme pin of the default site', async () => {
+    const pinned = {
+      ...site,
+      theme: {
+        id: 7,
+        themeId: 'sendero',
+        themeVersion: '2.1.0',
+        themeDigest: `sha256:${'a'.repeat(64)}`,
+        defaultMode: 'dark',
+      },
+    }
+    const { body, calls } = await run([pinned])
+    expect(calls[0]).toMatchObject({ populate: { theme: { populate: { accentOverrides: true } } } })
+    expect((body as { data: Data }).data.theme).toMatchObject({
+      themeId: 'sendero',
+      themeVersion: '2.1.0',
+      themeDigest: `sha256:${'a'.repeat(64)}`,
+    })
+    // A built-in theme is pinned by its id alone: the other two fields answer null.
+    const builtIn = { ...site, theme: { id: 8, themeId: 'starter', themeVersion: null } }
+    expect(((await run([builtIn])).body as { data: Data }).data.theme).toMatchObject({
+      themeId: 'starter',
+      themeVersion: null,
+      themeDigest: null,
     })
   })
 

@@ -11,6 +11,7 @@ import { registerTemplatesPermission } from './page-templates/permissions'
 import { registerPreviewPermission } from './preview/permissions'
 import { registerPreviewRevocation } from './preview/revocation'
 import { registerStatusPermission } from './status/permissions'
+import { registerThemesPermission } from './themes/permissions'
 import { registerTransferPermissions } from './transfers/permissions'
 
 /** The first look at the frontends and the release feed; a failure is logged, never a failed boot. */
@@ -41,6 +42,7 @@ const bootstrap = async ({ strapi }: { strapi: Core.Strapi }): Promise<void> => 
   await registerBlocksPermissions(strapi)
   await registerTemplatesPermission(strapi)
   await registerReviewPermission(strapi)
+  await registerThemesPermission(strapi)
   await strapi.plugin('micelio').service('transfers').failInterrupted()
   registerPreviewRevocation(strapi)
   // Last: a boot the host check refuses announces no change.

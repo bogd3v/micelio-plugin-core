@@ -1,7 +1,7 @@
 import { useFetchClient } from '@strapi/strapi/admin'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { PreviewTokenAnswer } from '../../../server/src/types/preview'
+import type { PreviewThemeOverride, PreviewTokenAnswer } from '../../../server/src/types/preview'
 import { statusOf } from '../utils/fetchError'
 import {
   GRANT_REFRESH_MINUTES,
@@ -46,9 +46,20 @@ interface PreviewEntry {
 
 type FetchClient = ReturnType<typeof useFetchClient>
 
-/** Asks the token route for the URL of a preview; `undefined` when the site's `url` is not one a page can load. */
-async function askForTarget(client: FetchClient, entry: PreviewEntry, mode: PreviewMode) {
-  const response = await client.post<{ data: PreviewTokenAnswer }>('/micelio/preview/token', entry)
+/**
+ * Asks the token route for the URL of a preview; `undefined` when the site's `url` is not one a page
+ * can load. A `theme` goes in the token's body only, never in the URL (ADR-0019, amendment of 2026-11-25).
+ */
+async function askForTarget(
+  client: FetchClient,
+  entry: PreviewEntry,
+  mode: PreviewMode,
+  theme?: PreviewThemeOverride
+) {
+  const response = await client.post<{ data: PreviewTokenAnswer }>('/micelio/preview/token', {
+    ...entry,
+    ...(theme ? { theme } : {}),
+  })
   return frameTarget(response.data.data.url, mode)
 }
 
@@ -60,10 +71,17 @@ async function askForTarget(client: FetchClient, entry: PreviewEntry, mode: Prev
  * The token is single-use and 60 seconds old at most, so it is requested only when a frame is about
  * to load. The previous source stays in `source` while the next one is requested, so the old render
  * stays in view.
+ *
+ * @param theme - A theme to render the entry with instead of the site's own (the theme preview);
+ * it goes in the token's body, and a change asks for a new token.
+ * @param options - `refreshGrant: false` asks for no new token before the grant expires: the theme
+ * preview reloads neither of its frames on its own, as they share the frontend's one grant cookie.
  */
 export function usePreviewSource(
   entry: PreviewEntry | undefined,
-  mode: PreviewMode
+  mode: PreviewMode,
+  theme?: PreviewThemeOverride,
+  options: { refreshGrant?: boolean } = {}
 ): { source: PreviewSource; reload: () => void } {
   // The client is rebuilt on every render; the effect must not depend on it.
   const client = useFetchClient()
@@ -74,6 +92,9 @@ export function usePreviewSource(
   const uid = entry?.uid
   const documentId = entry?.documentId
   const locale = entry?.locale
+  const themeId = theme?.id
+  const themeVersion = theme?.version
+  const refreshGrant = options.refreshGrant ?? true
 
   useEffect(() => {
     if (!uid || !documentId) return
@@ -84,7 +105,8 @@ export function usePreviewSource(
         const target = await askForTarget(
           clientRef.current,
           { uid, documentId, locale: locale ?? null },
-          mode
+          mode,
+          themeId && themeVersion ? { id: themeId, version: themeVersion } : undefined
         )
         if (!isCurrent) return
         if (!target) {
@@ -93,10 +115,11 @@ export function usePreviewSource(
         }
         setSource({ kind: 'ready', ...target })
         // The grant lasts 15 minutes from the exchange: ask for a new token before it ends.
-        timer = window.setTimeout(
-          () => setCount((value) => value + 1),
-          GRANT_REFRESH_MINUTES * 60_000
-        )
+        if (refreshGrant)
+          timer = window.setTimeout(
+            () => setCount((value) => value + 1),
+            GRANT_REFRESH_MINUTES * 60_000
+          )
       } catch (error) {
         if (isCurrent) setSource({ kind: 'error', reason: reasonOf(error) })
       }
@@ -105,7 +128,7 @@ export function usePreviewSource(
       isCurrent = false
       window.clearTimeout(timer)
     }
-  }, [uid, documentId, locale, mode, count])
+  }, [uid, documentId, locale, mode, themeId, themeVersion, refreshGrant, count])
 
   const reload = useCallback(() => setCount((value) => value + 1), [])
   return { source, reload }

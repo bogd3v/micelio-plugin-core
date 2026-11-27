@@ -6,6 +6,7 @@
 // `homePage` always, and `modules` and `theme` when the site has none. The two components have the
 // fields of micelio-cms v0.6.0's, so the Customize page's saves show on the frontend (#60).
 // `fediverse` is not in the response of v0.6.0.
+// The pin in `theme` is what the Themes page activates (#59), so the frontend switches to it.
 
 const SITE = 'plugin::micelio.site'
 

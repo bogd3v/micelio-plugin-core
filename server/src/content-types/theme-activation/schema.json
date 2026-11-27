@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "micelio_theme_activations",
+  "info": {
+    "singularName": "theme-activation",
+    "pluralName": "theme-activations",
+    "displayName": "Theme activation",
+    "description": "One change of a site's theme pin from the Themes page: an activation or a revert, the pin before and after, who made it and when"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    },
+    "i18n": {
+      "localized": false
+    },
+    "micelio": {
+      "export": "never"
+    }
+  },
+  "attributes": {
+    "action": {
+      "type": "enumeration",
+      "enum": ["activate", "revert"],
+      "required": true
+    },
+    "pinBefore": {
+      "type": "json",
+      "required": true
+    },
+    "pinAfter": {
+      "type": "json",
+      "required": true
+    },
+    "adminUserId": {
+      "type": "integer"
+    }
+  }
+}

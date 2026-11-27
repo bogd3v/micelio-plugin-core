@@ -152,6 +152,18 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   - `document-version/` is the version check of a save (#49): the document service middleware that refuses an `update` whose `X-Micelio-Expected-Version` is not the draft's `updatedAt` (`versionConflict`), one `update` of a document at a time. `docs/api.md`, "Saving over a version".
   - `hooks/` is the hooks registry behind `strapi.plugin('micelio').hooks` and the `hooks` service: registration, ordering and running a hook. The hooks and their payloads are declared in `types/hooks.ts`, a contract (section 6); `docs/hooks.md` is generated from its TSDoc and from that of `types/extensions.ts`. `performTransition` runs the transition hooks, so every path that publishes runs them; `sites/hooks.ts` runs `siteCreated`.
   - `transfers/` and the `transfers` service are the Export and import page's jobs (#58): `permissions.ts` registers `plugin::micelio.transfer` and `.transfer.personal`, `summary.ts` counts a site for the page, and the service queues exports (one at a time, in the background), keeps an uploaded archive for its dry run and applies it only with the policy of the last dry run, with the caller's own abilities: the maker alone downloads an export (by a token), a type the caller may not publish arrives as drafts, and an existing site keeps its identity. Both live 24 hours as files in `transfersDirectory`; the history is the internal type `transfer` (hidden, `export: never`). `controllers/transfers.ts` checks the permissions. `docs/operate/transfer-page.md` describes the page.
+  - `themes/` is the Themes page and the theme preview (#59): `rules.ts` (pure: the frontend's
+    status and catalogue read as `unknown`, `planActivation` (the pin an activation writes: `themeId`
+    alone for a theme of `available.builtIn`, the three fields for a data-only theme, `rebuild` for a
+    code theme the image lacks) and whether a pin is still installed), `read.ts` (behind
+    `GET /micelio/themes?site=`: the site's `GET /api/theme/status` and `/api/theme/catalogue`, at most two
+    seconds each, read on the server, never by the admin; the revert target; the pages the preview
+    offers), `activate.ts` (`POST /micelio/themes/activate` and `/revert`: the site's pin, a row of the
+    hidden `plugin::micelio.theme-activation` (`export: never`) and one `info` line; `themeRebuildRequired`)
+    and `permissions.ts` (`plugin::micelio.themes.manage`, the Super Admin's only by default,
+    ADR-0009 of `micelio`, section 3). `controllers/themes.ts` checks the permission and limits
+    activate and revert to 5 a minute per admin user (`createRateLimiter`, `themeChangeLimited`);
+    `docs/operate/themes-page.md` describes the page.
   - `about/` is what the About page shows (#58): `read.ts` gathers versions and writes the diagnostics text, `update-check.ts` reads the release feed only while `MICELIO_UPDATE_CHECK` is not `false`. The `about` service keeps the last checks in memory and refreshes them at boot, with the daily status job and on `POST /micelio/about/refresh`; `GET /micelio/about` never makes a request. `docs/operate/about-page.md` describes it.
   - `site-export/` writes and reads the site archive of `docs/export-format.md`, behind the `siteExport` service: `exporter.ts` (with its `scope`), `importer.ts` and `dry-run.ts` (`preview`), with the decision for one document in `inspect.ts` and the policy `keep-both` in `keep-both.ts`. Details: [docs/architecture/structure.md](docs/architecture/structure.md#site-export-and-import).
   - `content-types/category/` and `tag/` are `plugin::micelio.category` and `plugin::micelio.tag`, taken over from `micelio-cms` 0.5 with the same UIDs, tables, attributes and routes (`routes/taxonomy.ts`, `prefix: ''`, so `/api/categories` and `/api/tags`), made with `withSiteScope`, minus the inverse `articles`. `migrations/rename-legacy-uids.ts` moves the grants, admin subjects and layouts of `api::category.category` and `api::tag.tag` to them, registered in `register()` on `strapi::content-types.beforeSync`; `migrations/site-backfill.ts` gives the rows no site the default one in `bootstrap`. `test/fixtures/micelio-cms-v0.5.0-taxonomy-schemas.json` is what the suite compares the types with.
@@ -160,12 +172,14 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
     the component category; `taxonomy.ts`: the category and tag UIDs and `READ_ACTIONS`;
     `status.ts`: the status permission; `preview.ts`: the permission, the credential type,
     the lifetimes and rate limits; `budget.ts`: the default budgets and the retry bounds;
-    `blocks.ts`: the block setting's UID, its two permissions and the problem codes).
+    `blocks.ts`: the block setting's UID, its two permissions and the problem codes; `themes.ts`:
+    the themes permission and the UID of the activation log).
     With `types/<domain>.ts` (`host-check.ts`: the report the status page renders; `status.ts`:
     what `GET /micelio/status` answers; `preview.ts`:
     what a preview credential is bound to and what the routes answer; `hooks.ts`:
     the hooks API and its payloads; `budget.ts`: a measurement; `blocks.ts`:
-    a site's settings of a block and a page that holds one) it is the shared folder of section 4 of
+    a site's settings of a block and a page that holds one; `themes.ts`: the frontend's theme status
+    and catalogue, a pin and what the themes routes answer) it is the shared folder of section 4 of
     the standard.
 - `contract/` — the block catalogue (ADR-0018) and the icon catalogue (ADR-0021: `icons.ts`, the pinned Tabler version, its names and the alias table; `icons.names.json` and `icons.schema.json` generated, the schema published as `./icons.schema.json`): `seo.ts` (the SEO and social limits, derivations and
   checks the server and the admin share), `blocks.ts` (the 20 entries, `code`, `reusable` and the `group` key of a page section among them),
@@ -194,7 +208,9 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   from the frontend's `GET /_micelio/contrast` with the editor's preview grant, `hooks/useContrast.ts`;
   the pure part, `customizeBodyOf` and `accentResult`, is `utils/customize.ts`; its cards are in
   `components/customize/`; the guide is `docs/guide/customize.md`), `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
-  Save as template dialog, `ReviewPage` (the In review page), `TemplatesManagePage` at `templates`
+  Save as template dialog, `ReviewPage` (the In review page), `ThemesPage` at `themes` and `ThemePreviewPage` at
+  `themes/preview` (#59: two `PreviewFrame`s, the candidate's token with `theme`; `hooks/useThemes.ts`,
+  `hooks/useThemeChange.ts`, `utils/themes.ts`), `TemplatesManagePage` at `templates`
   and `TemplateBuilderPage` at `templates/:id/edit`; the SEO and social tab of the page settings is
   `components/builder/SeoTab.tsx`, with `SeoPreviews.tsx` and `SeoFields.tsx`),
   the editorial panel in the side of the Content Manager's edit view (`components/EditorialPanel.tsx`,
