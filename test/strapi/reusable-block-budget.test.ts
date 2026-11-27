@@ -15,6 +15,8 @@ import { startWeightSite, type WeightSite } from './weight-site'
 // `section.reusable` component. This suite makes it editorial (`MICELIO_TEST_EDITORIAL_PAGE`) and
 // lists it in the budgets while it runs, so a page's publish and a reusable block's are measured;
 // the stub frontend weighs each block of a page by its catalogue id (`reusable` for a reference).
+// The test app's scheduler runs every second; this suite turns it off (`MICELIO_TEST_SCHEDULER_OFF`),
+// so that only its own `publishDue` calls publish the entry it makes due.
 const PAGE = 'api::page.page' as UID.ContentType
 const REUSABLE = REUSABLE_BLOCK_UID as UID.ContentType
 const PASSWORD = 'Password1234'
@@ -33,6 +35,7 @@ const reference = (documentId: string) => ({
 // ADR-0022, amendments of 2026-11-23).
 describe('the budget at the publish of a reusable block', { timeout: 60_000 }, () => {
   process.env.MICELIO_TEST_EDITORIAL_PAGE = 'true'
+  process.env.MICELIO_TEST_SCHEDULER_OFF = 'true'
 
   let strapi: Core.Strapi
   let base: string
@@ -179,6 +182,7 @@ describe('the budget at the publish of a reusable block', { timeout: 60_000 }, (
     await frontend?.close()
     await cleanupStrapi()
     delete process.env.MICELIO_TEST_EDITORIAL_PAGE
+    delete process.env.MICELIO_TEST_SCHEDULER_OFF
   })
 
   beforeEach(() => {
