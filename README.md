@@ -2,7 +2,7 @@
 
 `@micelio/strapi-plugin-core` is Micelio's core as a Strapi 5 plugin. It will hold what a Micelio site needs from its CMS: several sites per CMS, the block catalogue, the editorial workflow, the hooks other Micelio plugins build on, and a host check that refuses to start in production when the host is missing what Micelio needs ([ADR-0017](https://github.com/bogd3v/micelio/blob/main/docs/adr/0017-distribution-plugins-multisite-editorial.md)).
 
-It is at `0.6.1` and alpha: it holds the `site` type (one row per site,
+It is at `0.6.2` and alpha: it holds the `site` type (one row per site,
 with a default site created on an empty instance), site scoping for content types,
 the editorial workflow,
 the block catalogue ([docs/blocks.md](docs/blocks.md)) and its per-site management
@@ -29,9 +29,11 @@ blocks ([docs/blocks.md](docs/blocks.md)); the Sites, Export and import and Abou
 ([docs/operate/transfer-page.md](docs/operate/transfer-page.md),
 [docs/operate/about-page.md](docs/operate/about-page.md)); and the carbon estimate beside the cost
 meter ([docs/operate/budgets.md](docs/operate/budgets.md)). `0.5.0` adds the custom field
-`micelio.icon` and its picker ([docs/guide/icons.md](docs/guide/icons.md)), and `0.6.1` the reusable blocks
-([docs/guide/reusable-blocks.md](docs/guide/reusable-blocks.md)). The other capabilities arrive with the
-issues of the first milestone. Until then, install nothing from it on a site.
+`micelio.icon` and its picker ([docs/guide/icons.md](docs/guide/icons.md)), `0.6.1` the reusable blocks
+([docs/guide/reusable-blocks.md](docs/guide/reusable-blocks.md)), and `0.6.2` the table block, a link's
+icon, `iconPosition`, `external` and `download`, and `iconStyle` on hero, media-showcase, cta and pricing
+([docs/blocks.md](docs/blocks.md)). The other capabilities arrive with the issues of the first milestone.
+Until then, install nothing from it on a site.
 
 This repository is an npm workspace: it also holds `@micelio/icons` (`packages/icons/`), the Tabler
 icon set the block contract pins, normalised, with its index and Spanish labels
