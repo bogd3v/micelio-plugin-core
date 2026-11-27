@@ -287,6 +287,9 @@ An archive **never** holds, whatever is asked:
   They are configuration of the site on this CMS, set again on the target.
   An import still checks the archive's pages against the target site's settings (`blockNotAllowed`,
   [api.md](api.md#what-a-disabled-block-does)).
+- The log of theme activations (`plugin::micelio.theme-activation`, [the Themes page](operate/themes-page.md)):
+  who changed a site's theme pin from the Themes page, and when. It names admin users of this CMS;
+  the pin itself is in the site's `theme` component, which the archive holds.
 - The page templates of a site (`plugin::micelio.page-template`, [the guide](guide/templates.md)):
   a template moves as a JSON file of its own (`micelio template export` and `import`), not in the
   archive. A page made from one still carries `templateId`, `templateVersion` and the private
@@ -307,7 +310,7 @@ An attribute that declares nothing is written, except a `private` attribute, whi
 
 ## Content types
 
-Every content type of `micelio-cms` at `v0.4.0`, and the `site`, `category`, `tag` and `reusable-block` types of this plugin (`plugin::micelio.redirect` is written as [Redirects](#redirects), not as a type), with its export name and how it is written. The export name is what the archive uses; it never changes, whatever the UID becomes at the cut-over (ADR-0017, section 2). An instance before the cut-over has one site and no `site` relation: an exporter writes all its rows as the default site's.
+Every content type of `micelio-cms` at `v0.4.0`, and the `site`, `category`, `tag` and `reusable-block` types of this plugin (`plugin::micelio.redirect` is written as [Redirects](#redirects), not as a type), and the log of theme activations, which is never written, with its export name and how it is written. The export name is what the archive uses; it never changes, whatever the UID becomes at the cut-over (ADR-0017, section 2). An instance before the cut-over has one site and no `site` relation: an exporter writes all its rows as the default site's.
 
 ### Site
 
@@ -327,6 +330,12 @@ Every content type of `micelio-cms` at `v0.4.0`, and the `site`, `category`, `ta
 | UID                              | Export name      | Written                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | -------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `plugin::micelio.reusable-block` | `reusable-block` | Added by the core after `v0.4.0` (ADR-0022, section 1). Site-scoped, localised, draft and publish, with the editorial component. `name` and `blocks`, a dynamic zone of one block. First in `manifest.types` and written first after `site` ([Import](#import)). A page references one through a component of its zone with a relation to the type (`section.reusable`), written as `{ "ref": "reusable-block", "documentId": … }`; a reference to another site's refuses the import (`exportDocumentInvalid`) |
+
+### Theme activations
+
+| UID                                | Export name | Written                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugin::micelio.theme-activation` | —           | Not exported (`export: never`, [What is never exported](#what-is-never-exported)). Added by the core after `v0.4.0` (issue #59): one row per activation or revert of the Themes page, with the site, the pin before and after, the admin user's id and the time. It is this CMS's history of the site's theme pin, and the pin itself travels with `site` |
 
 ### Content of `micelio-cms` `v0.4.0`
 

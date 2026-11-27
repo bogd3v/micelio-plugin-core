@@ -11,8 +11,10 @@ import {
   SITES_UPDATE_PERMISSION,
   STATUS_READ_PERMISSION,
   TEMPLATES_MANAGE_PERMISSION,
+  THEMES_MANAGE_PERMISSION,
   TRANSFER_PERMISSION,
 } from '../admin/src/permissions'
+import { THEMES_MANAGE_PERMISSION as SERVER_THEMES_PERMISSION } from '../server/src/constants/themes'
 
 const REPORTS = { action: 'plugin::micelio.reports.read', subject: null }
 const items: CoreNavItem[] = [
@@ -36,6 +38,15 @@ describe('the items of the core a role sees', () => {
     expect(ids([TEMPLATES_MANAGE_PERMISSION])).toEqual(['templates', 'about'])
   })
 
+  it('shows Themes only to a role with the themes permission', () => {
+    expect(THEMES_MANAGE_PERMISSION).toEqual({ action: SERVER_THEMES_PERMISSION, subject: null })
+    expect(ids([THEMES_MANAGE_PERMISSION])).toEqual(['themes', 'about'])
+    expect(ids([STATUS_READ_PERMISSION, TRANSFER_PERMISSION])).not.toContain('themes')
+    // In the Site group, first, before Customize and Export and import, as the artboard places it.
+    const site = CORE_NAV_ITEMS.filter(({ group }) => group === 'site').map(({ id }) => id)
+    expect(site).toEqual(['themes', 'customize', 'transfer'])
+  })
+
   it('shows Sites only to a role that may read the Site type, not any type', () => {
     expect(ids([SITES_READ_PERMISSION])).toEqual(['sites', 'customize', 'about'])
     expect(
@@ -55,7 +66,7 @@ describe('the items of the core a role sees', () => {
     expect(customize([STATUS_READ_PERMISSION, TRANSFER_PERMISSION])).toBe(false)
     // In the Site group, before Export and import (the artboard's order).
     const site = CORE_NAV_ITEMS.filter(({ group }) => group === 'site').map(({ id }) => id)
-    expect(site).toEqual(['customize', 'transfer'])
+    expect(site).toEqual(['themes', 'customize', 'transfer'])
   })
 })
 

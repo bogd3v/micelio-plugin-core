@@ -170,6 +170,24 @@ export default (): Core.RouterInput => ({
       config: { policies: ['admin::isAuthenticatedAdmin'] },
     },
     {
+      method: 'GET',
+      path: '/themes',
+      handler: 'themes.find',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/themes/activate',
+      handler: 'themes.activate',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
+      method: 'POST',
+      path: '/themes/revert',
+      handler: 'themes.revert',
+      config: { policies: ['admin::isAuthenticatedAdmin'] },
+    },
+    {
       method: 'POST',
       path: '/preview/token',
       handler: 'preview.token',

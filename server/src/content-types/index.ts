@@ -8,6 +8,7 @@ import redirect from './redirect/schema.json'
 import reusableBlock from './reusable-block/schema.json'
 import site from './site/schema.json'
 import tag from './tag/schema.json'
+import themeActivation from './theme-activation/schema.json'
 import transfer from './transfer/schema.json'
 
 export default {
@@ -20,4 +21,5 @@ export default {
   'reusable-block': { schema: withSiteScope(withEditorial(reusableBlock)) },
   'preview-credential': { schema: withSiteScope(previewCredential) },
   transfer: { schema: withSiteScope(transfer) },
+  'theme-activation': { schema: withSiteScope(themeActivation) },
 }

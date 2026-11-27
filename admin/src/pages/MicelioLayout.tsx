@@ -26,6 +26,8 @@ import StatusPage from './StatusPage'
 import TemplateBuilderPage from './TemplateBuilderPage'
 import TemplatesGalleryPage from './TemplatesGalleryPage'
 import TemplatesManagePage from './TemplatesManagePage'
+import ThemePreviewPage from './ThemePreviewPage'
+import ThemesPage from './ThemesPage'
 import TransferPage from './TransferPage'
 
 /**
@@ -75,7 +77,7 @@ const FullWidth = styled.div`
  * permission lands on About. The Sites page (`sites`) renders the panels sibling plugins registered for their site sections;
  * the Customize page (`customize`) edits what a site owner may change without touching the theme.
  * The gallery of templates (`new/:uid`), the template editor (`templates/:id/edit`) and the preview page (`preview/:uid/:documentId`) have no item: the entry's edit view
- * opens it, and its own permission protects it.
+ * opens it, and its own permission protects it. The theme preview (`themes/preview`) has none either: the Themes page opens it.
  */
 export default function MicelioLayout() {
   const { t } = useMessages()
@@ -196,6 +198,8 @@ export default function MicelioLayout() {
         <Route path="review" element={<ReviewPage />} />
         <Route path="blocks" element={<BlocksPage />} />
         <Route path="sites" element={<SitesPage />} />
+        <Route path="themes" element={<ThemesPage />} />
+        <Route path="themes/preview" element={<ThemePreviewPage />} />
         <Route path="customize" element={<CustomizePage />} />
         <Route path="_export-import" element={<TransferPage />} />
         <Route path="about" element={<AboutPage />} />
