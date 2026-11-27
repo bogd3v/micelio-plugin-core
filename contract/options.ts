@@ -1,5 +1,5 @@
 // The presentation options vocabulary (ADR-0018, section 1; the Options vocabulary artboard): the
-// nine names a block may expose and the closed set of values of each. `contract/blocks.ts` says which
+// ten names a block or a part may expose and the closed set of values of each. `contract/blocks.ts` says which
 // block exposes which; the reference in `docs/blocks.md` and the generated schema follow. Adding a name
 // or a value is a MINOR of the block contract, removing or renaming one a MAJOR (ADR-0018, section 2).
 
@@ -32,9 +32,16 @@ export const OPTIONS = {
   /**
    * The drawing of the block's icons, for all of them (ADR-0021, section 1); a name without a filled
    * drawing stays `outline`. Offered by every block with an icon field and by no other
-   * (`iconIssues` in `contract/strapi.ts`); no block has one yet.
+   * (`iconIssues` in `contract/strapi.ts`): `hero`, `media-showcase`, `cta` and `pricing`, through
+   * the icon of their links.
    */
   iconStyle: { values: ['outline', 'filled'], default: 'outline' },
+  /**
+   * Where a link's icon sits beside its label (ADR-0018, section 1, amendment A1): `only` shows the
+   * icon alone, and the label, still required, is its accessible name (ADR-0021, section 1). A field
+   * of the `section.link` part, not an option of a block.
+   */
+  iconPosition: { values: ['start', 'end', 'only'], default: 'start' },
 } as const satisfies Record<string, VocabularyOption>
 
 /** The name of a presentation option of the vocabulary. */

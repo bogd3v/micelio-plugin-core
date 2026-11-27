@@ -5,7 +5,7 @@
     "derivedFrom": {
       "tag": "v0.4.0",
       "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
-      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40); defaultOpen added to section.faq-item as micelio-cms stores it since bogd3v/micelio-cms#515 (merge 7405cbc); sourceUrl, logo and rating added to section.testimonial as micelio-cms stores them since bogd3v/micelio-cms#516 (merge 17a21f3); section.reusable, the section.group component and the group attribute of the thirteen page sections added as the shape bogd3v/micelio-cms#527 stores (from bogd3v/micelio-plugin-core#201); the variant featured, showExcerpt and sort added to section.post-list as micelio-cms stores them since bogd3v/micelio-cms#528 (merge a80ebd6), and its category and tag relations pointed at plugin::micelio.category and plugin::micelio.tag as micelio-cms 0.5 stores them"
+      "change": "the components of that tag with blockId and itemId added as micelio-cms stores them since bogd3v/micelio-cms#477; every other attribute is as at the tag; eyebrow and anchor added to the twelve SectionHead sections as micelio-cms stores them since bogd3v/micelio-cms#485 (merge 6647bf3); consentText, successMessage and placeholder added to section.newsletter as micelio-cms stores them since bogd3v/micelio-cms#506 (merge bee8d40); defaultOpen added to section.faq-item as micelio-cms stores it since bogd3v/micelio-cms#515 (merge 7405cbc); sourceUrl, logo and rating added to section.testimonial as micelio-cms stores them since bogd3v/micelio-cms#516 (merge 17a21f3); section.reusable, the section.group component and the group attribute of the thirteen page sections added as the shape bogd3v/micelio-cms#527 stores (from bogd3v/micelio-plugin-core#201); the variant featured, showExcerpt and sort added to section.post-list as micelio-cms stores them since bogd3v/micelio-cms#528 (merge a80ebd6), and its category and tag relations pointed at plugin::micelio.category and plugin::micelio.tag as micelio-cms 0.5 stores them; icon, iconPosition, external and download added to section.link as micelio-cms stores them since bogd3v/micelio-cms#553 (merge 2c31aab)"
     }
   },
   "components": {
@@ -203,6 +203,21 @@
           "type": "string",
           "required": true,
           "regex": "^(https?://\\S+|mailto:\\S+|/\\S*)$"
+        },
+        "icon": {
+          "type": "customField",
+          "customField": "plugin::micelio.icon"
+        },
+        "iconPosition": {
+          "type": "enumeration",
+          "enum": ["start", "end", "only"],
+          "default": "start"
+        },
+        "external": {
+          "type": "boolean"
+        },
+        "download": {
+          "type": "boolean"
         }
       }
     },

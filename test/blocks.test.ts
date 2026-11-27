@@ -293,8 +293,8 @@ describe('the block catalogue', () => {
   })
 })
 
-// No entry has an icon field yet: each of the four step-1 fields lands with its block's line of the
-// plan, so these cases build an entry of their own (ADR-0021, section 1).
+// The link's icon is the first of the four step-1 fields (micelio-cms#462); the others land with
+// their block's line of the plan, so these cases build an entry of their own (ADR-0021, section 1).
 describe('an icon field', () => {
   it('an icon field maps to the micelio.icon custom field and is optional unless declared required', () => {
     const entry = iconBlock({
@@ -417,8 +417,85 @@ describe('the cost of a block', () => {
     const withIcons = iconBlock({ title: string(), ...iconFields({ required: false }) })
     expect(costBytes(withIcons.cost)).toBe(1 + 1 + 97)
     for (const block of BLOCKS) {
-      expect(costBytes(block.cost), block.id).toBe(block.cost.css + block.cost.js)
+      expect(costBytes(block.cost), block.id).toBe(
+        block.cost.css + block.cost.js + (block.cost.icons ?? 0)
+      )
     }
+  })
+
+  it('a block declares one sprite entry per link it can hold, and pricing one per plan', () => {
+    const icons = BLOCKS.filter((block) => block.cost.icons !== undefined)
+    expect(Object.fromEntries(icons.map((block) => [block.id, block.cost.icons]))).toEqual({
+      hero: 2 * 97,
+      'media-showcase': 97,
+      pricing: 97,
+      cta: 2 * 97,
+    })
+  })
+})
+
+// micelio-cms#462: a call to action gains an icon, its position, external and download.
+describe('the link part', () => {
+  const hero = (link: Record<string, unknown>) => ({
+    variant: 'centered',
+    title: 'Welcome',
+    primaryLink: link,
+  })
+
+  it('has an optional decorative icon, iconPosition (start, end, only; default start), external and download', () => {
+    const attributes = strapiComponents(blockOf('hero')).components['section.link']
+    expect(normalized(attributes)).toEqual(normalized(components['section.link'].attributes))
+    expect(attributes.icon).toEqual({ type: 'customField', customField: 'plugin::micelio.icon' })
+    expect(attributes.iconPosition).toEqual({
+      type: 'enumeration',
+      enum: ['start', 'end', 'only'],
+      default: 'start',
+    })
+    expect(attributes.external).toEqual({ type: 'boolean' })
+    expect(attributes.download).toEqual({ type: 'boolean' })
+    expect(iconFieldsOf(blockOf('cta'))).toEqual([
+      { path: 'primaryLink.icon', declaration: { required: false, alone: false } },
+      { path: 'secondaryLink.icon', declaration: { required: false, alone: false } },
+    ])
+    expect(iconFieldsOf(blockOf('pricing'))).toEqual([
+      { path: 'plans[].link.icon', declaration: { required: false, alone: false } },
+    ])
+  })
+
+  it('with iconPosition only the label stays required, as the accessible name', () => {
+    const schema = blockContentSchema(blockOf('hero'))
+    const only = { label: 'Download the report', url: '/report.pdf', icon: 'download' }
+    expect(schema.safeParse(hero({ ...only, iconPosition: 'only' })).success).toBe(true)
+    const unnamed = { url: only.url, icon: only.icon, iconPosition: 'only' }
+    expect(schema.safeParse(hero(unnamed)).success).toBe(false)
+    expect(strapiComponents(blockOf('hero')).components['section.link'].label).toEqual({
+      type: 'string',
+      required: true,
+    })
+    expect(schema.safeParse(hero({ ...only, iconPosition: 'top' })).success).toBe(false)
+  })
+
+  it('a link without the new fields is valid as before, and null reads as unset', () => {
+    const schema = blockContentSchema(blockOf('hero'))
+    expect(schema.safeParse(hero({ label: 'Start', url: '/start' })).success).toBe(true)
+    expect(
+      schema.safeParse(
+        hero({
+          label: 'Start',
+          url: '/start',
+          icon: null,
+          iconPosition: null,
+          external: null,
+          download: null,
+        })
+      ).success
+    ).toBe(true)
+    expect(
+      schema.safeParse(
+        hero({ label: 'Docs', url: 'https://example.com/docs', external: true, download: false })
+      ).success
+    ).toBe(true)
+    expect(schema.safeParse(hero({ label: 'x', url: '/x', external: 'yes' })).success).toBe(false)
   })
 })
 

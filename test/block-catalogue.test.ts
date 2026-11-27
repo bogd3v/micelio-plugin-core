@@ -23,7 +23,12 @@ describe('the fingerprint of the block catalogue', () => {
   it('is the same for the same catalogue, whatever the order of its keys', () => {
     const reordered = BLOCKS.map((block) => ({
       static: block.static,
-      cost: { island: block.cost.island, js: block.cost.js, css: block.cost.css },
+      cost: {
+        icons: block.cost.icons,
+        island: block.cost.island,
+        js: block.cost.js,
+        css: block.cost.css,
+      },
       options: block.options,
       schema: block.schema,
       group: block.group,

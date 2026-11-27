@@ -47,6 +47,12 @@ const grid = {
 }
 
 describe('the fields of the panel', () => {
+  // The blocks that hold a link offer iconStyle (micelio-cms#462): its label is translated.
+  it('labels the iconStyle option in en and es', () => {
+    expect(en['builder.field.iconStyle']).toBe('Icon style')
+    expect(es['builder.field.iconStyle']).toBe('Estilo de los iconos')
+  })
+
   it('sorts a component into options, text and items, offering only what the host stores', () => {
     const fields = fieldsOf(grid, { columns: ['2', '3', '4'], tone: ['default'] })
     // `6` is not in the contract’s set for this site; `width` is not exposed; `tone` is not in the host.

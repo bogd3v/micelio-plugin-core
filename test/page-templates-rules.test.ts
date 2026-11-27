@@ -184,8 +184,8 @@ describe('the sample texts of a page', () => {
 
 describe('what a template weighs and looks like', () => {
   it('adds the cost of its blocks in kB with one decimal', () => {
-    // hero 737 + 1556, feature-grid 643 + 1350 bytes: 4286 bytes.
-    expect(costKbOf([{ block: 'hero' }, { block: 'feature-grid' }])).toBe(4.2)
+    // hero 737 + 1556 + 194 (its links' icons), feature-grid 643 + 1350 bytes: 4480 bytes.
+    expect(costKbOf([{ block: 'hero' }, { block: 'feature-grid' }])).toBe(4.4)
     expect(costKbOf([])).toBe(0)
   })
 
