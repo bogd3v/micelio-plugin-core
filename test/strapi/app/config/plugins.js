@@ -21,8 +21,10 @@ module.exports = ({ env }) => ({
     // Every second instead of every minute, so the scheduler suite waits seconds, not a minute.
     // A host that sets one budget keeps the defaults of the others, and `story`, the fixture with a
     // dynamic zone, is the one type measured at publish (test/strapi/budget.test.ts).
+    // The suite of a reusable block's publish turns the job off (`MICELIO_TEST_SCHEDULER_OFF`): it
+    // makes an entry already due and calls `publishDue` itself, which a tick would race.
     config: {
-      scheduledPublishRule: '* * * * * *',
+      scheduledPublishRule: env.bool('MICELIO_TEST_SCHEDULER_OFF', false) ? false : '* * * * * *',
       budgets: { pageTypes: { 'long-read': 200 }, contentTypes: ['api::story.story'] },
     },
   },
