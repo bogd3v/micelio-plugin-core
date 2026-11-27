@@ -9,6 +9,7 @@ import {
   SCENE_BACKGROUND_LIMIT_CODE,
   SECTION_ANCHOR_INVALID,
   CODE_HIGHLIGHT_INVALID,
+  TABLE_CELLS_INVALID,
   TESTIMONIAL_RATING_INVALID,
 } from '../constants/blocks'
 import { ICON_INVALID } from '../constants/icons'
@@ -18,6 +19,7 @@ import type { SiteScopeState } from '../site-scope'
 import { ProseHeadingError } from '../prose-headings/error'
 import { SectionAnchorError } from '../section-anchor/error'
 import { CodeHighlightError } from '../code-highlight/error'
+import { TableCellsError } from '../table-cells/error'
 import { TestimonialRatingError } from '../testimonial-rating/error'
 import { SceneBackgroundLimitError } from '../islands/error'
 import { TEMPLATE_CODES } from '../constants/page-templates'
@@ -164,6 +166,17 @@ const siteScope: Core.MiddlewareFactory = (_config, { strapi }) => {
           status: BLOCK_OPTION_STATUS,
           detail: error.message,
           code: CODE_HIGHLIGHT_INVALID,
+          ...error.violation,
+        })
+        return
+      }
+      if (error instanceof TableCellsError) {
+        sendProblem(ctx, {
+          type: 'about:blank',
+          title: 'Bad Request',
+          status: BLOCK_OPTION_STATUS,
+          detail: error.message,
+          code: TABLE_CELLS_INVALID,
           ...error.violation,
         })
         return

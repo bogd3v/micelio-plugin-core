@@ -30,6 +30,10 @@ const isRecord = (value: unknown): value is Row =>
 const TEXT_TYPES = new Set(['string', 'text', 'richtext'])
 const KEPT_TYPES = new Set(['enumeration', 'boolean', 'integer'])
 
+/** A `json` value that is a list of texts: the `cells` of a table's row. */
+const isTextList = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string')
+
 /** A field that holds an address: a template never keeps one (its link, its credit's source). */
 const isLinkField = (name: string) => name === 'url' || name.endsWith('Url')
 
@@ -44,17 +48,24 @@ export function blockOfComponent(component: string): Block | undefined {
 
 /**
  * The names of the vocabulary's options a block does not expose, which its component may declare
- * all the same: the catalogue refuses them, so a template never keeps one.
+ * all the same: the catalogue refuses them, so a template never keeps one. A name the block's schema
+ * declares as a field of its own (`columns` of `table`) is content and is not one of them.
  */
 export function unexposedOptions(component: string): ReadonlySet<string> {
   const block = blockOfComponent(component)
   const exposed = new Set(block ? optionsOf(block).map(([name]) => name) : [])
-  return new Set(['variant', ...OPTION_NAMES].filter((name) => block && !exposed.has(name)))
+  return new Set(
+    ['variant', ...OPTION_NAMES].filter(
+      (name) => block && !exposed.has(name) && !(name in block.schema.fields.shape)
+    )
+  )
 }
 
 /**
  * What a template keeps of a block's stored content: its options and settings, and the text when
- * `content` is `sample`; the items stay (empty when `clear`), a file or a link never does.
+ * `content` is `sample`; the items stay (empty when `clear`), a file or a link never does. A `json`
+ * list of texts (the `cells` of a table's row) is text that keeps its length: as it is when `sample`,
+ * one empty text per entry when `clear`, so the row still has a cell for each column.
  *
  * @remarks
  * It reads the component's attributes, so what is not an attribute of the component is dropped, and
@@ -76,6 +87,8 @@ export function shapeContent(
     const type = attribute.type ?? ''
     if (KEPT_TYPES.has(type)) {
       kept[name] = value
+    } else if (type === 'json' && isTextList(value)) {
+      kept[name] = content === 'sample' ? value : value.map(() => '')
     } else if (TEXT_TYPES.has(type)) {
       if (content === 'sample' && typeof value === 'string' && value.trim() !== '') {
         if (!isLinkField(name)) kept[name] = value

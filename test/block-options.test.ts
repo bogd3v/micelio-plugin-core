@@ -118,9 +118,12 @@ describe('the options of the catalogue', () => {
   // The artboard's "blocks shown" for each option.
   it.each<[OptionName, string[]]>([
     ['layout', ['hero', 'cta', 'testimonials']],
-    ['width', ['media', 'quote', 'gallery', 'code']],
+    ['width', ['media', 'quote', 'gallery', 'code', 'table']],
     ['columns', ['feature-grid', 'stats', 'pricing', 'logo-cloud', 'testimonials', 'post-list']],
-    ['density', ['feature-grid', 'gallery', 'logo-cloud', 'testimonials', 'faq', 'post-list']],
+    [
+      'density',
+      ['feature-grid', 'gallery', 'logo-cloud', 'testimonials', 'faq', 'post-list', 'table'],
+    ],
     ['align', ['quote', ...PAGE_SECTIONS]],
     ['tone', PAGE_SECTIONS],
     ['ratio', ['media', 'slider', 'media-showcase']],
@@ -291,6 +294,20 @@ describe('findBlockOptionViolation', () => {
     expect(
       findBlockOptionViolation([{ __component: 'host.own', columns: 99 }, null, 'x'])
     ).toBeNull()
+  })
+
+  it('takes a field of the block named like an option as content: the columns of a table', () => {
+    const table = {
+      __component: 'shared.table',
+      columns: [{ label: 'Plan' }, { label: 'Price' }],
+      rows: [{ cells: ['Basic', '1'] }],
+    }
+    expect(findBlockOptionViolation([table])).toBeNull()
+    // A block without such a field is still refused the option it does not expose.
+    expect(findBlockOptionViolation([{ __component: 'shared.code', columns: '3' }])).toMatchObject({
+      block: 'code',
+      option: 'columns',
+    })
   })
 
   it('reports the first violation of the zone', () => {

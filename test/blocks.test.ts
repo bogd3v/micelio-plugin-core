@@ -39,6 +39,8 @@ const CATALOGUE: [string, string, string[]][] = [
   ['playground', 'shared.playground', []],
   // micelio-cms#448: code with a file name, highlighted lines and a caption.
   ['code', 'shared.code', []],
+  // micelio-cms#449: a table of data with a caption and header cells.
+  ['table', 'shared.table', []],
   // ADR-0022, section 1: a reference to a reusable block.
   ['reusable', 'section.reusable', []],
 ]
@@ -89,7 +91,7 @@ const ENTRY = z.object({
 const components = fixture.components as Record<string, { attributes: StrapiAttributes }>
 
 describe('the block catalogue', () => {
-  it('has exactly the 20 blocks of the catalogue (ADR-0018, section 6, less `rich-text`, and `reusable` of ADR-0022 and `code`), in its order', () => {
+  it('has exactly the 21 blocks of the catalogue (ADR-0018, section 6, less `rich-text`, and `reusable` of ADR-0022, `code` and `table`), in its order', () => {
     expect(BLOCKS.map((block) => [block.id, block.schema.component])).toEqual(
       CATALOGUE.map(([id, component]) => [id, component])
     )
@@ -169,11 +171,11 @@ describe('the block catalogue', () => {
   })
 
   // `section.rich-text` is left out with its block; it stays a component of the host until it is retired.
-  it('accounts for the 35 components of the fixture', () => {
+  it('accounts for the 38 components of the fixture', () => {
     const described = new Set(
       BLOCKS.flatMap((block) => Object.keys(strapiComponents(block).components))
     )
-    expect(Object.keys(components)).toHaveLength(35)
+    expect(Object.keys(components)).toHaveLength(38)
     expect(
       Object.keys(components)
         .filter((uid) => !described.has(uid))
@@ -524,7 +526,8 @@ function iconBlock(fields: Parameters<typeof part>[1]): Block {
 
 // The options of the vocabulary (contract/options.ts) are new in the catalogue: the components of
 // micelio-cms v0.4.0 (the base of the fixture) have only `variant`, and micelio-cms adds the rest in its own change (standard,
-// section 6: CMS first). test/block-options.test.ts covers them; everything else is compared as is.
+// section 6: CMS first). test/block-options.test.ts covers them; everything else is compared as is,
+// a field of the block's own that has a name of the vocabulary (`table`'s `columns`) included.
 function withoutVocabulary(
   components: Record<string, StrapiAttributes>,
   uid: string
@@ -532,7 +535,11 @@ function withoutVocabulary(
   const names = new Set<string>(OPTION_NAMES)
   return {
     ...components,
-    [uid]: Object.fromEntries(Object.entries(components[uid]).filter(([name]) => !names.has(name))),
+    [uid]: Object.fromEntries(
+      Object.entries(components[uid]).filter(
+        ([name, attribute]) => !names.has(name) || attribute.type !== 'enumeration'
+      )
+    ),
   }
 }
 

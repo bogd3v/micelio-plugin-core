@@ -591,10 +591,10 @@ stack's `page` is site-scoped and holds every block, so it shows what the page d
      -d "{\"data\":{\"title\":\"$1\",\"slug\":\"$1\",\"sections\":[$2]}}"; }
    ```
 
-2. Open the page. The table lists the 20 blocks of the catalogue, all on, and the line above it
-   reads "0 disabled on default · 20 enabled". `PALETTE` lists 20 ids, `hero` among them.
-3. Switch **Hero** off. The row turns grey and the line reads "1 disabled on default · 19
-   enabled". `PALETTE` lists 19 ids and no `hero`. **Disabled only** leaves that one row.
+2. Open the page. The table lists the 21 blocks of the catalogue, all on, and the line above it
+   reads "0 disabled on default · 21 enabled". `PALETTE` lists 21 ids, `hero` among them.
+3. Switch **Hero** off. The row turns grey and the line reads "1 disabled on default · 20
+   enabled". `PALETTE` lists 20 ids and no `hero`. **Disabled only** leaves that one row.
 4. Try to add the disabled block:
 
    ```bash

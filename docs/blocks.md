@@ -2,7 +2,7 @@
 
 The blocks a page is made of, as a contract ([ADR-0018](https://github.com/bogd3v/micelio/blob/main/docs/adr/0018-blocks-as-a-contract.md)): each block has a stable `id`, the `schema` of the Strapi component that stores its content, its presentation `options`, its `cost` and its `static` alternative, and optionally the `module` of `site.modules` it needs. The catalogue is the builder's palette and the theme creator's reference.
 
-The first catalogue was the 19 blocks of ADR-0018, section 6, read from `micelio-cms` `v0.4.0`; it has 20 now: `rich-text` (`section.rich-text`, the page's Markdown section) left it and `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page and in an article ([Prose](#prose), micelio-cms#445), `reusable` (`section.reusable`) references a reusable block ([Reusable](#reusable), ADR-0022), and `code` (`shared.code`) shows code with a file name, highlighted lines and a caption ([Code](#code), micelio-cms#448). It changes no block's content: the components stay in `micelio-cms` until the cut-over of release line 0.7. The presentation options of the vocabulary ([below](#presentation-options)) are the one addition.
+The first catalogue was the 19 blocks of ADR-0018, section 6, read from `micelio-cms` `v0.4.0`; it has 21 now: `rich-text` (`section.rich-text`, the page's Markdown section) left it and `prose` (`shared.rich-text`) is the one Markdown block, allowed in a page and in an article ([Prose](#prose), micelio-cms#445), `reusable` (`section.reusable`) references a reusable block ([Reusable](#reusable), ADR-0022), `code` (`shared.code`) shows code with a file name, highlighted lines and a caption ([Code](#code), micelio-cms#448), and `table` (`shared.table`) is a table of data with a caption and header cells ([Table](#table), micelio-cms#449). It changes no block's content: the components stay in `micelio-cms` until the cut-over of release line 0.7. The presentation options of the vocabulary ([below](#presentation-options)) are the one addition.
 
 ## Where it lives
 
@@ -46,7 +46,7 @@ Two values are withheld: `width: full` from the article blocks (`media`, `quote`
 
 Each is stored in the block's component (`iconPosition` in the link's) as an optional Strapi `enumeration` with its default, so content saved before the option existed stays valid and renders as the default. The default is the value the block renders today, so content saved before keeps its look. Values are strings: `columns: 3` and `columns: "3"` are the same value, and a number outside the set is refused.
 
-**Validation at save.** On `create`, `update` and `clone` (the Content Manager's duplicate) of any type with a dynamic zone, the plugin checks every option in the blocks the data names and refuses the save with `blockOptionInvalid` ([`docs/api.md`](api.md#errors)) when a block does not expose the option or the value is not one the block offers: the problem detail names the block, the option and the allowed values. An absent or `null` option takes its default. Stored content is not re-checked, and a component that is not a block of the catalogue is left alone. The components must declare the attributes (the host's, or `micelio-cms`'s once it adds them: the components of `v0.4.0` store only `variant`), or Strapi refuses the unknown key first.
+**Validation at save.** On `create`, `update` and `clone` (the Content Manager's duplicate) of any type with a dynamic zone, the plugin checks every option in the blocks the data names and refuses the save with `blockOptionInvalid` ([`docs/api.md`](api.md#errors)) when a block does not expose the option or the value is not one the block offers: the problem detail names the block, the option and the allowed values. The exception is a field of the block's own schema that has an option's name: it is content, never checked as an option (`columns` of `table`, [Table](#table)). An absent or `null` option takes its default. Stored content is not re-checked, and a component that is not a block of the catalogue is left alone. The components must declare the attributes (the host's, or `micelio-cms`'s once it adds them: the components of `v0.4.0` store only `variant`), or Strapi refuses the unknown key first.
 
 **What a site manages.** The catalogue is the core's and read only; a site manages a layer on top
 of it (the Block catalogue page, [`docs/operate/block-catalogue.md`](operate/block-catalogue.md)):
@@ -100,6 +100,14 @@ Every page section (the blocks whose `group` is `section`, `reusable` included) 
 **Highlighted lines at save.** On `create`, `update` and `clone`, and in the dry run and the apply of an import, the plugin refuses with `codeHighlightInvalid` ([`docs/api.md`](api.md#errors)) a `highlight` that is not a list or has an entry that is not a whole number from 1 to the number of lines of `code`. A final line break does not open another line, and a `highlight` with a line and no `code` is refused. `null`, an absent `highlight` and an empty list are no lines and are accepted.
 
 Its `cost` is not measured yet (the renderer is the third pull request of micelio-cms#448): it declares that of `prose`, which already styles code, until `npm run perf` of `micelio` measures it.
+
+## Table
+
+`table` (`shared.table`) is a table of data with a caption and header cells, allowed in a page's zone and in an article's (its `group` is `both`; micelio-cms#449). Every field is optional and none has a default. `columns` is a repeatable `shared.table-column`, each with the header `label` of its column and the `align` of its cells (`start` or `center`); `rows` is a repeatable `shared.table-row`, whose `cells` is a list of strings, one per column, in the order of the columns. `headerColumn` makes the first column a header. Its presentation options are `width` and `density`, with the values of the vocabulary: because the block is in both zones, an article is offered `width: full` too. Its `columns` field has the name of the vocabulary's `columns` option, which the block does not expose: a field the block's own schema declares is content, so the save does not check it as an option, a page template keeps it as items and the builder sends it.
+
+**Cells at save.** On `create`, `update` and `clone`, and in the dry run and the apply of an import, the plugin refuses with `tableCellsInvalid` ([`docs/api.md`](api.md#errors)) a row whose number of cells is not the number of the block's columns, naming the row. A `cells` that is `null`, absent or not a list is a row of no cells, and a block with no `columns` has none. A block with no rows, or with no `rows` at all, is accepted.
+
+Its `cost` is not measured yet (the renderer is the third pull request of micelio-cms#449): it declares that of `pricing`, whose `table` variant renders a table too, until `npm run perf` of `micelio` measures it.
 
 ## Reusable
 
@@ -276,6 +284,7 @@ The measurement of 2026-10-23, in gzip bytes:
 | `slider`         | `shared.slider`          |                                   | `ratio`                                          | 1545         | 2615        | No                     |
 | `playground`     | `shared.playground`      |                                   | `height`                                         | 633          | 1758        | `playground` (runtime) |
 | `code`           | `shared.code`            |                                   | `width`                                          | 1895         | 610         | No                     |
+| `table`          | `shared.table`           |                                   | `width`, `density`                               | 805          | 1186        | No                     |
 | `reusable`       | `section.reusable`       |                                   |                                                  | 805          | 1822        | No                     |
 
 ### `hero`
@@ -662,6 +671,23 @@ The measurement of 2026-10-23, in gzip bytes:
 | `highlight` | json        | No       |                                                                                                                                     |
 | `caption`   | text        | No       |                                                                                                                                     |
 
+### `table`
+
+- **Component:** `shared.table` (page sections, and article and About blocks)
+- **Options:**
+  - `width`: `prose`, `wide`, `full`; default `prose`
+  - `density`: `comfortable`, `compact`; default `comfortable`
+- **Cost:** 805 B of CSS and 1186 B of JS, gzip
+- **Static:** Itself: a `<table>` with its `<caption>` and `scope` on its header cells, which scrolls inside its own box at phone width and needs no JavaScript.
+
+| Field          | Type                              | Required | Details |
+| -------------- | --------------------------------- | -------- | ------- |
+| `blockId`      | string                            | No       |         |
+| `caption`      | text                              | No       |         |
+| `columns`      | `shared.table-column`, repeatable | No       |         |
+| `rows`         | `shared.table-row`, repeatable    | No       |         |
+| `headerColumn` | boolean                           | No       |         |
+
 ### `reusable`
 
 - **Component:** `section.reusable` (page sections)
@@ -798,5 +824,24 @@ Nested in `slider`.
 | `file`    | media (images)        | Yes      |         |
 | `caption` | text                  | No       |         |
 | `credit`  | `shared.image-credit` | No       |         |
+
+### `shared.table-column`
+
+Nested in `table`.
+
+| Field    | Type        | Required | Details           |
+| -------- | ----------- | -------- | ----------------- |
+| `itemId` | string      | No       |                   |
+| `label`  | string      | No       |                   |
+| `align`  | enumeration | No       | `start`, `center` |
+
+### `shared.table-row`
+
+Nested in `table`.
+
+| Field    | Type   | Required | Details |
+| -------- | ------ | -------- | ------- |
+| `itemId` | string | No       |         |
+| `cells`  | json   | No       |         |
 
 <!-- blocks:reference:end -->

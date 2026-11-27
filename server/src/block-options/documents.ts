@@ -9,6 +9,8 @@ import { SectionAnchorError } from '../section-anchor/error'
 import { findAnchorViolation } from '../section-anchor/rules'
 import { CodeHighlightError } from '../code-highlight/error'
 import { findHighlightViolation } from '../code-highlight/rules'
+import { TableCellsError } from '../table-cells/error'
+import { findCellsViolation } from '../table-cells/rules'
 import { TestimonialRatingError } from '../testimonial-rating/error'
 import { findRatingViolation } from '../testimonial-rating/rules'
 import { BlockOptionError } from './error'
@@ -32,11 +34,12 @@ type Params = Record<string, unknown> & { data?: Record<string, unknown> }
  * `anchor` that is not a kebab-case slug or that two blocks of the page share (`sectionAnchorInvalid`), and a `prose` block whose Markdown body opens below `h2`, has an `h1` or
  * skips a level (`proseHeadingInvalid`), and a `testimonials` item whose `rating` is not a whole number from 1 to 5
  * (`testimonialRatingInvalid`), and a `code` block that highlights a line outside its code
- * (`codeHighlightInvalid`), and a group of blocks (ADR-0022, section 2) split into two runs or
+ * (`codeHighlightInvalid`), and a `table` row whose number of cells is not the number of its
+ * columns (`tableCellsInvalid`), and a group of blocks (ADR-0022, section 2) split into two runs or
  * whose members set two tones (`blockGroupInvalid`).
  *
  * @throws {@link BlockOptionError} with the block, the option and the values it allows, or
- * `SceneBackgroundLimitError` {@link SectionAnchorError} {@link ProseHeadingError} {@link TestimonialRatingError} {@link CodeHighlightError} or {@link BlockGroupError}.
+ * `SceneBackgroundLimitError` {@link SectionAnchorError} {@link ProseHeadingError} {@link TestimonialRatingError} {@link CodeHighlightError} {@link TableCellsError} or {@link BlockGroupError}.
  */
 export function blockOptionsDocuments(
   strapi: Core.Strapi
@@ -64,6 +67,8 @@ export function blockOptionsDocuments(
       if (rating) throw new TestimonialRatingError(rating)
       const highlight = findHighlightViolation(zones)
       if (highlight) throw new CodeHighlightError(highlight)
+      const cells = findCellsViolation(zones)
+      if (cells) throw new TableCellsError(cells)
       const group = findGroupViolation(zones)
       if (group) throw new BlockGroupError(group)
     }

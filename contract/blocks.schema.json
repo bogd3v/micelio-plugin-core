@@ -2301,6 +2301,117 @@
       },
       "x-strapi": { "type": "component", "component": "shared.code", "repeatable": false }
     },
+    "table": {
+      "type": "object",
+      "properties": {
+        "blockId": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "string" } }, { "type": "null" }]
+        },
+        "caption": {
+          "anyOf": [{ "type": "string", "x-strapi": { "type": "text" } }, { "type": "null" }]
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "itemId": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
+                  "label": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
+                  "align": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": ["start", "center"],
+                        "x-strapi": { "type": "enumeration" }
+                      },
+                      { "type": "null" }
+                    ]
+                  }
+                }
+              },
+              "x-strapi": {
+                "type": "component",
+                "component": "shared.table-column",
+                "repeatable": true
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "rows": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "itemId": {
+                    "anyOf": [
+                      { "type": "string", "x-strapi": { "type": "string" } },
+                      { "type": "null" }
+                    ]
+                  },
+                  "cells": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "x-strapi": { "type": "json" }
+                      },
+                      { "type": "null" }
+                    ]
+                  }
+                }
+              },
+              "x-strapi": {
+                "type": "component",
+                "component": "shared.table-row",
+                "repeatable": true
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "headerColumn": {
+          "anyOf": [{ "type": "boolean", "x-strapi": { "type": "boolean" } }, { "type": "null" }]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["prose", "wide", "full"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "prose"
+            },
+            { "type": "null" }
+          ]
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["comfortable", "compact"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "comfortable"
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "x-strapi": { "type": "component", "component": "shared.table", "repeatable": false }
+    },
     "reusable": {
       "type": "object",
       "properties": {

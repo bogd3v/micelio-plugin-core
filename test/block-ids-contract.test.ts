@@ -30,6 +30,8 @@ describe('the instance ids in the catalogue', () => {
       'section.stat',
       'section.testimonial',
       'shared.slide',
+      'shared.table-column',
+      'shared.table-row',
     ])
     expect([...others]).toEqual([])
   })

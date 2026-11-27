@@ -1,7 +1,7 @@
 {
   "source": {
     "repository": "bogd3v/micelio-cms",
-    "commit": "c7afe9ef6632b569d2c79b15e9b78368edd341f9",
+    "commit": "f0141fac3da508e4ed6f93506b107614c67c55b5",
     "derivedFrom": {
       "tag": "v0.4.0",
       "commit": "fea811566909d29e43cfcd1837bd419cdc27e0ad",
@@ -660,6 +660,49 @@
         "caption": {
           "type": "text"
         }
+      }
+    },
+    "shared.table": {
+      "collectionName": "components_shared_tables",
+      "info": {
+        "displayName": "Table",
+        "icon": "grid",
+        "description": "A table of data with a caption, header cells and a header column"
+      },
+      "options": {},
+      "attributes": {
+        "blockId": { "type": "string" },
+        "caption": { "type": "text" },
+        "columns": { "type": "component", "repeatable": true, "component": "shared.table-column" },
+        "rows": { "type": "component", "repeatable": true, "component": "shared.table-row" },
+        "headerColumn": { "type": "boolean" }
+      }
+    },
+    "shared.table-column": {
+      "collectionName": "components_shared_table_columns",
+      "info": {
+        "displayName": "Table column",
+        "icon": "grid",
+        "description": "A column of a table: its header label and how its cells align"
+      },
+      "options": {},
+      "attributes": {
+        "itemId": { "type": "string" },
+        "label": { "type": "string" },
+        "align": { "type": "enumeration", "enum": ["start", "center"] }
+      }
+    },
+    "shared.table-row": {
+      "collectionName": "components_shared_table_rows",
+      "info": {
+        "displayName": "Table row",
+        "icon": "grid",
+        "description": "A row of a table: one string per column, in the order of the columns"
+      },
+      "options": {},
+      "attributes": {
+        "itemId": { "type": "string" },
+        "cells": { "type": "json" }
       }
     },
     "shared.playground": {
