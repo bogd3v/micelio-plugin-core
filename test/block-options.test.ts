@@ -20,7 +20,7 @@ function block(id: string): Block {
 }
 
 describe('the options vocabulary', () => {
-  it('has the nine names, and no others', () => {
+  it('has the ten names, and no others', () => {
     expect([...OPTION_NAMES]).toEqual([
       'layout',
       'width',
@@ -31,6 +31,7 @@ describe('the options vocabulary', () => {
       'ratio',
       'height',
       'iconStyle',
+      'iconPosition',
     ])
   })
 
@@ -47,6 +48,7 @@ describe('the options vocabulary', () => {
       ratio: [['16:9', '4:3', '1:1', 'auto'], '16:9'],
       height: [['s', 'm', 'l', 'full'], 'm'],
       iconStyle: [['outline', 'filled'], 'outline'],
+      iconPosition: [['start', 'end', 'only'], 'start'],
     })
   })
 
@@ -55,8 +57,24 @@ describe('the options vocabulary', () => {
     expect(OPTIONS.iconStyle.default).toBe('outline')
   })
 
-  it('no block offers iconStyle yet', () => {
-    expect(BLOCKS.filter((entry) => entry.options.iconStyle)).toEqual([])
+  it('the vocabulary has iconPosition with start, end and only, default start', () => {
+    expect(OPTIONS.iconPosition.values).toEqual(['start', 'end', 'only'])
+    expect(OPTIONS.iconPosition.default).toBe('start')
+  })
+
+  // Through the icon of their links (micelio-cms#462).
+  it('hero, media-showcase, cta and pricing offer iconStyle, and no other block', () => {
+    expect(BLOCKS.filter((entry) => entry.options.iconStyle).map((entry) => entry.id)).toEqual([
+      'hero',
+      'media-showcase',
+      'pricing',
+      'cta',
+    ])
+  })
+
+  // A field of the `section.link` part, never an option of a block.
+  it('no block offers iconPosition', () => {
+    expect(BLOCKS.filter((entry) => entry.options.iconPosition)).toEqual([])
   })
 
   it.each(Object.entries(OPTIONS))('%s is a closed set holding its default', (_, option) => {

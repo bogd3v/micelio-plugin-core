@@ -29,6 +29,41 @@
                   "type": "string",
                   "pattern": "^(https?:\\/\\/\\S+|mailto:\\S+|\\/\\S*)$",
                   "x-strapi": { "type": "string" }
+                },
+                "icon": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                      "description": "A name of the icon catalogue (icons.schema.json), drawn in the iconStyle of the block",
+                      "x-strapi": { "type": "customField", "customField": "plugin::micelio.icon" },
+                      "x-micelio-icon": { "required": false, "alone": false }
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "iconPosition": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["start", "end", "only"],
+                      "x-strapi": { "type": "enumeration" },
+                      "default": "start"
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "external": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
+                },
+                "download": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": ["label", "url"],
@@ -47,6 +82,41 @@
                   "type": "string",
                   "pattern": "^(https?:\\/\\/\\S+|mailto:\\S+|\\/\\S*)$",
                   "x-strapi": { "type": "string" }
+                },
+                "icon": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                      "description": "A name of the icon catalogue (icons.schema.json), drawn in the iconStyle of the block",
+                      "x-strapi": { "type": "customField", "customField": "plugin::micelio.icon" },
+                      "x-micelio-icon": { "required": false, "alone": false }
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "iconPosition": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["start", "end", "only"],
+                      "x-strapi": { "type": "enumeration" },
+                      "default": "start"
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "external": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
+                },
+                "download": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": ["label", "url"],
@@ -135,6 +205,17 @@
               "enum": ["s", "m", "l", "full"],
               "x-strapi": { "type": "enumeration" },
               "default": "m"
+            },
+            { "type": "null" }
+          ]
+        },
+        "iconStyle": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["outline", "filled"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "outline"
             },
             { "type": "null" }
           ]
@@ -319,6 +400,41 @@
                   "type": "string",
                   "pattern": "^(https?:\\/\\/\\S+|mailto:\\S+|\\/\\S*)$",
                   "x-strapi": { "type": "string" }
+                },
+                "icon": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                      "description": "A name of the icon catalogue (icons.schema.json), drawn in the iconStyle of the block",
+                      "x-strapi": { "type": "customField", "customField": "plugin::micelio.icon" },
+                      "x-micelio-icon": { "required": false, "alone": false }
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "iconPosition": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["start", "end", "only"],
+                      "x-strapi": { "type": "enumeration" },
+                      "default": "start"
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "external": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
+                },
+                "download": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": ["label", "url"],
@@ -380,6 +496,17 @@
               "enum": ["16:9", "4:3", "1:1", "auto"],
               "x-strapi": { "type": "enumeration" },
               "default": "16:9"
+            },
+            { "type": "null" }
+          ]
+        },
+        "iconStyle": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["outline", "filled"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "outline"
             },
             { "type": "null" }
           ]
@@ -865,6 +992,44 @@
                             "type": "string",
                             "pattern": "^(https?:\\/\\/\\S+|mailto:\\S+|\\/\\S*)$",
                             "x-strapi": { "type": "string" }
+                          },
+                          "icon": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                                "description": "A name of the icon catalogue (icons.schema.json), drawn in the iconStyle of the block",
+                                "x-strapi": {
+                                  "type": "customField",
+                                  "customField": "plugin::micelio.icon"
+                                },
+                                "x-micelio-icon": { "required": false, "alone": false }
+                              },
+                              { "type": "null" }
+                            ]
+                          },
+                          "iconPosition": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["start", "end", "only"],
+                                "x-strapi": { "type": "enumeration" },
+                                "default": "start"
+                              },
+                              { "type": "null" }
+                            ]
+                          },
+                          "external": {
+                            "anyOf": [
+                              { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                              { "type": "null" }
+                            ]
+                          },
+                          "download": {
+                            "anyOf": [
+                              { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                              { "type": "null" }
+                            ]
                           }
                         },
                         "required": ["label", "url"],
@@ -944,6 +1109,17 @@
               "enum": ["default", "raised", "accent"],
               "x-strapi": { "type": "enumeration" },
               "default": "default"
+            },
+            { "type": "null" }
+          ]
+        },
+        "iconStyle": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["outline", "filled"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "outline"
             },
             { "type": "null" }
           ]
@@ -1092,6 +1268,41 @@
                   "type": "string",
                   "pattern": "^(https?:\\/\\/\\S+|mailto:\\S+|\\/\\S*)$",
                   "x-strapi": { "type": "string" }
+                },
+                "icon": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                      "description": "A name of the icon catalogue (icons.schema.json), drawn in the iconStyle of the block",
+                      "x-strapi": { "type": "customField", "customField": "plugin::micelio.icon" },
+                      "x-micelio-icon": { "required": false, "alone": false }
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "iconPosition": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["start", "end", "only"],
+                      "x-strapi": { "type": "enumeration" },
+                      "default": "start"
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "external": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
+                },
+                "download": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": ["label", "url"],
@@ -1110,6 +1321,41 @@
                   "type": "string",
                   "pattern": "^(https?:\\/\\/\\S+|mailto:\\S+|\\/\\S*)$",
                   "x-strapi": { "type": "string" }
+                },
+                "icon": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                      "description": "A name of the icon catalogue (icons.schema.json), drawn in the iconStyle of the block",
+                      "x-strapi": { "type": "customField", "customField": "plugin::micelio.icon" },
+                      "x-micelio-icon": { "required": false, "alone": false }
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "iconPosition": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["start", "end", "only"],
+                      "x-strapi": { "type": "enumeration" },
+                      "default": "start"
+                    },
+                    { "type": "null" }
+                  ]
+                },
+                "external": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
+                },
+                "download": {
+                  "anyOf": [
+                    { "type": "boolean", "x-strapi": { "type": "boolean" } },
+                    { "type": "null" }
+                  ]
                 }
               },
               "required": ["label", "url"],
@@ -1171,6 +1417,17 @@
               "enum": ["default", "raised", "accent"],
               "x-strapi": { "type": "enumeration" },
               "default": "default"
+            },
+            { "type": "null" }
+          ]
+        },
+        "iconStyle": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["outline", "filled"],
+              "x-strapi": { "type": "enumeration" },
+              "default": "outline"
             },
             { "type": "null" }
           ]

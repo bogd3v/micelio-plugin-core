@@ -9,7 +9,7 @@ The first catalogue was the 19 blocks of ADR-0018, section 6, read from `micelio
 | File                          | What it is                                                                                                            |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `contract/blocks.ts`          | The catalogue, the source of truth. Its fields are written with the builders of `contract/fields.ts` (zod)            |
-| `contract/options.ts`         | The presentation options vocabulary: the nine names and their values                                                  |
+| `contract/options.ts`         | The presentation options vocabulary: the ten names and their values                                                   |
 | `contract/blocks.schema.json` | Generated: the JSON Schema of each block's content as the content API answers it, published as `./blocks.schema.json` |
 | `docs/blocks.md`              | This file. The reference below the marker is generated; the rest is written by hand                                   |
 | `GET /micelio/blocks`         | The catalogue for the admin panel, with each block's JSON Schema ([`docs/api.md`](api.md))                            |
@@ -25,25 +25,26 @@ A change to the catalogue follows ADR-0018, section 2: a new block, option, opti
 
 ## Presentation options
 
-A block's `options` are a closed set of presentation values (ADR-0018, section 1). `variant` is the block's own set. The rest come from one vocabulary, `contract/options.ts`: nine names with short value sets, each with a default (in bold below) that keeps today's content valid. A block declares which names it exposes (the reference below lists them per block) and offers all of a name's values, less the two withheld below. The vocabulary is the only place a value is written; a theme styles each value and may restyle it, and how it does so is in `docs/themes/` of `micelio`.
+A block's `options` are a closed set of presentation values (ADR-0018, section 1). `variant` is the block's own set. The rest come from one vocabulary, `contract/options.ts`: ten names with short value sets, each with a default (in bold below) that keeps today's content valid. A block declares which names it exposes (the reference below lists them per block) and offers all of a name's values, less the two withheld below. The vocabulary is the only place a value is written; a theme styles each value and may restyle it, and how it does so is in `docs/themes/` of `micelio`.
 
-| Option      | Values, in the artboard's order (default in bold) | Exposed by                                                                    |
-| ----------- | ------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `layout`    | **`centered`**, `split`, `stacked`                | `hero`, `cta`, `testimonials`                                                 |
-| `width`     | **`prose`**, `wide`, `full`                       | `code`, `gallery`, `media`, `quote`                                           |
-| `columns`   | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`, `testimonials`, `post-list` |
-| `density`   | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list`   |
-| `align`     | **`start`**, `center` (there is no `end`)         | `quote` and the thirteen page sections other than `reusable`                  |
-| `tone`      | **`default`**, `raised`, `accent`                 | the thirteen page sections other than `reusable`                              |
-| `ratio`     | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                           |
-| `height`    | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                                 |
-| `iconStyle` | **`outline`**, `filled`                           | every block with an icon field ([Icons](#icons)); none yet                    |
+| Option         | Values, in the artboard's order (default in bold) | Exposed by                                                                                   |
+| -------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `layout`       | **`centered`**, `split`, `stacked`                | `hero`, `cta`, `testimonials`                                                                |
+| `width`        | **`prose`**, `wide`, `full`                       | `code`, `gallery`, `media`, `quote`                                                          |
+| `columns`      | `2`, **`3`**, `4`, `6`                            | `feature-grid`, `stats`, `pricing`, `logo-cloud`, `testimonials`, `post-list`                |
+| `density`      | **`comfortable`**, `compact`                      | `feature-grid`, `gallery`, `logo-cloud`, `testimonials`, `faq`, `post-list`                  |
+| `align`        | **`start`**, `center` (there is no `end`)         | `quote` and the thirteen page sections other than `reusable`                                 |
+| `tone`         | **`default`**, `raised`, `accent`                 | the thirteen page sections other than `reusable`                                             |
+| `ratio`        | **`16:9`**, `4:3`, `1:1`, `auto`                  | `media`, `slider`, `media-showcase`                                                          |
+| `height`       | `s`, **`m`**, `l`, `full`                         | `hero`, `scene`, `playground`                                                                |
+| `iconStyle`    | **`outline`**, `filled`                           | every block with an icon field ([Icons](#icons)): `hero`, `media-showcase`, `pricing`, `cta` |
+| `iconPosition` | **`start`**, `end`, `only`                        | no block: a field of the `section.link` part ([Link](#link))                                 |
 
 `tone` and `align` are on the thirteen page sections (`page.sections`) that have options: `reusable` has none of its own ([Reusable](#reusable)). A `scene` offers them only in its `inline` variant: its `background` variant paints its own poster, and a save that sets either on it (a `scene` with no `variant` takes `background`) is refused with `blockOptionInvalid` unless the value is the option's default, the only value allowed (the content API stores both on a `scene`). The builder leaves both out of a new `background` scene, so a site's default of either never reaches it.
 
 Two values are withheld: `width: full` from the article blocks (`media`, `quote`) and `columns: 6` from every block but `logo-cloud`; the reference lists the values each block offers.
 
-Each is stored in the block's component as an optional Strapi `enumeration` with its default, so content saved before the option existed stays valid and renders as the default. The default is the value the block renders today, so content saved before keeps its look. Values are strings: `columns: 3` and `columns: "3"` are the same value, and a number outside the set is refused.
+Each is stored in the block's component (`iconPosition` in the link's) as an optional Strapi `enumeration` with its default, so content saved before the option existed stays valid and renders as the default. The default is the value the block renders today, so content saved before keeps its look. Values are strings: `columns: 3` and `columns: "3"` are the same value, and a number outside the set is refused.
 
 **Validation at save.** On `create`, `update` and `clone` (the Content Manager's duplicate) of any type with a dynamic zone, the plugin checks every option in the blocks the data names and refuses the save with `blockOptionInvalid` ([`docs/api.md`](api.md#errors)) when a block does not expose the option or the value is not one the block offers: the problem detail names the block, the option and the allowed values. An absent or `null` option takes its default. Stored content is not re-checked, and a component that is not a block of the catalogue is left alone. The components must declare the attributes (the host's, or `micelio-cms`'s once it adds them: the components of `v0.4.0` store only `variant`), or Strapi refuses the unknown key first.
 
@@ -142,7 +143,7 @@ first move out of `draft` of one that lacks an alternative is refused until the 
 
 ## Icons
 
-An icon in a block is a **name** of the icon catalogue ([`docs/icons.md`](icons.md), ADR-0021 of `micelio`), never a file: `icon: 'map-pin'`. The fields of this section are the contract side every icon field uses; no block has one yet.
+An icon in a block is a **name** of the icon catalogue ([`docs/icons.md`](icons.md), ADR-0021 of `micelio`), never a file: `icon: 'map-pin'`. The fields of this section are the contract side every icon field uses; the link's icon is the first ([Link](#link)).
 
 **The declaration.** A block declares an icon as `icon: { required: boolean }` (ADR-0021, section 1), written in its `schema`, or a part's, with the field kind `icon({ required })` of `contract/fields.ts`. It is the custom field `micelio.icon` (`plugin::micelio.icon`, a string), so the save checks the name against the pinned set (`iconInvalid`, [`docs/api.md`](api.md#errors)). An icon is never required on an existing block (ADR-0021, section 6): adding one is an optional field, a MINOR of the contract.
 
@@ -153,7 +154,7 @@ The generated schema marks the field with `x-micelio-icon`, the declaration (`{ 
 
 **`iconStyle`.** A block with an icon field offers the `iconStyle` option ([above](#presentation-options)), which draws all of its icons, and a block without one does not. `iconIssues` in `contract/strapi.ts` checks it, with the label of an icon that stands alone and the cost below; `npm run blocks:generate` and `lint:blocks` stop on an entry that breaks one of them.
 
-**Cost.** An icon is delivered in one sprite inlined in the page, never as a request (ADR-0021, section 3), so a block with an icon field declares `cost.icons`: the gzip bytes of the sprite entries its icons add, as `docs/performance.md` of `micelio` ("Icons: the cost of a sprite entry") measures an entry. Raw, an entry is 340 bytes at the median and 562 at the 90th percentile of the set; the 16 entries of the specimen's sprite are 1 549 bytes gzip, wrapper included. The reference below adds the number to the block's **Cost** line. A block without an icon field declares none. Every total of a block's cost adds it to the CSS and JS (`costBytes`, `contract/cost.ts`): the palette and the block panel of the builder, `costKb` of the Block catalogue page (`GET /micelio/block-settings?site=`) and the weight of a page template.
+**Cost.** An icon is delivered in one sprite inlined in the page, never as a request (ADR-0021, section 3), so a block with an icon field declares `cost.icons`: the gzip bytes of the sprite entries its icons add, as `docs/performance.md` of `micelio` ("Icons: the cost of a sprite entry") measures an entry. Raw, an entry is 340 bytes at the median and 562 at the 90th percentile of the set; the 16 entries of the specimen's sprite are 1 549 bytes gzip, wrapper included, 97 per entry. The blocks that hold a link declare 97 bytes per link they can hold (`hero` and `cta` 194, `media-showcase` 97) and `pricing` 97 **per plan**, one link each: a value declared before the renderer exists, which the `micelio` pull request of micelio-cms#462 measures. The reference below adds the number to the block's **Cost** line. A block without an icon field declares none. Every total of a block's cost adds it to the CSS and JS (`costBytes`, `contract/cost.ts`): the palette and the block panel of the builder, `costKb` of the Block catalogue page (`GET /micelio/block-settings?site=`) and the weight of a page template.
 
 **The fields that take one.** The block catalogue plan of `micelio` (`docs/architecture/block-catalogue-plan.md`, "Icons") picks four fields for step 1, each `required: false`. Each lands with its block's line of the plan, with the change of `micelio-cms` that adds the field to the component:
 
@@ -165,6 +166,14 @@ The generated schema marks the field with `x-micelio-icon`, the declaration (`{ 
 | `pricing`      | `plan.features[].icon` | Beside text: decorative                                           | 41        |
 
 A brand's own mark is the one exception, `customIcon` (an upload, ADR-0021, section 7), offered only where a later entry allows it (`logo`, `badge`) and never with `icon` on the same item; none of the four does.
+
+## Link
+
+`section.link` is every call to action: the two links of `hero` and `cta`, the one of `media-showcase` and the one of each `pricing` plan (micelio-cms#462). Beside `label` and `url` it has four optional fields, and a link saved without them renders as before:
+
+- `icon`, a name of the icon catalogue ([Icons](#icons)), decorative beside the label (`alone: false`), drawn in its block's `iconStyle`.
+- `iconPosition`, `start` (the default), `end` or `only`, a name of the vocabulary ([Presentation options](#presentation-options), ADR-0018 amendment A1). With `only` the icon shows alone and `label`, still required, is the link's accessible name (ADR-0021, section 1).
+- `external` and `download`, booleans with no default: `null` reads as `false`. The frontend sets `rel="noopener noreferrer"` from `external` and the `download` attribute from `download`. No field sets `target`: the frontend never sets it from content.
 
 ## How a schema maps to Strapi
 
@@ -246,28 +255,28 @@ The measurement of 2026-10-23, in gzip bytes:
 
 ## Blocks
 
-| id               | Component                | `variant` (default first)         | Other options                                   | CSS (B gzip) | JS (B gzip) | Island                 |
-| ---------------- | ------------------------ | --------------------------------- | ----------------------------------------------- | ------------ | ----------- | ---------------------- |
-| `hero`           | `section.hero`           | `centered`, `split`, `full-bleed` | `layout`, `align`, `tone`, `height`             | 737          | 1556        | No                     |
-| `feature-grid`   | `section.feature-grid`   | `grid`, `list`, `bento`           | `columns`, `density`, `align`, `tone`           | 643          | 1350        | No                     |
-| `media-showcase` | `section.media-showcase` | `left`, `right`, `stacked`        | `align`, `tone`, `ratio`                        | 214          | 1423        | No                     |
-| `stats`          | `section.stats`          | `row`, `cards`                    | `columns`, `align`, `tone`                      | 527          | 540         | No                     |
-| `logo-cloud`     | `section.logo-cloud`     | `row`, `marquee`                  | `columns`, `density`, `align`, `tone`           | 497          | 1446        | No                     |
-| `testimonials`   | `section.testimonials`   | `single`, `grid`                  | `layout`, `columns`, `density`, `align`, `tone` | 599          | 1482        | No                     |
-| `pricing`        | `section.pricing`        | `cards`, `table`                  | `columns`, `align`, `tone`                      | 805          | 1186        | No                     |
-| `faq`            | `section.faq`            | `list`, `two-columns`             | `density`, `align`, `tone`                      | 527          | 525         | No                     |
-| `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`                       | 483          | 803         | No                     |
-| `post-list`      | `section.post-list`      | `cards`, `list`, `featured`       | `columns`, `density`, `align`, `tone`           | 376          | 768         | No                     |
-| `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`                                 | 763          | 1822        | No                     |
-| `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`, `align`, `tone`             | 425          | 1251        | No                     |
-| `scene`          | `section.scene`          | `background`, `inline`            | `align`, `tone`, `height`                       | 601          | 1303        | `scene` (3d)           |
-| `prose`          | `shared.rich-text`       |                                   |                                                 | 1895         | 610         | No                     |
-| `quote`          | `shared.quote`           |                                   | `width`, `align`                                | 293          | 259         | No                     |
-| `media`          | `shared.media`           |                                   | `width`, `ratio`                                | 543          | 1400        | No                     |
-| `slider`         | `shared.slider`          |                                   | `ratio`                                         | 1545         | 2615        | No                     |
-| `playground`     | `shared.playground`      |                                   | `height`                                        | 633          | 1758        | `playground` (runtime) |
-| `code`           | `shared.code`            |                                   | `width`                                         | 1895         | 610         | No                     |
-| `reusable`       | `section.reusable`       |                                   |                                                 | 805          | 1822        | No                     |
+| id               | Component                | `variant` (default first)         | Other options                                    | CSS (B gzip) | JS (B gzip) | Island                 |
+| ---------------- | ------------------------ | --------------------------------- | ------------------------------------------------ | ------------ | ----------- | ---------------------- |
+| `hero`           | `section.hero`           | `centered`, `split`, `full-bleed` | `layout`, `align`, `tone`, `height`, `iconStyle` | 737          | 1556        | No                     |
+| `feature-grid`   | `section.feature-grid`   | `grid`, `list`, `bento`           | `columns`, `density`, `align`, `tone`            | 643          | 1350        | No                     |
+| `media-showcase` | `section.media-showcase` | `left`, `right`, `stacked`        | `align`, `tone`, `ratio`, `iconStyle`            | 214          | 1423        | No                     |
+| `stats`          | `section.stats`          | `row`, `cards`                    | `columns`, `align`, `tone`                       | 527          | 540         | No                     |
+| `logo-cloud`     | `section.logo-cloud`     | `row`, `marquee`                  | `columns`, `density`, `align`, `tone`            | 497          | 1446        | No                     |
+| `testimonials`   | `section.testimonials`   | `single`, `grid`                  | `layout`, `columns`, `density`, `align`, `tone`  | 599          | 1482        | No                     |
+| `pricing`        | `section.pricing`        | `cards`, `table`                  | `columns`, `align`, `tone`, `iconStyle`          | 805          | 1186        | No                     |
+| `faq`            | `section.faq`            | `list`, `two-columns`             | `density`, `align`, `tone`                       | 527          | 525         | No                     |
+| `cta`            | `section.cta`            | `banner`, `card`                  | `layout`, `align`, `tone`, `iconStyle`           | 483          | 803         | No                     |
+| `post-list`      | `section.post-list`      | `cards`, `list`, `featured`       | `columns`, `density`, `align`, `tone`            | 376          | 768         | No                     |
+| `newsletter`     | `section.newsletter`     | `inline`, `card`                  | `align`, `tone`                                  | 763          | 1822        | No                     |
+| `gallery`        | `section.gallery`        | `grid`, `masonry`                 | `width`, `density`, `align`, `tone`              | 425          | 1251        | No                     |
+| `scene`          | `section.scene`          | `background`, `inline`            | `align`, `tone`, `height`                        | 601          | 1303        | `scene` (3d)           |
+| `prose`          | `shared.rich-text`       |                                   |                                                  | 1895         | 610         | No                     |
+| `quote`          | `shared.quote`           |                                   | `width`, `align`                                 | 293          | 259         | No                     |
+| `media`          | `shared.media`           |                                   | `width`, `ratio`                                 | 543          | 1400        | No                     |
+| `slider`         | `shared.slider`          |                                   | `ratio`                                          | 1545         | 2615        | No                     |
+| `playground`     | `shared.playground`      |                                   | `height`                                         | 633          | 1758        | `playground` (runtime) |
+| `code`           | `shared.code`            |                                   | `width`                                          | 1895         | 610         | No                     |
+| `reusable`       | `section.reusable`       |                                   |                                                  | 805          | 1822        | No                     |
 
 ### `hero`
 
@@ -278,7 +287,8 @@ The measurement of 2026-10-23, in gzip bytes:
   - `align`: `start`, `center`; default `start`
   - `tone`: `default`, `raised`, `accent`; default `default`
   - `height`: `s`, `m`, `l`, `full`; default `m`
-- **Cost:** 737 B of CSS and 1556 B of JS, gzip
+  - `iconStyle`: `outline`, `filled`; default `outline`
+- **Cost:** 737 B of CSS and 1556 B of JS, gzip; its icons add 194 B of sprite entries, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
 | Field           | Type                   | Required | Details |
@@ -323,7 +333,8 @@ The measurement of 2026-10-23, in gzip bytes:
   - `align`: `start`, `center`; default `start`
   - `tone`: `default`, `raised`, `accent`; default `default`
   - `ratio`: `16:9`, `4:3`, `1:1`, `auto`; default `16:9`
-- **Cost:** 214 B of CSS and 1423 B of JS, gzip
+  - `iconStyle`: `outline`, `filled`; default `outline`
+- **Cost:** 214 B of CSS and 1423 B of JS, gzip; its icons add 97 B of sprite entries, gzip
 - **Static:** Itself: the block needs no JavaScript, and a video shows its native controls.
 
 | Field     | Type                   | Required | Details |
@@ -406,7 +417,8 @@ The measurement of 2026-10-23, in gzip bytes:
   - `columns`: `2`, `3`, `4`; default `3`
   - `align`: `start`, `center`; default `start`
   - `tone`: `default`, `raised`, `accent`; default `default`
-- **Cost:** 805 B of CSS and 1186 B of JS, gzip
+  - `iconStyle`: `outline`, `filled`; default `outline`
+- **Cost:** 805 B of CSS and 1186 B of JS, gzip; its icons add 97 B of sprite entries, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
 | Field     | Type                       | Required | Details    |
@@ -447,7 +459,8 @@ The measurement of 2026-10-23, in gzip bytes:
   - `layout`: `centered`, `split`, `stacked`; default `centered`
   - `align`: `start`, `center`; default `start`
   - `tone`: `default`, `raised`, `accent`; default `default`
-- **Cost:** 483 B of CSS and 803 B of JS, gzip
+  - `iconStyle`: `outline`, `filled`; default `outline`
+- **Cost:** 483 B of CSS and 803 B of JS, gzip; its icons add 194 B of sprite entries, gzip
 - **Static:** Itself: the block needs no JavaScript.
 
 | Field           | Type            | Required | Details |
@@ -701,10 +714,14 @@ Nested in `hero`, `feature-grid`, `media-showcase`, `stats`, `logo-cloud`, `test
 
 Nested in `hero`, `media-showcase`, `pricing`, `cta`.
 
-| Field   | Type   | Required | Details                                         |
-| ------- | ------ | -------- | ----------------------------------------------- |
-| `label` | string | Yes      |                                                 |
-| `url`   | string | Yes      | matches `^(https?:\/\/\S+\|mailto:\S+\|\/\S*)$` |
+| Field          | Type                  | Required | Details                                                        |
+| -------------- | --------------------- | -------- | -------------------------------------------------------------- |
+| `label`        | string                | Yes      |                                                                |
+| `url`          | string                | Yes      | matches `^(https?:\/\/\S+\|mailto:\S+\|\/\S*)$`                |
+| `icon`         | icon (`micelio.icon`) | No       | a name of the icon catalogue, drawn in the block's `iconStyle` |
+| `iconPosition` | enumeration           | No       | `start`, `end`, `only`; default `start`                        |
+| `external`     | boolean               | No       |                                                                |
+| `download`     | boolean               | No       |                                                                |
 
 ### `section.logo`
 

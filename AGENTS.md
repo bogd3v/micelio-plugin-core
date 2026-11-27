@@ -171,7 +171,7 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   checks the server and the admin share), `blocks.ts` (the 20 entries, `code`, `reusable` and the `group` key of a page section among them),
   `islands.ts` (what the catalogue and the admin share about islands: the five kinds, the 1 MB
   rule that decides the trigger, and what counts as a filled field), `options.ts` (the
-  presentation options vocabulary: nine names,
+  presentation options vocabulary: ten names,
   their values and what articles withhold), `fields.ts` (the zod field builders),
   `strapi.ts` (a block's JSON Schema read back as Strapi attributes) and the generated
   `blocks.schema.json`, published as `./blocks.schema.json`.

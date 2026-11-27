@@ -9,6 +9,7 @@ import {
   boolean,
   component,
   enumeration,
+  iconFields,
   integer,
   json,
   media,
@@ -155,11 +156,28 @@ const GROUP = component(
   })
 )
 
+/**
+ * The gzip bytes of one sprite entry, as `docs/performance.md` of `micelio` ("Icons: the cost of a
+ * sprite entry") measures the specimen's: 1 549 bytes for 16 entries, wrapper included. Declared per
+ * link a block can hold until the `micelio` pull request of micelio-cms#462 measures the block.
+ */
+const SPRITE_ENTRY = 97
+
 // Parts (ADR-0018, section 6, "Parts and fields"): they are nested in the blocks that use them and
 // are never entries of the catalogue.
+/**
+ * A call to action (micelio-cms#462). Its icon is decorative beside the `label`, at `iconPosition`;
+ * with `only` it shows alone and the `label`, still required, is its accessible name (ADR-0021,
+ * section 1). `external` and `download` have no default: `null` reads as `false`. The frontend sets
+ * `rel` from `external` and the `download` attribute from `download`; nothing sets `target`.
+ */
 const link = part('section.link', {
   label: string({ required: true }),
   url: string({ required: true, regex: '^(https?://\\S+|mailto:\\S+|/\\S*)$' }),
+  ...iconFields({ required: false }),
+  iconPosition: enumeration(OPTIONS.iconPosition.values, { default: OPTIONS.iconPosition.default }),
+  external: boolean(),
+  download: boolean(),
 })
 const featureItem = part('section.feature-item', {
   itemId: ITEM_ID,
@@ -279,9 +297,10 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('centered', 'split', 'full-bleed'),
-      ...presentation('hero', 'section', 'layout', 'align', 'tone', 'height'),
+      ...presentation('hero', 'section', 'layout', 'align', 'tone', 'height', 'iconStyle'),
     },
-    cost: { css: 737, js: 1556, island: null },
+    // Two links, one sprite entry each.
+    cost: { css: 737, js: 1556, island: null, icons: 2 * SPRITE_ENTRY },
     static: ITSELF,
   },
   {
@@ -316,9 +335,10 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('left', 'right', 'stacked'),
-      ...presentation('media-showcase', 'section', 'align', 'tone', 'ratio'),
+      ...presentation('media-showcase', 'section', 'align', 'tone', 'ratio', 'iconStyle'),
     },
-    cost: { css: 214, js: 1423, island: null },
+    // One link, one sprite entry.
+    cost: { css: 214, js: 1423, island: null, icons: SPRITE_ENTRY },
     static: 'Itself: the block needs no JavaScript, and a video shows its native controls.',
   },
   {
@@ -390,9 +410,10 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('cards', 'table'),
-      ...presentation('pricing', 'section', 'columns', 'align', 'tone'),
+      ...presentation('pricing', 'section', 'columns', 'align', 'tone', 'iconStyle'),
     },
-    cost: { css: 805, js: 1186, island: null },
+    // One link per plan: the entry of one plan's link (`docs/blocks.md`, "Icons").
+    cost: { css: 805, js: 1186, island: null, icons: SPRITE_ENTRY },
     static: ITSELF,
   },
   {
@@ -428,9 +449,10 @@ export const BLOCKS: readonly Block[] = [
     }),
     options: {
       variant: variant('banner', 'card'),
-      ...presentation('cta', 'section', 'layout', 'align', 'tone'),
+      ...presentation('cta', 'section', 'layout', 'align', 'tone', 'iconStyle'),
     },
-    cost: { css: 483, js: 803, island: null },
+    // Two links, one sprite entry each.
+    cost: { css: 483, js: 803, island: null, icons: 2 * SPRITE_ENTRY },
     static: ITSELF,
   },
   {

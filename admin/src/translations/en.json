@@ -520,6 +520,7 @@
   "builder.field.tone": "Tone",
   "builder.field.ratio": "Ratio",
   "builder.field.height": "Height",
+  "builder.field.iconStyle": "Icon style",
   "builder.field.name": "Name",
   "builder.field.label": "Label",
   "builder.field.value": "Value",
