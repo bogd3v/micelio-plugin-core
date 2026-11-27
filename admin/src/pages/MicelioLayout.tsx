@@ -18,6 +18,7 @@ import { localised } from '../utils/localised'
 import AboutPage from './AboutPage'
 import BlocksPage from './BlocksPage'
 import BuilderPage from './BuilderPage'
+import CustomizePage from './CustomizePage'
 import PreviewPage from './PreviewPage'
 import ReviewPage from './ReviewPage'
 import SitesPage from './SitesPage'
@@ -71,7 +72,8 @@ const FullWidth = styled.div`
  * The core's items (`navigation.ts`) show to a role that has their permission; the pages of
  * sibling plugins come from `GET /micelio/admin-pages`, which lists only those the admin user has
  * the permission for. A group with nothing to show is left out. A role without the Status
- * permission lands on About. The Sites page (`sites`) renders the panels sibling plugins registered for their site sections.
+ * permission lands on About. The Sites page (`sites`) renders the panels sibling plugins registered for their site sections;
+ * the Customize page (`customize`) edits what a site owner may change without touching the theme.
  * The gallery of templates (`new/:uid`), the template editor (`templates/:id/edit`) and the preview page (`preview/:uid/:documentId`) have no item: the entry's edit view
  * opens it, and its own permission protects it.
  */
@@ -194,6 +196,7 @@ export default function MicelioLayout() {
         <Route path="review" element={<ReviewPage />} />
         <Route path="blocks" element={<BlocksPage />} />
         <Route path="sites" element={<SitesPage />} />
+        <Route path="customize" element={<CustomizePage />} />
         <Route path="_export-import" element={<TransferPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="preview/:uid/:documentId" element={<PreviewPage />} />

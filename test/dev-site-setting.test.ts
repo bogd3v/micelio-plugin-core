@@ -104,6 +104,54 @@ describe('the site-setting fixture of compose.dev.yml', () => {
     expect(data.tagline).toBeNull()
   })
 
+  it("the site-setting fixture answers the modules and the theme's overrides of the default site", async () => {
+    const { body, calls } = await run([
+      {
+        ...site,
+        modules: {
+          id: 2,
+          newsletter: true,
+          comments: true,
+          accounts: true,
+          drafts: true,
+          fediverse: true,
+          search: true,
+          support: false,
+        },
+        theme: {
+          id: 5,
+          themeId: null,
+          themeVersion: null,
+          themeDigest: null,
+          defaultMode: 'dark',
+          displayFont: 'newsreader',
+          accentOverrides: [{ id: 6, mode: 'light', color: '#1f5a34' }],
+        },
+      },
+    ])
+    expect(calls[0]).toMatchObject({
+      populate: { modules: true, theme: { populate: { accentOverrides: true } } },
+    })
+    const { data } = body as { data: Data }
+    expect(data.modules).toEqual({
+      newsletter: true,
+      comments: true,
+      accounts: true,
+      drafts: true,
+      fediverse: true,
+      search: true,
+      support: false,
+    })
+    expect(data.theme).toEqual({
+      themeId: null,
+      themeVersion: null,
+      themeDigest: null,
+      defaultMode: 'dark',
+      displayFont: 'newsreader',
+      accentOverrides: [{ mode: 'light', color: '#1f5a34' }],
+    })
+  })
+
   it('answers the default locale for a locale the site has no row in, and a 404 with no default site', async () => {
     const { body, calls } = await run([site], { locale: 'es' })
     expect((body as { data: Data }).data.name).toBe('Example Site')

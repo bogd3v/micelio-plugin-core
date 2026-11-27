@@ -19,7 +19,7 @@ The first run writes `.env.docker` (gitignored) with new throwaway secrets, buil
 
 The seed (`docker/cms/src/index.js`) runs on every boot and is idempotent. It gives the default site the name "Example Site", the host `localhost` and the `url` `http://localhost:3000`, creates a custom API token for the frontend (every `find` and `findOne`, which a read-only token has, plus the two preview routes it needs to exchange preview tokens and read drafts) and another, with only the two preview routes, for trying the preview with `curl`, and creates a draft **Page**, "Open source, in plain words", with a text section and a scene (each seeded page has a social image of 1200 by 630, which the checks before review ask for: [Try the SEO and social tab](#try-the-seo-and-social-tab)), a heavy island (a one-triangle model) whose poster is its static alternative, a second one, "A heavy page", over the stack's page budget ([Try the page budget](#try-the-page-budget)), and a third, "Islands without their alternative" ([Try the islands](#try-the-islands)). The seed stores the two files' URLs with `CMS_PUBLIC_URL` (`http://localhost:1337`) and the frontend lists it as `NUXT_MEDIA_URL`: the frontend prefixes a relative media URL (what Strapi stores for an upload in the admin, `/uploads/...`) with `NUXT_PUBLIC_STRAPI_URL`, which is `http://localhost:1337` in `compose.dev.yml` so that your browser can resolve it. Inside the frontend's container that address is the container itself; the `media-forward` service shares its network and forwards the port to the `cms` service, so the frontend's own calls reach the CMS too. `docker/cms/src/api/note/` is a fixture type made with `withSiteScope`, so there is something to preview with `curl`; `docker/cms/src/api/page/` has the shape of the `page` of `micelio-cms`, because the frontend previews `api::page.page` and asks the CMS for every section of the catalogue. `docker/cms/dev.mjs` writes those sections' schemas into `docker/cms/src/components/` (gitignored) from `test/fixtures/micelio-cms-components-with-ids.json`. Like the rest of the stack, none of it is the distribution's.
 
-The plugin owns **Category** and **Tag** (`/api/categories` and `/api/tags`, as in `micelio-cms`; the fixture article and the `post-list` section point at them, and `docker/cms/src/extensions/micelio/` adds the inverse `articles` as the distribution does), so the frontend's category requests answer. The frontend's request for the site settings (`GET /api/site-setting`) is answered by the fixture `docker/cms/src/api/site-setting/`, as the alias of release line 0.7 will answer it (the distribution's, which this stack never installs): from the default site, with the fields of `micelio-cms` v0.6.0. The site's name, description, `url`, logo and social links come from the site, so the pages show "Example Site", and a new name is saved on **Content Manager → Site** and shows on `/` after a reload (the frontend keeps the answer for up to 60 seconds); `modules` and `theme` answer empty, so the frontend uses its own defaults. The seed gives the frontend's token `find` on it, as on every other fixture: a database seeded before this fixture needs `down -v` for the token to get it. The rest of the content types of `micelio-cms` still wait for the cut-over of release line 0.7. Use the admin to see what the plugin does: the **Micelio** status page, the Content Manager and the Content-Type Builder.
+The plugin owns **Category** and **Tag** (`/api/categories` and `/api/tags`, as in `micelio-cms`; the fixture article and the `post-list` section point at them, and `docker/cms/src/extensions/micelio/` adds the inverse `articles` as the distribution does), so the frontend's category requests answer. The frontend's request for the site settings (`GET /api/site-setting`) is answered by the fixture `docker/cms/src/api/site-setting/`, as the alias of release line 0.7 will answer it (the distribution's, which this stack never installs): from the default site, with the fields of `micelio-cms` v0.6.0. The site's name, tagline, description, `url`, logo, author, social links, `modules` and `theme` come from the site, so the pages show "Example Site", and a new name is saved on **Content Manager → Site** (or the Customize page, [Try the Customize page](#try-the-customize-page)) and shows on `/` after a reload (the frontend keeps the answer for up to 60 seconds); a site with no `modules` or `theme` answers them empty, and the frontend uses its own defaults. The seed gives the frontend's token `find` on it, as on every other fixture: a database seeded before this fixture needs `down -v` for the token to get it. The rest of the content types of `micelio-cms` still wait for the cut-over of release line 0.7. Use the admin to see what the plugin does: the **Micelio** status page, the Content Manager and the Content-Type Builder.
 
 The preview needs a frontend that has the preview route (bogd3v/micelio#729). If the `edge` image predates it, build one from the `main` branch of `micelio` and name it: `docker build -t micelio:preview <micelio checkout>`, then `FRONTEND_IMAGE=micelio:preview npm run dev:docker`.
 
@@ -773,6 +773,59 @@ The stack loads the fixture plugin of the suites (`test/strapi/app/src/plugins/e
 10. Give that role **Fixture → Read the fixture** (under **Plugins**): both boxes appear, the panel reads `read only` until the role may also update the **Site** type. Give it **Site → Update** and **Site → Create** too: **Save** and **Create new site** show.
 11. The fixture's other points show too: **Micelio → Fixture page** (a heading), the **Fixture checks** card of the Status page after **Run host check**, and **Fixture members** among the sections of **Export and import**.
 12. Set the language of your profile to Español and reload: the page, its form and the fixture's labels are in Spanish.
+
+## Try the Customize page
+
+**Micelio → Customize** edits what a site owner may change without touching the theme
+(`docs/guide/customize.md`). The AA result of an accent needs a frontend with the contrast route,
+`GET /_micelio/contrast` (bogd3v/micelio#737, in `main` from bogd3v/micelio#1000 on): while the
+`edge` image predates it, build one ([Use a local build of the frontend](#use-a-local-build-of-the-frontend)).
+With an older one the page still works, and its chips say the contrast was not checked.
+
+1. Bring the stack up with that image and create the first admin. The page is in the **Site**
+   group of the sub-navigation, before **Export and import**. It edits the default site, in `en`;
+   its contrast check previews the site's most recently updated seeded page, in a frame that is
+   never shown.
+2. Change the **Name** and the **Tagline**, turn **Search** off, and press **Save**: "Saved."
+   shows. Reload `http://localhost:3000/` after a minute at most (the frontend keeps the site
+   settings for up to 60 seconds): the header shows the new name and no search button. The
+   frontend of `main` at bogd3v/micelio#1000 does not show the tagline anywhere; it is stored, as
+   **Content Manager → Site** shows. Turn **Search** on again and save: the button is back.
+3. In **Theme and colours** there is a chip per mode of the frontend's theme. Type a light accent
+   that fails on a light surface, `#9fd6a8`, in the accent of the light mode (**Accent of dia** with
+   the frontend's default theme, whose modes are `dia` and `noche`): about a second later its chip
+   says the site would show another shade, the line above **Save** names the mode, the pair
+   (`accent on surface`), its ratio and the minimum, and **Save** is off. Press **Use #…**: the
+   chip reads **AA** and **Save** is on again. Save, reload the frontend: its accent (links,
+   buttons) is that shade: the page's `<style id="theme-overrides">` sets `--accent` to it.
+   **Remove the accent of dia** and save to go back to the theme's.
+4. **Display font** offers the theme's default and the five shipped fonts; **Default mode** the
+   theme's default and the modes the contrast route lists. Choose `newsreader` and `noche` and
+   save: after a minute the frontend's titles are in Newsreader and a new visitor gets the dark
+   mode (`data-mode-default="noche"` on `<html>`).
+5. **Choose from the media library** picks the logo from Strapi's dialog; fill **Author's name**
+   and **Author's URL**; **Add a link**, choose `mastodon` (the list holds the networks of
+   `micelio-site.social-link` only) and give it a URL. Save, and after a minute the frontend's
+   footer shows the author and the link, with `rel="me"`, and its structured data the logo
+   (`"logo":{"@type":"ImageObject",…}` in the page's source; the default theme draws its own mark
+   in the header). A URL without `http://` or `https://` keeps **Save** off and says why.
+6. In **Settings → Internationalization** add `es`. On **Customize**, choose `es` in **Locale**:
+   the page says the site has no `es` version yet, with no form and no **Save**. Open the default
+   site in **Content Manager**, switch it to `es` and save a Spanish name. On **Customize**,
+   choose `es` again: the
+   name, tagline and description are the Spanish ones; change the tagline and save. Back in `en`,
+   the English tagline is as it was.
+7. In **Settings → Administration panel → Roles**, create a role with **Content Manager → Site →
+   Read** and **Content Manager → Page → Read** (every field, both locales) and **Preview drafts on
+   the frontend**, and nothing else. Signed in with it, **Customize** shows every field read only,
+   the chips with their result, and no **Save** or **Discard**. Take **Preview drafts on the
+   frontend** away: the chips say the contrast was not checked because the role may not preview.
+   Take **Page → Read** away too: they say the site has no page the role may read to preview.
+8. Stop the frontend (`docker compose -f compose.dev.yml stop frontend`) and reload the page: the chips
+   say the frontend did not answer the check, and a change of the tagline still saves. Start it
+   again with `docker compose -f compose.dev.yml restart frontend`, which also restarts the forward
+   that lives in its network.
+9. Set the language of your profile to Español and reload: the page is in Spanish.
 
 ## Try the redirects in an archive
 

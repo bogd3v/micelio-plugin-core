@@ -1,0 +1,77 @@
+# Customize a site
+
+**Micelio → Customize** is where a site owner changes what the site may change without touching
+its theme (ADR-0005 of `micelio`, section 8): its identity, the accent of each of the theme's
+modes, the display font, the default mode, the modules that are on and the social links. Every
+field is already a field of the site (`plugin::micelio.site`); the page is a form over them, for
+one site and one locale at a time.
+
+## Who sees it
+
+The page shows to a role that may read the **Site** type in the Content Manager, and **Save** and
+**Discard** to a role that may also update it. The save goes through the Content Manager's own
+admin API, as the edit view's does, so the rules of the sites (`server/src/sites/rules.ts`) and
+the role's field and locale permissions apply. It sends only the fields below: every other field
+of the site keeps its value, and the theme's pin (`themeId`, `themeVersion`, `themeDigest`) is
+sent back as it was read: the page never changes the theme.
+
+## What it edits
+
+- **Identity**: the name (required), tagline and description, in the locale the page shows; the
+  logo, picked from the media library; the default author's name and URL. The name, tagline and
+  description are localised: choose `en` or `es` in **Locale**. The logo, author and the rest are
+  the same in every locale, so a save in one locale changes them in all. A locale the site has no
+  version of yet shows a notice and no form: create that version in the Content Manager first,
+  since a save from an empty form would overwrite what every locale shares.
+- **Theme and colours**: the theme as the site pins it (or the frontend's default theme), read
+  only; a chip per mode of the theme with its accent override, or "theme" with none, and its AA
+  result; a colour field per mode (`#RRGGBB`), where **Remove** drops the override; the display
+  font, from the five the frontend ships; the default mode, from the modes of the theme.
+- **Modules**: a switch for each module. A module that is off ships nothing to the visitor: no
+  script, no route, no block in the palette.
+- **Social links**: one row per link, the network from the list the site accepts and a URL that
+  starts with `http://` or `https://`. The footer shows them with `rel="me"`, so Mastodon can
+  verify them.
+
+## The AA result of an accent
+
+The page asks the site's frontend how the theme's contrast matrix comes out with the accents in
+the form (`GET /_micelio/contrast`, `docs/api.md` of `micelio`, "Contrast of the active theme"):
+the same pairs `npm run theme:check` measures, in every mode. It asks with your own preview grant,
+for one page of the site, as the cost meter does (ADR-0019 of `micelio`, amendment of
+2026-11-25), and again each time you stop changing an accent for a moment, never on every key.
+
+A mode reads:
+
+- **AA**: the frontend shows the accent as you gave it, and every pair of the mode passes.
+- **Fails: the site would show `#…`**: the frontend would move the accent's lightness to the
+  nearest shade that passes, so the site would not show your colour. **Use `#…`** puts that
+  shade in the field.
+- **Fails AA**: no shade of the accent reaches contrast, so the site would keep the theme's own
+  accent, or a pair of the mode fails. An accent equal to the theme's own reads this way too:
+  **Remove** it.
+
+While a mode is adjusted or fails, **Save** is off, and the line above it names the mode, the pair
+(`role` on `surface`), its ratio and the minimum. The rule is the page's only: a save through the
+Content Manager, the API or an import still stores any `#RRGGBB`, and the frontend adjusts a
+failing accent when it renders the site.
+
+When the contrast cannot be checked, the chips say so and why, and **Save** stays on, because the
+frontend still adjusts a failing accent:
+
+- your role may not preview drafts (`plugin::micelio.preview`);
+- the site has no page you may read to preview (a Page or an Article of the site);
+- the frontend does not answer the route: it predates it, its `NUXT_PREVIEW_ADMIN_ORIGIN` is not
+  this admin, or it is down.
+
+The default mode offers the modes the route lists; with no answer, only the saved one and the
+theme's default.
+
+## Not here on purpose
+
+Layout variants, fonts outside the set the frontend ships, spacing and any colour but the accent of
+each mode are the theme's (ADR-0005 of `micelio`, section 8). The live preview of a change is the
+customizer's (#61); the theme itself is chosen on the Themes page (#59).
+
+`docs/operate/manual-testing.md`, "Try the Customize page", walks through the page on the
+development stack.

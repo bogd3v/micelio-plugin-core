@@ -3,7 +3,9 @@
 // response fields of micelio-cms v0.6.0 (`src/constants/response-fields/site.ts`, route
 // `site-setting.find`). It is not the distribution's alias and the package does not ship it.
 // A field the core's site does not hold answers `null`, so the frontend keeps its own default:
-// `modules`, `theme` and `homePage`. `fediverse` is not in the response of v0.6.0.
+// `homePage` always, and `modules` and `theme` when the site has none. The two components have the
+// fields of micelio-cms v0.6.0's, so the Customize page's saves show on the frontend (#60).
+// `fediverse` is not in the response of v0.6.0.
 
 const SITE = 'plugin::micelio.site'
 
@@ -32,6 +34,10 @@ const FIELDS = [
   'publishedAt',
 ]
 
+// The fields of `micelio-site.modules` and `micelio-site.theme`, as v0.6.0's response lists them.
+const MODULES = ['newsletter', 'comments', 'accounts', 'drafts', 'fediverse', 'search', 'support']
+const THEME = ['themeId', 'themeVersion', 'themeDigest', 'defaultMode', 'displayFont']
+
 const pick = (source, keys) => Object.fromEntries(keys.map((key) => [key, source?.[key] ?? null]))
 const image = (value) => (value ? pick(value, IMAGE) : null)
 
@@ -44,8 +50,15 @@ function shape(site) {
     favicon: image(site.favicon),
     defaultOgImage: image(site.defaultOgImage),
     socialLinks: (site.socialLinks ?? []).map((link) => pick(link, ['network', 'url', 'id'])),
-    modules: null,
-    theme: null,
+    modules: site.modules ? pick(site.modules, MODULES) : null,
+    theme: site.theme
+      ? {
+          ...pick(site.theme, THEME),
+          accentOverrides: (site.theme.accentOverrides ?? []).map((override) =>
+            pick(override, ['mode', 'color'])
+          ),
+        }
+      : null,
     homePage: null,
   }
 }
@@ -61,6 +74,8 @@ module.exports = ({ strapi }) => ({
         favicon: true,
         defaultOgImage: true,
         socialLinks: true,
+        modules: true,
+        theme: { populate: { accentOverrides: true } },
       },
     }
     const locale = typeof ctx.query?.locale === 'string' ? ctx.query.locale : undefined
