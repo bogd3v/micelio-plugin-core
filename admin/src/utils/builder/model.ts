@@ -1,3 +1,4 @@
+import { BLOCKS } from '../../../../contract/blocks'
 import { OPTION_NAMES } from '../../../../contract/options'
 
 import type { ComponentSchema } from './fields'
@@ -262,7 +263,9 @@ export function forgetUnknownIds(
  * @remarks
  * The content API stores a default for every option an enumeration of the component declares,
  * but the CMS refuses a save that names an option the block does not expose
- * (`blockOptionInvalid`). So a block is sent without them; they keep their stored value.
+ * (`blockOptionInvalid`). So a block is sent without them; they keep their stored value. A name of
+ * the vocabulary that the block's own schema in the catalogue declares as a field (`columns` of
+ * `table`, its column items) is content and is sent, as the server's check reads it.
  *
  * @param entries - The site's catalogue; without it the block is sent as it is. A block it
  * does not list is sent without any option.
@@ -275,7 +278,11 @@ export function withoutHiddenOptions(
   const entry = entries.find(({ component }) => component === block.component)
   // A block the site disabled has no entry and its panel offers no option: none is sent, and the
   // stored values stay (the CMS refuses an option the block does not expose, also when unchanged).
-  const hidden = entry ? OPTION_NAMES.filter((name) => !(name in entry.options)) : OPTION_NAMES
+  const own = BLOCKS.find((candidate) => candidate.schema.component === block.component)?.schema
+    .fields.shape
+  const hidden = (entry ? OPTION_NAMES.filter((name) => !(name in entry.options)) : OPTION_NAMES)
+    // A field of the block's own schema is content, not an option (`table`'s `columns`).
+    .filter((name) => !own || !(name in own))
   const fields = Object.fromEntries(
     Object.entries(block.fields).filter(([name]) => !(hidden as readonly string[]).includes(name))
   )

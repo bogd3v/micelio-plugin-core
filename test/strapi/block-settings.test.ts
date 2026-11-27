@@ -729,7 +729,7 @@ describe('the block catalogue of a site', () => {
         }
       }
       expect(view.data.pageTypes.toSorted()).toEqual(['landing', 'long-read', 'standard'])
-      expect(view.data.blocks).toHaveLength(20)
+      expect(view.data.blocks).toHaveLength(21)
       const byId = new Map(view.data.blocks.map((block) => [block.id, block]))
       expect(byId.get('feature-grid')).toMatchObject({ enabled: false, used: 2 })
       expect(byId.get('logo-cloud')).toMatchObject({ enabled: true, used: 1 })

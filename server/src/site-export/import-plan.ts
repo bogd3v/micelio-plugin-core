@@ -10,6 +10,8 @@ import { findProseHeadingViolation } from '../prose-headings/rules'
 import { SectionAnchorError } from '../section-anchor/error'
 import { CodeHighlightError } from '../code-highlight/error'
 import { findHighlightViolation } from '../code-highlight/rules'
+import { TableCellsError } from '../table-cells/error'
+import { findCellsViolation } from '../table-cells/rules'
 import { TestimonialRatingError } from '../testimonial-rating/error'
 import { findRatingViolation } from '../testimonial-rating/rules'
 import { findAnchorViolation } from '../section-anchor/rules'
@@ -298,6 +300,14 @@ function checkBlockOptions(type: ExportedType, data: Record<string, unknown>, wh
     throw new ExportError(
       'exportDocumentInvalid',
       `${where}: ${new CodeHighlightError(highlight).message}`
+    )
+  }
+  // And the cells of each row of a `table` block, one per column.
+  const cells = findCellsViolation(zones)
+  if (cells) {
+    throw new ExportError(
+      'exportDocumentInvalid',
+      `${where}: ${new TableCellsError(cells).message}`
     )
   }
   // And the groups of ADR-0022: one run each, with one tone.

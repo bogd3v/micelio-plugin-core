@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_shared_table_rows",
+  "info": {
+    "displayName": "Table row",
+    "icon": "grid",
+    "description": "A row of the `table` block, as micelio-cms stores it"
+  },
+  "options": {},
+  "attributes": {
+    "itemId": { "type": "string" },
+    "cells": { "type": "json" }
+  }
+}

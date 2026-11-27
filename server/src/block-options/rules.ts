@@ -30,7 +30,8 @@ const BACKGROUND_SCENE = { block: 'scene', variant: 'background', options: ['ton
  * block offers (a number is compared as the string Strapi stores). An option that is absent or
  * `null` takes its default and is valid. A `scene` of `variant: background` (the variant it takes
  * when it sets none) is refused a `tone` or `align` other than its default, with the default as
- * the only allowed value. A component that is not a block of the catalogue is skipped: the host's own components are none of the contract's business.
+ * the only allowed value. A name of the vocabulary that the block's schema declares as a field of its
+ * own (`columns` of `table`) is content and is not checked. A component that is not a block of the catalogue is skipped: the host's own components are none of the contract's business.
  *
  * @param components - What was sent for the zone, each with its `__component`.
  * @param blocks - The catalogue to check against.
@@ -47,6 +48,8 @@ export function findBlockOptionViolation(
     if (!block) continue
     const offered = new Map(optionsOf(block))
     for (const name of NAMES) {
+      // A field of the block's own schema is content, not an option (`table`'s `columns`).
+      if (name in block.schema.fields.shape) continue
       const value = content[name]
       if (value === undefined || value === null) continue
       if (

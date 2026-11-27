@@ -21,7 +21,8 @@ The dialog asks for:
 - A **name**, unique on the site, and a **description** shown on the template's card.
 - The **page type** the template is for.
 - For each block, **Keep as sample text** or **Clear**, and **Fixed**. The block and its options
-  are always kept. A cleared block keeps its options and the number of its items, empty. Images
+  are always kept. A cleared block keeps its options and the number of its items, empty (a
+  table keeps its rows, with an empty cell for each column). Images
   and links are never kept, whatever you choose. **Fixed** is recorded on the template and
   enforced on the pages made from it (below).
 - **Available to**: this site only, or every site of the CMS.

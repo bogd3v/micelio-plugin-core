@@ -36,6 +36,14 @@ const COMPONENTS: Record<string, Record<string, object>> = {
   },
   'section.link': { label: { type: 'string' }, url: { type: 'string' } },
   'section.rich-text': { body: { type: 'richtext' } },
+  'shared.table': {
+    caption: { type: 'text' },
+    width: { type: 'enumeration' },
+    columns: { type: 'component', component: 'shared.table-column', repeatable: true },
+    rows: { type: 'component', component: 'shared.table-row', repeatable: true },
+  },
+  'shared.table-column': { label: { type: 'string' } },
+  'shared.table-row': { cells: { type: 'json' } },
 }
 const attributesOf: AttributesOf = (component) => COMPONENTS[component] as never
 
@@ -74,6 +82,28 @@ describe('what a template keeps of a block', () => {
     expect(
       shapeContent(attributesOf, 'section.rich-text', { body: 'Text', width: 'wide' }, 'sample')
     ).toEqual({ body: 'Text' })
+  })
+
+  it('keeps the columns of a table, a field of its own named like an option it does not expose', () => {
+    const table = {
+      __component: 'shared.table',
+      caption: 'Plans',
+      width: 'wide',
+      columns: [{ label: 'Plan' }],
+      rows: [{ cells: ['Basic'] }],
+    }
+    expect(shapeContent(attributesOf, 'shared.table', table, 'sample')).toEqual({
+      caption: 'Plans',
+      width: 'wide',
+      columns: [{ label: 'Plan' }],
+      rows: [{ cells: ['Basic'] }],
+    })
+    // Cleared, each row keeps one empty cell per column.
+    expect(shapeContent(attributesOf, 'shared.table', table, 'clear')).toEqual({
+      width: 'wide',
+      columns: [{}],
+      rows: [{ cells: [''] }],
+    })
   })
 
   it('keeps the items, with their text when kept and empty when cleared, and no address', () => {

@@ -253,6 +253,17 @@ const slide = part('shared.slide', {
   caption: text(),
   credit: component(imageCredit),
 })
+// The column and the row of a `table` (micelio-cms#449): a row holds one string per column, in the
+// order of the columns; at save a row with another number of cells is refused (`tableCellsInvalid`).
+const tableColumn = part('shared.table-column', {
+  itemId: ITEM_ID,
+  label: string(),
+  align: enumeration(['start', 'center']),
+})
+const tableRow = part('shared.table-row', {
+  itemId: ITEM_ID,
+  cells: json(z.array(z.string())),
+})
 
 /**
  * The languages the server's highlighter registers (the maintainer's decision on micelio-cms#448:
@@ -278,7 +289,7 @@ export const CODE_LANGUAGES = [
 
 /**
  * The block catalogue, read only: the blocks of ADR-0018, section 6 (`rich-text` left it for `prose`,
- * micelio-cms#445), `reusable` of ADR-0022, section 1, and `code` (micelio-cms#448). Every page section may carry a `group` key.
+ * micelio-cms#445), `reusable` of ADR-0022, section 1, `code` (micelio-cms#448) and `table` (micelio-cms#449). Every page section may carry a `group` key.
  */
 export const BLOCKS: readonly Block[] = [
   {
@@ -650,6 +661,26 @@ export const BLOCKS: readonly Block[] = [
     static:
       'Itself: the code is highlighted on the server and needs no JavaScript. A copy button, if the ' +
       'theme offers one, is a progressive enhancement and is absent without JavaScript.',
+  },
+  {
+    // A table of data with a caption and header cells (micelio-cms#449). Every field is optional and
+    // none has a default. At save each row has one cell per column (`tableCellsInvalid`).
+    id: 'table',
+    group: 'both',
+    schema: part('shared.table', {
+      blockId: BLOCK_ID,
+      caption: text(),
+      columns: component(tableColumn, { repeatable: true }),
+      rows: component(tableRow, { repeatable: true }),
+      headerColumn: boolean(),
+    }),
+    options: { ...presentation('table', 'both', 'density', 'width') },
+    // Not measured yet (the renderer is micelio's third pull request of #449): the cost of `pricing`,
+    // whose `table` variant renders a table too. `docs/blocks.md`, "Table".
+    cost: { css: 805, js: 1186, island: null },
+    static:
+      'Itself: a `<table>` with its `<caption>` and `scope` on its header cells, which scrolls ' +
+      'inside its own box at phone width and needs no JavaScript.',
   },
   {
     // A reference to a reusable block of the page's site (ADR-0022, section 1). Its target keeps its

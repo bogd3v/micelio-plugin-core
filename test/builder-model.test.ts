@@ -222,6 +222,18 @@ describe('the builder’s document model', () => {
     })
   })
 
+  it('sends the columns of a table, its content, though the block exposes no columns option', () => {
+    const table: BuilderBlock = {
+      key: 't',
+      component: 'shared.table',
+      fields: { caption: 'Plans', columns: [{ label: 'Plan' }], rows: [{ cells: ['Basic'] }] },
+    }
+    const entries = [{ component: 'shared.table', options: { width: {}, density: {} } }]
+    expect(withoutHiddenOptions(table, entries).fields).toEqual(table.fields)
+    // Disabled, it is sent with its content too.
+    expect(withoutHiddenOptions(table, []).fields).toEqual(table.fields)
+  })
+
   it('forgets the id of an item the other session removed, and keeps the others', () => {
     const mine: BuilderBlock[] = [
       {

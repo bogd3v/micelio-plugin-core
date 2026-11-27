@@ -43,5 +43,8 @@ export const TESTIMONIAL_RATING_RANGE = { min: 1, max: 5 } as const
 /** The `code` of the problem detail a save with a highlighted line outside the code of a `code` block answers. */
 export const CODE_HIGHLIGHT_INVALID = 'codeHighlightInvalid'
 
+/** The `code` of the problem detail a save with a row of a `table` block whose cells are not its columns answers. */
+export const TABLE_CELLS_INVALID = 'tableCellsInvalid'
+
 /** The `code` of the problem detail a save with a group split into two runs, or with two tones, answers. */
 export const BLOCK_GROUP_INVALID = 'blockGroupInvalid'
