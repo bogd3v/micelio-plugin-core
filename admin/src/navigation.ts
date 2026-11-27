@@ -40,6 +40,7 @@ export const CORE_NAV_ITEMS: CoreNavItem[] = [
   { id: 'blocks', group: 'content', to: 'blocks', permission: BLOCKS_READ_PERMISSION },
   { id: 'templates', group: 'content', to: 'templates', permission: TEMPLATES_MANAGE_PERMISSION },
   { id: 'review', group: 'content', to: 'review', permission: REVIEW_READ_PERMISSION },
+  { id: 'customize', group: 'site', to: 'customize', permission: SITES_READ_PERMISSION },
   { id: 'transfer', group: 'site', to: '_export-import', permission: TRANSFER_PERMISSION },
   { id: 'about', group: 'about', to: 'about' },
 ]

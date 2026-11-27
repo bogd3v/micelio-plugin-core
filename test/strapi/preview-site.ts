@@ -9,6 +9,51 @@ import { blocksScript, markBlocks, runScript, type RunBehaviour } from './previe
 import { solidPng } from './png'
 import { answerWeight, newWeightBehaviour, type WeightBehaviour } from './weight-site'
 
+/** One pair of the contrast matrix, as the frontend's contrast route answers it. */
+export interface ContrastPairAnswer {
+  role: string
+  surface: string
+  ratio: number | null
+  min: number
+  passes: boolean
+}
+
+/** How one mode of the stub's theme answers the contrast route. */
+export interface ContrastModeBehaviour {
+  /**
+   * The accent a candidate of the mode resolves to: the candidate itself, another colour (the
+   * frontend would move it) or `null` (none passes). A mode with no candidate answers `null`.
+   */
+  accent: 'candidate' | string | null
+  pairs: ContrastPairAnswer[]
+}
+
+/** How the stub's contrast route answers (`GET /_micelio/contrast`, bogd3v/micelio#737). */
+export interface ContrastBehaviour {
+  /** The modes of the theme, in order, and what each answers. */
+  modes: Record<string, ContrastModeBehaviour>
+  /** Answers this status to every request instead, as a frontend without the route answers 404. */
+  status?: number
+  /** Every request, in order: its query, and whether it carried a grant (which the suites never print). */
+  readonly requests: { documentId: string | null; accents: string[]; hasGrant: boolean }[]
+}
+
+/** A theme with the modes `light` and `dark` whose candidates pass as given. */
+export function newContrastBehaviour(): ContrastBehaviour {
+  const pairs = (): ContrastPairAnswer[] => [
+    { role: 'accent', surface: 'surface', ratio: 5.12, min: 4.5, passes: true },
+    { role: 'on-accent', surface: 'accent', ratio: 6.3, min: 4.5, passes: true },
+    { role: 'ink', surface: 'surface', ratio: 14.2, min: 4.5, passes: true },
+  ]
+  return {
+    modes: {
+      light: { accent: 'candidate', pairs: pairs() },
+      dark: { accent: 'candidate', pairs: pairs() },
+    },
+    requests: [],
+  }
+}
+
 /** The stub site of the browser suite. */
 export interface PreviewSite {
   origin: string
@@ -20,6 +65,12 @@ export interface PreviewSite {
    * grant in its cookie, from the admin's origin, and a system grant in the header.
    */
   weight: WeightBehaviour
+  /**
+   * How its contrast route answers (`GET /_micelio/contrast`): like the frontend's it takes the
+   * editor's grant in its cookie, with `documentId` the document it names, sends the CORS headers of
+   * its card route to the admin's origin, and answers the same 404 to anything else.
+   */
+  contrast: ContrastBehaviour
   /** How many tokens it exchanged. */
   readonly exchanges: number
   /** How many times the draft route answered a page. */
@@ -152,6 +203,9 @@ ${isSilent ? '' : `if (window.parent !== window) { window.parent.postMessage(${r
 </html>`
 }
 
+// The accent queries of the contrast route: `<mode>:#RRGGBB`, each mode once, at most 16.
+const ACCENT_QUERY = /^([a-z][a-z0-9-]*):(#[0-9a-fA-F]{6})$/
+
 function grantOf(request: http.IncomingMessage): string | undefined {
   const cookie = (request.headers.cookie ?? '')
     .split(';')
@@ -192,6 +246,10 @@ export async function startPreviewSite(): Promise<PreviewSite> {
         response
       )
     ) {
+      return
+    }
+    if (url.pathname === '/_micelio/contrast') {
+      await answerContrast(url, request, response, cms)
       return
     }
     const card = /^\/api\/preview\/([^/]+)\/([\w-]+)\/card$/.exec(url.pathname)
@@ -298,6 +356,73 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     )
   }
 
+  // The frontend's contrast route (`docs/api.md` of `micelio`, "Contrast of the active theme"): the
+  // CMS checks the grant with one draft read, and a candidate resolves as the test set its mode.
+  async function answerContrast(
+    url: URL,
+    request: http.IncomingMessage,
+    response: http.ServerResponse,
+    target: { base: string; apiToken: string; adminOrigin: string }
+  ) {
+    const behaviour = site.contrast
+    const grant = grantOf(request)
+    const documentId = url.searchParams.get('documentId')
+    const accents = url.searchParams.getAll('accent')
+    behaviour.requests.push({ documentId, accents, hasGrant: grant !== undefined })
+    response.setHeader('X-Robots-Tag', 'noindex, nofollow')
+    response.setHeader('Referrer-Policy', 'no-referrer')
+    if (request.headers.origin === target.adminOrigin) {
+      response.setHeader('Access-Control-Allow-Origin', target.adminOrigin)
+      response.setHeader('Access-Control-Allow-Credentials', 'true')
+      response.setHeader('Vary', 'Origin')
+    }
+    if (behaviour.status !== undefined) {
+      response.writeHead(behaviour.status).end()
+      return
+    }
+    const candidates = new Map<string, string>()
+    for (const accent of accents) {
+      const match = ACCENT_QUERY.exec(accent)
+      if (!match || candidates.has(match[1]!)) {
+        response.writeHead(404).end('Page not found')
+        return
+      }
+      candidates.set(match[1]!, match[2]!)
+    }
+    if (!grant || !documentId || candidates.size > 16) {
+      response.writeHead(404).end('Page not found')
+      return
+    }
+    const read = await fetch(
+      `${target.base}/api/micelio/preview/draft?${new URLSearchParams({ documentId })}`,
+      {
+        headers: {
+          Authorization: `Bearer ${target.apiToken}`,
+          'X-Micelio-Preview-Grant': grant,
+        },
+      }
+    )
+    const meta = read.ok ? ((await read.json()) as { meta?: { actor?: string } }).meta : undefined
+    if (meta?.actor !== 'admin') {
+      response.writeHead(404).end('Page not found')
+      return
+    }
+    const modes = Object.entries(behaviour.modes).map(([mode, { accent, pairs }]) => {
+      const candidate = candidates.get(mode)
+      const resolved =
+        candidate === undefined ? null : accent === 'candidate' ? candidate.toLowerCase() : accent
+      return {
+        mode,
+        accent: resolved
+          ? { accent: resolved, accentSoft: '#eef1ea', accentHover: resolved, onAccent: '#ffffff' }
+          : null,
+        pairs,
+      }
+    })
+    response.writeHead(200, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ data: { theme: 'stub-theme', modes } }))
+  }
+
   const server = http.createServer(async (request, response) => {
     try {
       await handle(request, response)
@@ -311,6 +436,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
   const site: PreviewSite = {
     speaks: [1],
     weight: newWeightBehaviour(),
+    contrast: newContrastBehaviour(),
     run: { kind: 'answer' },
     isSilent: false,
     isRefused: false,

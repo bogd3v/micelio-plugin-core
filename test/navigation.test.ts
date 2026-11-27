@@ -8,6 +8,7 @@ import {
 import {
   BLOCKS_READ_PERMISSION,
   SITES_READ_PERMISSION,
+  SITES_UPDATE_PERMISSION,
   STATUS_READ_PERMISSION,
   TEMPLATES_MANAGE_PERMISSION,
   TRANSFER_PERMISSION,
@@ -36,11 +37,25 @@ describe('the items of the core a role sees', () => {
   })
 
   it('shows Sites only to a role that may read the Site type, not any type', () => {
-    expect(ids([SITES_READ_PERMISSION])).toEqual(['sites', 'about'])
+    expect(ids([SITES_READ_PERMISSION])).toEqual(['sites', 'customize', 'about'])
     expect(
       ids([{ action: SITES_READ_PERMISSION.action, subject: 'api::brochure.brochure' }])
     ).toEqual(['about'])
     expect(ids([{ action: SITES_READ_PERMISSION.action, subject: null }])).toEqual(['about'])
+  })
+
+  it('shows Customize only to a role that may read the Site type', () => {
+    const customize = (held: { action: string; subject?: string | null }[]) =>
+      ids(held).includes('customize')
+    expect(customize([SITES_READ_PERMISSION])).toBe(true)
+    expect(customize([SITES_UPDATE_PERMISSION])).toBe(false)
+    expect(customize([{ action: SITES_READ_PERMISSION.action, subject: 'api::page.page' }])).toBe(
+      false
+    )
+    expect(customize([STATUS_READ_PERMISSION, TRANSFER_PERMISSION])).toBe(false)
+    // In the Site group, before Export and import (the artboard's order).
+    const site = CORE_NAV_ITEMS.filter(({ group }) => group === 'site').map(({ id }) => id)
+    expect(site).toEqual(['customize', 'transfer'])
   })
 })
 

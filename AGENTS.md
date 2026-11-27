@@ -188,7 +188,12 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   the **Micelio** menu entry (`pages/MicelioLayout.tsx`: the sub-navigation from `navigation.ts`,
   each item shown to a role with its permission, and the pages of sibling plugins),
   the pages (`StatusPage`, `SitesPage` (the table of sites, the card with the form of the core fields, saved through the Content Manager's admin API, and the panels sibling plugins register for their site sections with `apis.registerSitePanel`, `pageRegistry.ts`), `TransferPage` with `ExportPanel` and `ImportPanel`, `AboutPage`,
-  `PreviewPage`, `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
+  `PreviewPage`, `CustomizePage` at `customize` (#60: identity, the accent of each mode with its AA
+  result, display font, default mode, modules and social links of one site in one locale, saved
+  through the Content Manager's admin API by `hooks/useSiteCustomization.ts`; the AA result comes
+  from the frontend's `GET /_micelio/contrast` with the editor's preview grant, `hooks/useContrast.ts`;
+  the pure part, `customizeBodyOf` and `accentResult`, is `utils/customize.ts`; its cards are in
+  `components/customize/`; the guide is `docs/guide/customize.md`), `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
   Save as template dialog, `ReviewPage` (the In review page), `TemplatesManagePage` at `templates`
   and `TemplateBuilderPage` at `templates/:id/edit`; the SEO and social tab of the page settings is
   `components/builder/SeoTab.tsx`, with `SeoPreviews.tsx` and `SeoFields.tsx`),
