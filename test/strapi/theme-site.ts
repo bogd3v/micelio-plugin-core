@@ -47,7 +47,8 @@ const digestOf = (id: string, version: string) =>
 
 /**
  * The stub's image and catalogue: `bogota` (a code theme the image was built with, the default) and
- * `starter` (data-only) built in; `sendero`, a data-only theme of the registry the stub installs at
+ * `starter` (data-only) built in, each with the `name`, `modes` and `layout` of bogd3v/micelio#1018,
+ * and each report with its `checks` and `accessibility`; `sendero`, a data-only theme of the registry the stub installs at
  * runtime; `mosaico`, a code theme of the registry the image was not built with.
  */
 export function newThemeBehaviour(): ThemeBehaviour {
@@ -59,6 +60,12 @@ export function newThemeBehaviour(): ThemeBehaviour {
     summary: ok
       ? `${id} ${version}: AA contrast, axe clean, budgets pass.`
       : `${id} ${version}: contrast fails.`,
+    checks: ok
+      ? { static: 'passed' as const, quality: 'passed' as const, performance: 'passed' as const }
+      : { static: 'passed' as const, quality: 'failed' as const, performance: 'passed' as const },
+    // Only bogota's report records the manual accessibility check, for the version it admitted.
+    accessibility:
+      id === 'bogota' ? { status: 'passed' as const, current: true, date: '2026-10-18' } : null,
   })
   const version = (
     id: string,
@@ -93,6 +100,18 @@ export function newThemeBehaviour(): ThemeBehaviour {
           code: true,
           store: 'built-in',
           report: digestOf('report-bogota', '1.0.0'),
+          name: 'Bogotá',
+          modes: [
+            { id: 'claro', scheme: 'light' },
+            { id: 'oscuro', scheme: 'dark' },
+          ],
+          layout: {
+            header: 'bar',
+            home: 'showcase',
+            postList: 'list',
+            article: 'aside',
+            footer: 'minimal',
+          },
         },
         {
           id: 'starter',
@@ -102,6 +121,18 @@ export function newThemeBehaviour(): ThemeBehaviour {
           code: false,
           store: 'built-in',
           report: digestOf('report-starter', '1.2.0'),
+          name: 'Starter',
+          modes: [
+            { id: 'light', scheme: 'light' },
+            { id: 'dark', scheme: 'dark' },
+          ],
+          layout: {
+            header: 'centered',
+            home: 'index',
+            postList: 'list',
+            article: 'centered',
+            footer: 'minimal',
+          },
         },
       ],
       registry: [

@@ -214,7 +214,8 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   beside a frame of the site loaded with a token bound to the candidates, `usePreviewSource`'s
   option `accentOverrides`, one token per pause; Save writes only the site's `theme`,
   `accentsBodyOf`), `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
-  Save as template dialog, `ReviewPage` (the In review page), `ThemesPage` at `themes` and `ThemePreviewPage` at
+  Save as template dialog, `ReviewPage` (the In review page), `ThemesPage` at `themes` (#288: three tabs of
+  cards, `components/ThemeCard.tsx`, built by `themeCards` of `utils/themes.ts`) and `ThemePreviewPage` at
   `themes/preview` (#59: two `PreviewFrame`s, the candidate's token with `theme`; `hooks/useThemes.ts`,
   `hooks/useThemeChange.ts`, `utils/themes.ts`), `TemplatesManagePage` at `templates`
   and `TemplateBuilderPage` at `templates/:id/edit`; the SEO and social tab of the page settings is

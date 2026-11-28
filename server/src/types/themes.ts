@@ -46,6 +46,29 @@ export interface CatalogueInstalledTheme {
   store: 'built-in' | 'deployment'
   /** The digest of its admission report, when the registry's index names one. */
   report?: string
+  /** The `name` of its `theme.json`; absent when it has none or the frontend predates bogd3v/micelio#1018. */
+  name?: string
+  /** The modes of its `theme.json`, in its order (the first is the default); absent on an older frontend. */
+  modes?: CatalogueMode[]
+  /** The variant of each region; absent on an older frontend. */
+  layout?: CatalogueLayout
+}
+
+/** A mode of a theme, as its `theme.json` declares it. */
+export interface CatalogueMode {
+  id: string
+  scheme: 'light' | 'dark'
+  /** Its label; the page shows the id when it has none. */
+  name?: string
+}
+
+/** The layout variant a theme picked for each region (ADR-0005 of `micelio`). */
+export interface CatalogueLayout {
+  header: string
+  home: string
+  postList: string
+  article: string
+  footer: string
 }
 
 /** One version of a theme of the registry's index. */
@@ -89,6 +112,32 @@ export interface CatalogueReport {
   ok: boolean
   /** The Markdown summary of the report. */
   summary: string
+  /** The results of its automatic checks; absent on a frontend that predates bogd3v/micelio#1018. */
+  checks?: CatalogueChecks
+  /** Its manual accessibility check; `null` when the report has none, absent on an older frontend. */
+  accessibility?: CatalogueAccessibility | null
+}
+
+/** The result of one check of an admission report; `missing`: the job that should have run it did not. */
+export type CatalogueCheckStatus = 'passed' | 'failed' | 'skipped' | 'missing'
+
+/** The results of the automatic checks of an admission report. */
+export interface CatalogueChecks {
+  /** `theme:check`. */
+  static: CatalogueCheckStatus
+  /** Visual regression and axe. */
+  quality: CatalogueCheckStatus
+  /** The worst of the performance runs. */
+  performance: CatalogueCheckStatus
+}
+
+/** The manual accessibility check of an admission report. */
+export interface CatalogueAccessibility {
+  status: 'passed' | 'passed-with-core-failures' | 'partial' | 'failed'
+  /** Whether the record is for the version the report admitted. */
+  current: boolean
+  /** When the checklist was run (`YYYY-MM-DD`); `null` when the record has none. */
+  date: string | null
 }
 
 /** What `GET <site.url>/api/theme/catalogue` answers (bogd3v/micelio#993). */
