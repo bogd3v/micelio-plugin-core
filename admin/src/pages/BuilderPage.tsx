@@ -8,7 +8,15 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BlockList } from '../components/builder/BlockList'
 import { BlockPanel } from '../components/builder/BlockPanel'
 import { BuilderHeader } from '../components/builder/BuilderHeader'
-import { Centre, Columns, Shell, StageBox, Toast } from '../components/builder/layout'
+import {
+  BUILDER_COLUMNS_PX,
+  BuilderPane,
+  Columns,
+  LeftColumn,
+  Shell,
+  StageBox,
+  Toast,
+} from '../components/builder/layout'
 import { Motion } from '../components/builder/Motion'
 import { PageSettingsDrawer, type SettingsTab } from '../components/builder/PageSettingsDrawer'
 import { ReviewActions } from '../components/builder/ReviewActions'
@@ -415,7 +423,7 @@ function Builder() {
     <Motion>
       <Page.Main>
         <Page.Title>{t('builder.page', { title })}</Page.Title>
-        <Shell>
+        <Shell $from={BUILDER_COLUMNS_PX}>
           <BuilderHeader
             title={title}
             document={doc}
@@ -500,15 +508,7 @@ function Builder() {
           ) : null}
           {isReadOnly ? <Notice role="status" text={t('builder.readOnly')} /> : null}
           <Columns>
-            <div
-              style={{
-                flex: '0 1 264px',
-                minWidth: 220,
-                display: 'flex',
-                flexDirection: 'column',
-                background: colors.neutral0,
-              }}
-            >
+            <LeftColumn>
               <Palette
                 groups={groups}
                 pageTypeName={pageType}
@@ -550,8 +550,8 @@ function Builder() {
                 carrying={carrying}
                 isReadOnly={isReadOnly}
               />
-            </div>
-            <Centre aria-label={t('preview.pane')} data-shortcut-region="preview">
+            </LeftColumn>
+            <BuilderPane aria-label={t('preview.pane')} data-shortcut-region="preview">
               <Typography variant="pi" textColor="neutral600" tag="p">
                 {t('builder.live', { host: origin ? new URL(origin).host : '' })}
               </Typography>
@@ -622,7 +622,7 @@ function Builder() {
                   </PreviewFrame>
                 )}
               </StageBox>
-            </Centre>
+            </BuilderPane>
             {selectedBlock ? (
               <BlockPanel
                 block={selectedBlock}
