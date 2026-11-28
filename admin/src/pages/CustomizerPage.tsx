@@ -4,15 +4,18 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ChevronLeftIcon } from '../components/builder/icons'
-import { Centre, Columns, Shell, StageBox } from '../components/builder/layout'
+import { Columns, Shell } from '../components/builder/layout'
 import { AccentEditor, ContrastMatrix } from '../components/customize/AccentPanel'
 import {
   Aside,
   Bar,
   Clock,
   Close,
+  CUSTOMIZER_COLUMNS_PX,
   defaultTab,
   noFrameText,
+  Pane,
+  Stage,
 } from '../components/customize/customizerLayout'
 import { failureText, modeRows } from '../components/customize/ThemeColours'
 import { PreviewFrame, type FrameState } from '../components/PreviewFrame'
@@ -282,7 +285,7 @@ function Customizer(props: { siteId: string; siteName: string; locale: string; b
 
   return (
     <Tabs.Root value={mode ?? ''} onValueChange={setSelected} variant="simple">
-      <Shell>
+      <Shell $from={CUSTOMIZER_COLUMNS_PX}>
         {contrast.frame ? (
           <div hidden>
             <PreviewFrame
@@ -346,7 +349,8 @@ function Customizer(props: { siteId: string; siteName: string; locale: string; b
           ) : null}
         </Bar>
         <Columns>
-          <Aside aria-label={t('customizer.accents')}>
+          {/* The matrix holds no control: the panel takes the focus, so the keyboard scrolls it. */}
+          <Aside aria-label={t('customizer.accents')} tabIndex={0}>
             <Flex direction="column" alignItems="stretch" gap={1}>
               <Typography variant="sigma" textColor="neutral600" tag="h2">
                 {t('customize.accents')}
@@ -385,7 +389,8 @@ function Customizer(props: { siteId: string; siteName: string; locale: string; b
               </Tabs.Content>
             ))}
           </Aside>
-          <Centre aria-label={t('customizer.preview')}>
+          {/* Nor does the preview, for axe: the pane takes the focus too, to be scrolled when short. */}
+          <Pane aria-label={t('customizer.preview')} tabIndex={0}>
             <Flex direction="column" alignItems="stretch" gap={3}>
               {entry ? (
                 <>
@@ -432,7 +437,7 @@ function Customizer(props: { siteId: string; siteName: string; locale: string; b
                 </Typography>
               ) : null}
               {entry && !isBlocked && source.kind !== 'error' ? (
-                <StageBox>
+                <Stage>
                   <PreviewFrame
                     src={source.kind === 'ready' ? source.src : undefined}
                     origin={origin}
@@ -444,10 +449,10 @@ function Customizer(props: { siteId: string; siteName: string; locale: string; b
                     onBlocked={() => setIsBlocked(true)}
                     isCovered={isSilent}
                   />
-                </StageBox>
+                </Stage>
               ) : null}
             </Flex>
-          </Centre>
+          </Pane>
         </Columns>
       </Shell>
       <Dialog.Root open={isConfirming} onOpenChange={setIsConfirming}>

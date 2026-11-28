@@ -8,6 +8,14 @@ import { SITE_UID } from '../../server/src/constants/site'
 import type { PageTemplatesService } from '../../server/src/services/page-templates'
 import { cleanupStrapi, setupStrapi } from '../strapi/harness'
 import { startPreviewSite, type PreviewSite } from '../strapi/preview-site'
+import {
+  expectNoPageScroll,
+  inWindow,
+  overflows,
+  scrollTopOf,
+  WIDE,
+  wheelOver,
+} from './scroll-layout'
 
 // An editorial page with sections made with `withPageSettings` (test/strapi/app/src/api/guide/).
 const GUIDE_UID = 'api::guide.guide' as UID.ContentType
@@ -342,6 +350,66 @@ describe('page templates page and Template tab', () => {
     await page.keyboard.press('Control+s')
     expect(await page.getByRole('dialog').count()).toBe(0)
     expect(await page.getByText('Saved as version', { exact: false }).count()).toBe(0)
+  })
+
+  it('does not scroll the page of the template editor at 1280 × 800, and scrolls its columns on their own', async () => {
+    const documentId = await newGuide()
+    await guides().update({
+      documentId,
+      locale: 'en',
+      data: {
+        sections: [
+          {
+            __component: 'section.feature-grid',
+            title: 'Why Micelio',
+            items: Array.from({ length: 12 }, (_, index) => ({
+              title: `Reason ${index}`,
+              text: 'Static first.',
+            })),
+          },
+          ...Array.from({ length: 11 }, (_, index) => ({
+            __component: 'shared.rich-text',
+            body: `Paragraph ${index}`,
+          })),
+        ],
+      } as never,
+    })
+    const template = await service().save({
+      site: siteRef(),
+      uid: GUIDE_UID,
+      documentId,
+      locale: 'en',
+      name: 'Long template',
+      scope: 'site',
+      pageTypes: ['landing'],
+      blocks: Array.from({ length: 12 }, () => ({ content: 'sample' as const, fixed: false })),
+    })
+    const page = await open(`${base}/admin/plugins/micelio/templates/${template.id}/edit`)
+    await page.setViewportSize(WIDE[0])
+    const palette = page.getByRole('complementary', { name: 'Block palette' })
+    const column = palette.locator('..')
+    const panel = page.getByRole('complementary', { name: 'Selected block' })
+    await page
+      .getByRole('region', { name: /Page blocks/ })
+      .locator('[data-block-key]')
+      .first()
+      .click()
+    await panel.getByRole('heading', { level: 2 }).waitFor()
+    for (const target of [column, panel]) await target.evaluate((node) => node.scrollTo(0, 0))
+    await expectNoPageScroll(page)
+    const title = page.getByRole('heading', { level: 1, name: 'Long template' })
+    const stage = await page.getByRole('region', { name: 'Template stage' }).boundingBox()
+
+    for (const target of [column, panel]) {
+      await expect(overflows(target)).resolves.toBe(true)
+      await wheelOver(page, target)
+      await expect.poll(() => scrollTopOf(target)).toBeGreaterThan(0)
+      await expectNoPageScroll(page)
+    }
+    await expect(inWindow(page, title)).resolves.toBe(true)
+    await expect(
+      page.getByRole('region', { name: 'Template stage' }).boundingBox()
+    ).resolves.toEqual(stage)
   })
 
   it('says nothing was saved when the save is refused', async () => {

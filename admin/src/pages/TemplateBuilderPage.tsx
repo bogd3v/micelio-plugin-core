@@ -7,7 +7,14 @@ import styled, { useTheme } from 'styled-components'
 
 import { BlockList } from '../components/builder/BlockList'
 import { BlockPanel } from '../components/builder/BlockPanel'
-import { Centre, Columns, Shell, Toast } from '../components/builder/layout'
+import {
+  BUILDER_COLUMNS_PX,
+  Centre,
+  Columns,
+  LeftColumn,
+  Shell,
+  Toast,
+} from '../components/builder/layout'
 import { Motion } from '../components/builder/Motion'
 import { Palette } from '../components/builder/Palette'
 import { ChevronLeftIcon } from '../components/builder/icons'
@@ -254,7 +261,7 @@ function TemplateBuilder() {
     <Motion>
       <Page.Main>
         <Page.Title>{t('template.edit.page', { name })}</Page.Title>
-        <Shell>
+        <Shell $from={BUILDER_COLUMNS_PX}>
           <Bar>
             <Back to={`/plugins/${PLUGIN_ID}/templates`} aria-label={t('template.edit.back')}>
               <ChevronLeftIcon />
@@ -306,15 +313,7 @@ function TemplateBuilder() {
             </Notice>
           ) : null}
           <Columns>
-            <div
-              style={{
-                flex: '0 1 264px',
-                minWidth: 220,
-                display: 'flex',
-                flexDirection: 'column',
-                background: colors.neutral0,
-              }}
-            >
+            <LeftColumn>
               <Palette
                 groups={groups}
                 pageTypeName={pageType}
@@ -383,7 +382,7 @@ function TemplateBuilder() {
                   </label>
                 </Rules>
               ) : null}
-            </div>
+            </LeftColumn>
             <Centre aria-label={t('template.edit.stage')}>
               <Typography variant="pi" textColor="neutral600" tag="p">
                 {t('template.edit.noFrame.stage')}

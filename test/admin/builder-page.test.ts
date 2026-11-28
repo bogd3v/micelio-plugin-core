@@ -6,6 +6,18 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { SITE_UID } from '../../server/src/constants/site'
 import { cleanupStrapi, setupStrapi } from '../strapi/harness'
 import { startPreviewSite, type PreviewSite } from '../strapi/preview-site'
+import {
+  expectNoPageScroll,
+  expectNothingClipped,
+  inWindow,
+  mainArea,
+  NARROW,
+  overflows,
+  scrollTopOf,
+  tabThrough,
+  WIDE,
+  wheelOver,
+} from './scroll-layout'
 
 // An editorial page with sections, so the builder's zone accepts the blocks of the test app.
 const LANDING_UID = 'api::landing.landing'
@@ -882,6 +894,101 @@ describe('the builder page in the admin', () => {
     expect(side.x).toBeGreaterThanOrEqual(frame.x + frame.width)
     expect(side.y).toBeLessThan(frame.y + 100)
     expect(side.x + side.width).toBeLessThanOrEqual(1280)
+  })
+
+  /**
+   * The builder of a twelve-block page at `size`, its first block (a grid of twelve items, so a long
+   * panel) selected.
+   */
+  async function openLong(size: { width: number; height: number }) {
+    const documentId = await newLanding(
+      [
+        {
+          __component: 'section.feature-grid',
+          title: 'Why Micelio',
+          items: Array.from({ length: 12 }, (_, index) => ({
+            title: `Reason ${index}`,
+            text: 'Static first.',
+          })),
+        },
+        ...Array.from({ length: 11 }, (_, index) => ({
+          __component: 'shared.rich-text',
+          body: `Paragraph ${index}`,
+        })),
+      ],
+      'Long page'
+    )
+    const page = await open(builderPath(documentId))
+    await page.setViewportSize(size)
+    await eventually(async () => (await shown(page)).length).toBe(12)
+    const palette = page.getByRole('complementary', { name: 'Block palette' })
+    // The column of the palette and the block list.
+    const column = palette.locator('..')
+    const panel = page.getByRole('complementary', { name: 'Selected block' })
+    await page.locator('[data-block-key]').first().click()
+    await panel.getByRole('heading', { level: 2 }).waitFor()
+    for (const target of [column, panel]) await target.evaluate((node) => node.scrollTo(0, 0))
+    await mainArea(page).evaluate((node) => node.scrollTo(0, 0))
+    return { page, palette, column, panel, frame: page.locator('main iframe >> nth=-1') }
+  }
+
+  it('does not scroll the page at 1280 × 800 or 1920 × 1080 with the whole palette, a twelve-block page and a long block panel', async () => {
+    const { page, column, panel } = await openLong(WIDE[0])
+    const title = page.getByRole('heading', { level: 1, name: 'Long page' })
+    for (const size of WIDE) {
+      await page.setViewportSize(size)
+      await expectNoPageScroll(page)
+      for (const target of [column, panel]) {
+        await wheelOver(page, target, 5000)
+        await wheelOver(page, target, 5000)
+        await expectNoPageScroll(page)
+      }
+      await expect(inWindow(page, title)).resolves.toBe(true)
+    }
+    await page.setViewportSize(WIDE[0])
+    await expect(overflows(column)).resolves.toBe(true)
+    await expect(overflows(panel)).resolves.toBe(true)
+  })
+
+  it('scrolls the palette column and the block panel each on its own and keeps the frame in view', async () => {
+    const { page, column, panel, frame } = await openLong(WIDE[0])
+    await eventually(() => inWindow(page, frame)).toBe(true)
+    // The frame takes what its pane has left: the pane itself has nothing to scroll.
+    await expect(overflows(page.getByRole('region', { name: 'Preview' }))).resolves.toBe(false)
+    const before = await frame.boundingBox()
+
+    await wheelOver(page, column)
+    await eventually(() => scrollTopOf(column)).toBeGreaterThan(0)
+    await expect(scrollTopOf(panel)).resolves.toBe(0)
+    await expect(frame.boundingBox()).resolves.toEqual(before)
+
+    const columnAt = await scrollTopOf(column)
+    await wheelOver(page, panel)
+    await eventually(() => scrollTopOf(panel)).toBeGreaterThan(0)
+    await expect(scrollTopOf(column)).resolves.toBe(columnAt)
+    await expect(frame.boundingBox()).resolves.toEqual(before)
+    await expectNoPageScroll(page)
+  })
+
+  it('reaches every control of the palette, the block list and the block panel with Tab at 1280 × 800, each in view when focused', async () => {
+    const { page, column, panel } = await openLong(WIDE[0])
+    // The palette's search and rows, and the twelve rows of the page blocks.
+    await expect(tabThrough(page, column)).resolves.toBeGreaterThan(12)
+    // The four actions and the twelve items of the grid among them.
+    await expect(tabThrough(page, panel)).resolves.toBeGreaterThan(12)
+    await expectNoPageScroll(page)
+  })
+
+  it('lets the page scroll at 800 × 600, where the columns wrap, and clips no control', async () => {
+    const { page, column, panel } = await openLong(NARROW)
+    await eventually(() => overflows(mainArea(page))).toBe(true)
+    await expect(overflows(column)).resolves.toBe(false)
+    await expect(overflows(panel)).resolves.toBe(false)
+
+    await wheelOver(page, column)
+    await eventually(() => scrollTopOf(mainArea(page))).toBeGreaterThan(0)
+    await expectNothingClipped(column)
+    await expectNothingClipped(panel)
   })
 
   it('says why the server refused a save, in its words, with a way to the block', async () => {

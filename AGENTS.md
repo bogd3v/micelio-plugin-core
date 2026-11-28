@@ -210,7 +210,7 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   the pure part, `customizeBodyOf` and `accentResult`, is `utils/customize.ts`; its cards are in
   `components/customize/`; the guide is `docs/guide/customize.md`), `CustomizerPage` at
   `customize/live?site=<slug>` (#61, no item, opened by the Customize page's "Open with live
-  preview": the accent of each mode with its contrast matrix, `components/customize/AccentPanel.tsx` (its bar and column in `customizerLayout.tsx`),
+  preview": the accent of each mode with its contrast matrix, `components/customize/AccentPanel.tsx` (its bar, column, preview pane and frame box in `customizerLayout.tsx`),
   beside a frame of the site loaded with a token bound to the candidates, `usePreviewSource`'s
   option `accentOverrides`, one token per pause; Save writes only the site's `theme`,
   `accentsBodyOf`), `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
@@ -224,6 +224,9 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   #164, registered in `bootstrap` before `CostPanel`; its dialogs are `components/builder/ReviewDialogs.tsx`),
   the icon picker (`components/IconPicker.tsx`, #197: the field row and its dialog; `components/IconField.tsx` is the input the Content Manager shows for `micelio.icon`, registered in `index.ts`; `hooks/useIcons.ts` reads `GET /micelio/icons`; the builder panel offers it for a field of that type through `fieldsOf`, `utils/builder/fields.ts`),
   the cost meter and its translations (`translations/en.json`, `es.json`; `messages.ts` reads them).
+  The builder, the template editor and the customizer share `components/builder/layout.tsx`: while
+  its columns sit side by side (`Shell`'s `$from`), an editor fills the admin's main area and each
+  column scrolls on its own; narrower, the columns wrap and the page scrolls.
   The builder (`pages/BuilderPage.tsx` at `builder/:uid/:documentId`, #49): its panels in
   `components/builder/`, its hooks (`useBuilderDocument`, `useBuilderCatalogue`,
   `useBuilderFrame`, `useBuilderEdits`, `useBlockLookup`, `usePageSettings`, `useTransition`,

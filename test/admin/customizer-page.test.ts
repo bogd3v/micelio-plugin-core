@@ -8,6 +8,18 @@ import modulesSchema from '../../server/src/components/site/modules.json'
 import { SITE_UID } from '../../server/src/constants/site'
 import { cleanupStrapi, setupStrapi } from '../strapi/harness'
 import { newContrastBehaviour, startPreviewSite, type PreviewSite } from '../strapi/preview-site'
+import {
+  expectNoPageScroll,
+  expectNothingClipped,
+  inWindow,
+  mainArea,
+  NARROW,
+  overflows,
+  scrollTopOf,
+  tabThrough,
+  WIDE,
+  wheelOver,
+} from './scroll-layout'
 
 const PAGE_UID = 'api::page.page'
 const PASSWORD = 'Password1234'
@@ -135,6 +147,33 @@ describe('the customizer in the admin', () => {
       await page.keyboard.press(backwards ? 'Shift+Tab' : 'Tab')
     }
     throw new Error(`The focus never reached ${target.toString()}`)
+  }
+
+  const accentPanel = (page: Page) =>
+    page.getByRole('complementary', { name: en['customizer.accents'] })
+  const previewPane = (page: Page) => page.getByRole('region', { name: en['customizer.preview'] })
+  const lastRow = (page: Page) => matrix(page).locator('tbody tr').last()
+
+  /** A contrast matrix of 92 rows, as many as a theme's, in both modes. */
+  function longMatrix(): void {
+    const pairs = Array.from({ length: 92 }, (_, index) => ({
+      role: `role-${index}`,
+      surface: 'surface',
+      ratio: 4.61,
+      min: 4.5,
+      passes: true,
+    }))
+    site.contrast.modes.light = { accent: 'candidate', pairs }
+    site.contrast.modes.dark = { accent: 'candidate', pairs }
+  }
+
+  /** The customizer at `size` with a 92-row matrix on show. */
+  async function openLong(size: { width: number; height: number }): Promise<Page> {
+    longMatrix()
+    const { page } = await open()
+    await page.setViewportSize(size)
+    await eventually(() => matrix(page).locator('tbody tr').count()).toBe(92)
+    return page
   }
 
   async function stored(): Promise<SiteRow> {
@@ -489,6 +528,135 @@ describe('the customizer in the admin', () => {
     expect(
       results.violations.flatMap(({ id, nodes }) => nodes.map(({ target }) => ({ id, target })))
     ).toEqual([])
+  })
+
+  it('does not scroll the page at 1280 × 800 or 1920 × 1080 with a 92-row matrix, and keeps the bar in view', async () => {
+    const page = await openLong(WIDE[0])
+    for (const size of WIDE) {
+      await page.setViewportSize(size)
+      await expectNoPageScroll(page)
+      await accentPanel(page).evaluate((node) => node.scrollTo(0, 0))
+      await wheelOver(page, accentPanel(page), 5000)
+      await eventually(() => scrollTopOf(accentPanel(page))).toBeGreaterThan(0)
+      // A second turn, with the panel already at its end, must not go on to the page.
+      await wheelOver(page, accentPanel(page), 5000)
+      await expectNoPageScroll(page)
+      await expect(inWindow(page, save(page))).resolves.toBe(true)
+      // The editor fills the window: its columns end where the window does.
+      const panel = (await accentPanel(page).boundingBox())!
+      expect(Math.round(panel.y + panel.height)).toBe(size.height)
+    }
+  })
+
+  it("scrolls the accent panel to the matrix's last row on its own and keeps the frame in view", async () => {
+    const page = await openLong(WIDE[0])
+    await eventually(() => inWindow(page, liveFrame(page).last())).toBe(true)
+    const before = await liveFrame(page).last().boundingBox()
+    // The frame takes all the pane has left: it ends at the pane's bottom padding, 24 px, short of
+    // the window's by that and the frame's border.
+    expect(WIDE[0].height - (before!.y + before!.height)).toBeLessThanOrEqual(26)
+    await expect(scrollTopOf(accentPanel(page))).resolves.toBe(0)
+    await expect(inWindow(page, lastRow(page))).resolves.toBe(false)
+
+    await wheelOver(page, accentPanel(page), 10_000)
+    await eventually(() => inWindow(page, lastRow(page))).toBe(true)
+    await expect(scrollTopOf(accentPanel(page))).resolves.toBeGreaterThan(0)
+    await expect(liveFrame(page).last().boundingBox()).resolves.toEqual(before)
+    await expect(inWindow(page, liveFrame(page).last())).resolves.toBe(true)
+    await expectNoPageScroll(page)
+  })
+
+  it('scrolls the preview pane on its own when it is taller than the window, without moving the panel', async () => {
+    const page = await openLong({ width: 1280, height: 600 })
+    await eventually(() => overflows(previewPane(page))).toBe(true)
+    const panel = await accentPanel(page).boundingBox()
+    await expect(scrollTopOf(previewPane(page))).resolves.toBe(0)
+
+    await wheelOver(page, previewPane(page))
+    await eventually(() => scrollTopOf(previewPane(page))).toBeGreaterThan(0)
+    await expect(scrollTopOf(accentPanel(page))).resolves.toBe(0)
+    await expect(accentPanel(page).boundingBox()).resolves.toEqual(panel)
+    await expectNoPageScroll(page)
+
+    // The keyboard scrolls it too: the pane takes the focus, shows it, and axe asks no more of it.
+    const pane = previewPane(page)
+    await pane.evaluate((node) => node.scrollTo(0, 0))
+    await tabTo(page, pane)
+    await expect(
+      pane.evaluate((node) => {
+        const style = node.ownerDocument.defaultView!.getComputedStyle(node)
+        return [style.outlineStyle, style.outlineOffset]
+      })
+    ).resolves.toEqual(['solid', '-2px'])
+    await page.keyboard.press('End')
+    await eventually(() => scrollTopOf(pane)).toBeGreaterThan(0)
+    const results = await new AxeBuilder({ page }).include('main').withTags(WCAG_TAGS).analyze()
+    expect(results.violations.map(({ id }) => id)).toEqual([])
+    expect(results.passes.map(({ id }) => id)).toContain('scrollable-region-focusable')
+  })
+
+  it('reaches every control of the accent panel with Tab at 1280 × 800, each in view when focused, and reads the matrix to its last row with the keyboard', async () => {
+    const page = await openLong(WIDE[0])
+    // A mode the frontend would move, so the panel has its three controls: field, Use and Reset.
+    site.contrast.modes.light.accent = '#1f5a34'
+    await accent(page, 'light').fill('#3f8a56')
+    await page.getByRole('button', { name: 'Use #1f5a34' }).waitFor()
+    await eventually(() => matrix(page).getAttribute('aria-busy')).toBe('false')
+    await expect(tabThrough(page, accentPanel(page))).resolves.toBe(3)
+
+    // The panel itself takes the focus, before its first control, and is scrolled with the keys.
+    const panel = accentPanel(page)
+    await accent(page, 'light').focus()
+    // Back over the tab panel of the mode, which takes the focus too, to the panel.
+    await page.keyboard.press('Shift+Tab')
+    await page.keyboard.press('Shift+Tab')
+    await expect(panel.evaluate((node) => node === node.ownerDocument.activeElement)).resolves.toBe(
+      true
+    )
+    // And shows it: the outline is drawn inside the panel, whose edges nothing then cuts.
+    await expect(
+      panel.evaluate((node) => {
+        const style = node.ownerDocument.defaultView!.getComputedStyle(node)
+        return [style.outlineStyle, style.outlineOffset]
+      })
+    ).resolves.toEqual(['solid', '-2px'])
+    await panel.evaluate((node) => node.scrollTo(0, 0))
+    await page.keyboard.press('PageDown')
+    await eventually(() => scrollTopOf(panel)).toBeGreaterThan(0)
+    await expect(inWindow(page, lastRow(page))).resolves.toBe(false)
+    await page.keyboard.press('End')
+    await eventually(() => inWindow(page, lastRow(page))).toBe(true)
+    await expectNoPageScroll(page)
+  })
+
+  it('has no axe violation with a 92-row matrix in the scrolling panel', async () => {
+    const page = await openLong(WIDE[0])
+    await expect(overflows(accentPanel(page))).resolves.toBe(true)
+    const results = await new AxeBuilder({ page }).include('main').withTags(WCAG_TAGS).analyze()
+    expect(
+      results.violations.flatMap(({ id, nodes }) => nodes.map(({ target }) => ({ id, target })))
+    ).toEqual([])
+    expect(results.passes.map(({ id }) => id)).toContain('scrollable-region-focusable')
+  })
+
+  it('lets the page scroll at 800 × 600, where the columns wrap, and clips no control', async () => {
+    const page = await openLong(NARROW)
+    await eventually(() => overflows(mainArea(page))).toBe(true)
+    const panel = (await accentPanel(page).boundingBox())!
+    // Wrapped: the preview is under the panel, and neither column scrolls on its own.
+    await eventually(async () => (await previewPane(page).boundingBox())!.y).toBeGreaterThanOrEqual(
+      panel.y + panel.height - 1
+    )
+    await expect(overflows(accentPanel(page))).resolves.toBe(false)
+    await expect(overflows(previewPane(page))).resolves.toBe(false)
+
+    await wheelOver(page, accentPanel(page))
+    await eventually(() => scrollTopOf(mainArea(page))).toBeGreaterThan(0)
+    await expectNothingClipped(page.locator('main'))
+    await lastRow(page).scrollIntoViewIfNeeded()
+    await expect(inWindow(page, lastRow(page))).resolves.toBe(true)
+    await liveFrame(page).last().scrollIntoViewIfNeeded()
+    await expect(liveFrame(page).last().isVisible()).resolves.toBe(true)
   })
 
   it('says why there is no frame to a role that may read the site and its page but not preview', async () => {

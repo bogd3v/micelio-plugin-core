@@ -3,6 +3,10 @@ import styled from 'styled-components'
 
 import type { ContrastUnchecked } from '../../hooks/useContrast'
 import type { CustomizeValues } from '../../utils/customize'
+import { Centre, sideBySide, StageBox } from '../builder/layout'
+
+/** The width from which the customizer's two columns sit side by side: their flex bases. */
+export const CUSTOMIZER_COLUMNS_PX = 720
 
 /** The customizer's top bar, as the builder's. */
 export const Bar = styled.header`
@@ -46,6 +50,37 @@ export const Aside = styled.aside`
   padding: 20px;
   background: ${({ theme }) => theme.colors.neutral0};
   border-right: 1px solid ${({ theme }) => theme.colors.neutral150};
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.primary600};
+    outline-offset: -2px;
+  }
+`
+
+/** The preview pane: beside the accent, its content takes at least the pane's height. */
+export const Pane = styled(Centre)`
+  ${sideBySide(CUSTOMIZER_COLUMNS_PX)} {
+    display: flex;
+    flex-direction: column;
+    > * {
+      flex: 1 0 auto;
+    }
+  }
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.primary600};
+    outline-offset: -2px;
+  }
+`
+
+/**
+ * The frame's box: beside the accent it takes what the pane has left, so the whole frame is in view,
+ * and no less than 48 rem; under that the pane scrolls.
+ */
+export const Stage = styled(StageBox)`
+  ${sideBySide(CUSTOMIZER_COLUMNS_PX)} {
+    flex: 1 0 48rem;
+    height: auto;
+    min-height: 48rem;
+  }
 `
 
 /** The clock before the live line, as the artboard draws it. */

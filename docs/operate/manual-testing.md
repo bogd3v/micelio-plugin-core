@@ -81,6 +81,10 @@ Without it the page still previews, and the builder shows no outline over it.
     Type some text: it saves.
 12. A role that may read the page but not edit it (Roles → _Update_ off on Page) opens the
     builder read-only, with a notice, and the palette does nothing.
+13. At 1280 × 800 and 1920 × 1080, select a block and scroll the palette to the end of
+    **Page blocks**, then scroll the block panel to its last field (a Scene's is long): each
+    scrolls on its own, the frame and the toolbar stay in view, and the page does not scroll.
+    In a window 800 px wide the columns wrap and the page scrolls.
 
 The builder does not offer **Send to review** until bogd3v/micelio-plugin-core#57.
 
@@ -855,6 +859,10 @@ With an older one the page still works, and its chips say the contrast was not c
    again with `docker compose -f compose.dev.yml restart frontend`, which also restarts the forward
    that lives in its network.
 10. Set the language of your profile to Español and reload: the page is in Spanish.
+11. At 1280 × 800 and 1920 × 1080, open the customizer and scroll the contrast matrix to its last
+    row: the panel scrolls on its own, the frame and the bar stay in view and the page does not
+    scroll. Then, with the keyboard, `Shift+Tab` from the accent field twice (past the mode's tab
+    panel): the whole panel is outlined, and `Page Down` and `End` scroll it.
 
 ## Try the redirects in an archive
 
