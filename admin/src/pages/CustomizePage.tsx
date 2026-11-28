@@ -1,6 +1,7 @@
-import { Box, Button, Flex, Switch, Typography } from '@strapi/design-system'
+import { Box, Button, Flex, LinkButton, Switch, Typography } from '@strapi/design-system'
 import { Layouts, Page, useAuth } from '@strapi/strapi/admin'
 import { useEffect, useId, useState } from 'react'
+import { NavLink, useSearchParams } from 'react-router-dom'
 import styled from 'styled-components'
 
 import { Card, Field, SelectInput, TextArea, TextInput } from '../components/customize/fields'
@@ -17,6 +18,7 @@ import {
 import { useSites } from '../hooks/useSites'
 import { useMessages } from '../messages'
 import { SITES_READ_PERMISSION, SITES_UPDATE_PERMISSION } from '../permissions'
+import { PLUGIN_ID } from '../pluginId'
 import {
   MODULE_KEYS,
   blocksSave,
@@ -77,11 +79,17 @@ function CustomizeContent() {
   const { t } = useMessages()
   const id = useId()
   const { state: sites } = useSites()
+  // The customizer's Close comes back with its site and locale (`?site=<slug>&locale=`).
+  const [params] = useSearchParams()
   const [siteId, setSiteId] = useState<string>()
-  const [locale, setLocale] = useState(DEFAULT_LOCALES[0] ?? 'en')
+  const [locale, setLocale] = useState(() => {
+    const wanted = params.get('locale')
+    return wanted && DEFAULT_LOCALES.includes(wanted) ? wanted : (DEFAULT_LOCALES[0] ?? 'en')
+  })
   const list = sites.kind === 'ready' ? sites.data.sites : []
   const chosen =
     list.find((site) => site.documentId === siteId) ??
+    list.find((site) => site.slug === params.get('site')) ??
     list.find((site) => site.isDefault) ??
     list[0]
 
@@ -120,6 +128,13 @@ function CustomizeContent() {
                   ))}
                 </SelectInput>
               </Field>
+              <LinkButton
+                tag={NavLink}
+                variant="secondary"
+                to={`/plugins/${PLUGIN_ID}/customize/live?${new URLSearchParams({ site: chosen.slug, locale })}`}
+              >
+                {t('customize.live.open')}
+              </LinkButton>
             </Flex>
           ) : undefined
         }

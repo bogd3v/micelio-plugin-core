@@ -1,7 +1,11 @@
 import { useFetchClient } from '@strapi/strapi/admin'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import type { PreviewThemeOverride, PreviewTokenAnswer } from '../../../server/src/types/preview'
+import type {
+  PreviewAccentOverride,
+  PreviewThemeOverride,
+  PreviewTokenAnswer,
+} from '../../../server/src/types/preview'
 import { statusOf } from '../utils/fetchError'
 import {
   GRANT_REFRESH_MINUTES,
@@ -48,17 +52,20 @@ type FetchClient = ReturnType<typeof useFetchClient>
 
 /**
  * Asks the token route for the URL of a preview; `undefined` when the site's `url` is not one a page
- * can load. A `theme` goes in the token's body only, never in the URL (ADR-0019, amendment of 2026-11-25).
+ * can load. A `theme` and `accentOverrides` go in the token's body only, never in the URL
+ * (ADR-0019, amendment of 2026-11-25), and only when they are given.
  */
 async function askForTarget(
   client: FetchClient,
   entry: PreviewEntry,
   mode: PreviewMode,
-  theme?: PreviewThemeOverride
+  theme?: PreviewThemeOverride,
+  accentOverrides?: PreviewAccentOverride[]
 ) {
   const response = await client.post<{ data: PreviewTokenAnswer }>('/micelio/preview/token', {
     ...entry,
     ...(theme ? { theme } : {}),
+    ...(accentOverrides === undefined ? {} : { accentOverrides }),
   })
   return frameTarget(response.data.data.url, mode)
 }
@@ -76,12 +83,15 @@ async function askForTarget(
  * it goes in the token's body, and a change asks for a new token.
  * @param options - `refreshGrant: false` asks for no new token before the grant expires: the theme
  * preview reloads neither of its frames on its own, as they share the frontend's one grant cookie.
+ * `accentOverrides` are the candidate accents the token is bound to (`docs/api.md`, "Preview
+ * overrides"; the customizer, #61): a new list, by value, asks for a new token. Without it the body
+ * holds no `accentOverrides`, as for the preview page, the builder and the cost meter.
  */
 export function usePreviewSource(
   entry: PreviewEntry | undefined,
   mode: PreviewMode,
   theme?: PreviewThemeOverride,
-  options: { refreshGrant?: boolean } = {}
+  options: { refreshGrant?: boolean; accentOverrides?: PreviewAccentOverride[] } = {}
 ): { source: PreviewSource; reload: () => void } {
   // The client is rebuilt on every render; the effect must not depend on it.
   const client = useFetchClient()
@@ -95,18 +105,24 @@ export function usePreviewSource(
   const themeId = theme?.id
   const themeVersion = theme?.version
   const refreshGrant = options.refreshGrant ?? true
+  // The effect follows the overrides by value: a caller builds a new list on every render.
+  const overridesKey =
+    options.accentOverrides === undefined ? undefined : JSON.stringify(options.accentOverrides)
 
   useEffect(() => {
     if (!uid || !documentId) return
     let isCurrent = true
     let timer: number | undefined
+    const accentOverrides =
+      overridesKey === undefined ? undefined : (JSON.parse(overridesKey) as PreviewAccentOverride[])
     void (async () => {
       try {
         const target = await askForTarget(
           clientRef.current,
           { uid, documentId, locale: locale ?? null },
           mode,
-          themeId && themeVersion ? { id: themeId, version: themeVersion } : undefined
+          themeId && themeVersion ? { id: themeId, version: themeVersion } : undefined,
+          accentOverrides
         )
         if (!isCurrent) return
         if (!target) {
@@ -128,7 +144,7 @@ export function usePreviewSource(
       isCurrent = false
       window.clearTimeout(timer)
     }
-  }, [uid, documentId, locale, mode, themeId, themeVersion, refreshGrant, count])
+  }, [uid, documentId, locale, mode, themeId, themeVersion, refreshGrant, overridesKey, count])
 
   const reload = useCallback(() => setCount((value) => value + 1), [])
   return { source, reload }

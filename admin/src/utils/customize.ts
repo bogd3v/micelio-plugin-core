@@ -328,3 +328,39 @@ export function contrastRoute(
   for (const { mode, color } of candidates) query.append('accent', `${mode}:${color}`)
   return `${url.origin}${prefix}/_micelio/contrast?${query}`
 }
+
+/**
+ * The body of the customizer's save: only the site's `theme`, with the accents of the form and the
+ * rest of the component (pin, display font, default mode) as it was read, so nothing else of the
+ * site is written (#61).
+ */
+export function accentsBodyOf(values: CustomizeValues): Record<string, unknown> {
+  return { theme: customizeBodyOf(values).theme }
+}
+
+/**
+ * The modes whose accent in the form differs from the saved one: an override added, changed or
+ * removed, the case of the colour aside. The customizer's "N of M modes changed" counts them.
+ */
+export function changedModes(
+  accents: Record<string, string>,
+  saved: Record<string, string>
+): string[] {
+  const modes = [...new Set([...Object.keys(saved), ...Object.keys(accents)])]
+  return modes
+    .filter((mode) => (accents[mode] ?? '').toLowerCase() !== (saved[mode] ?? '').toLowerCase())
+    .sort((a, b) => a.localeCompare(b))
+}
+
+/**
+ * The `accentOverrides` a preview token is asked with for the form's accents (ADR-0019 of
+ * `micelio`, amendment of 2026-11-25): every mode's candidate, since they replace the saved ones;
+ * `undefined` when no mode changed, so the frame renders the saved accents with a token that
+ * carries none. An empty list renders every mode with the theme's own accent.
+ */
+export function previewOverridesOf(
+  accents: Record<string, string>,
+  saved: Record<string, string>
+): { mode: string; color: string }[] | undefined {
+  return changedModes(accents, saved).length === 0 ? undefined : candidatesOf(accents)
+}

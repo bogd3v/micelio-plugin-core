@@ -811,33 +811,50 @@ With an older one the page still works, and its chips say the contrast was not c
    chip reads **AA** and **Save** is on again. Save, reload the frontend: its accent (links,
    buttons) is that shade: the page's `<style id="theme-overrides">` sets `--accent` to it.
    **Remove the accent of dia** and save to go back to the theme's.
-4. **Display font** offers the theme's default and the five shipped fonts; **Default mode** the
+4. **Open with live preview**, at the top of the page, opens the customizer of the site (the
+   address is `customize/live?site=default&locale=en`). The frame on the right shows the seeded
+   page the contrast check uses, rendered by the frontend in the site's default mode; the top bar
+   has a tab per mode (`dia`, `noche`) and reads "no mode changed". Choose **noche** (or press the
+   arrow keys on the tabs) and type an accent, `#ff7a00`: about a second after you stop typing the
+   frame loads once more with it (in the browser's network panel one `POST
+/micelio/preview/token`, whose body carries `accentOverrides`, and one `/_preview?token=…`
+   in the frame; none while you type), the bar reads "1 of 2 modes changed · not saved" and the
+   contrast matrix of `noche` shows the frontend's pairs for it. Switch the frame to the dark mode
+   with the site's own switch to see it. Type an accent that fails there, `#1a1a1a`: the result
+   says the site would show another shade, the box at the bottom names the mode, the pair, its
+   ratio and the minimum, and **Save** is off. Press **Use #…**, then **Save**: "Saved.", and the
+   bar reads "no mode changed". After a minute (the site settings cache) and the page's ISR window,
+   `http://localhost:3000/` in the dark mode uses that accent. **Reset to theme** and **Save** to go
+   back; change an accent and press **Discard**: the field is the saved one again and the frame
+   loads a token with no accents. With a change not saved, **Escape** asks before it closes;
+   **Close** returns to this page, on the same site.
+5. **Display font** offers the theme's default and the five shipped fonts; **Default mode** the
    theme's default and the modes the contrast route lists. Choose `newsreader` and `noche` and
    save: after a minute the frontend's titles are in Newsreader and a new visitor gets the dark
    mode (`data-mode-default="noche"` on `<html>`).
-5. **Choose from the media library** picks the logo from Strapi's dialog; fill **Author's name**
+6. **Choose from the media library** picks the logo from Strapi's dialog; fill **Author's name**
    and **Author's URL**; **Add a link**, choose `mastodon` (the list holds the networks of
    `micelio-site.social-link` only) and give it a URL. Save, and after a minute the frontend's
    footer shows the author and the link, with `rel="me"`, and its structured data the logo
    (`"logo":{"@type":"ImageObject",…}` in the page's source; the default theme draws its own mark
    in the header). A URL without `http://` or `https://` keeps **Save** off and says why.
-6. In **Settings → Internationalization** add `es`. On **Customize**, choose `es` in **Locale**:
+7. In **Settings → Internationalization** add `es`. On **Customize**, choose `es` in **Locale**:
    the page says the site has no `es` version yet, with no form and no **Save**. Open the default
    site in **Content Manager**, switch it to `es` and save a Spanish name. On **Customize**,
    choose `es` again: the
    name, tagline and description are the Spanish ones; change the tagline and save. Back in `en`,
    the English tagline is as it was.
-7. In **Settings → Administration panel → Roles**, create a role with **Content Manager → Site →
+8. In **Settings → Administration panel → Roles**, create a role with **Content Manager → Site →
    Read** and **Content Manager → Page → Read** (every field, both locales) and **Preview drafts on
    the frontend**, and nothing else. Signed in with it, **Customize** shows every field read only,
    the chips with their result, and no **Save** or **Discard**. Take **Preview drafts on the
    frontend** away: the chips say the contrast was not checked because the role may not preview.
    Take **Page → Read** away too: they say the site has no page the role may read to preview.
-8. Stop the frontend (`docker compose -f compose.dev.yml stop frontend`) and reload the page: the chips
+9. Stop the frontend (`docker compose -f compose.dev.yml stop frontend`) and reload the page: the chips
    say the frontend did not answer the check, and a change of the tagline still saves. Start it
    again with `docker compose -f compose.dev.yml restart frontend`, which also restarts the forward
    that lives in its network.
-9. Set the language of your profile to Español and reload: the page is in Spanish.
+10. Set the language of your profile to Español and reload: the page is in Spanish.
 
 ## Try the redirects in an archive
 

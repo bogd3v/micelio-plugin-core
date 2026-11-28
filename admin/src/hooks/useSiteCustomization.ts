@@ -24,7 +24,8 @@ export type CustomizationSaveOutcome = { ok: true } | { ok: false; refusal: stri
  * The write is `PUT /content-manager/collection-types/plugin::micelio.site/:documentId?locale=`, as
  * `useSiteEntry` writes for the Sites page, so the rules of `server/src/sites/rules.ts` and the
  * caller's Content Manager permissions apply as they do in the edit view. The body holds only the
- * fields the page edits (`customizeBodyOf`). A save that succeeds reads the entry again, and the
+ * fields the page edits: `customizeBodyOf`, or the `bodyOf` a caller passes to `save` (the
+ * customizer's `accentsBodyOf`). A save that succeeds reads the entry again, and the
  * state keeps the values read before until the new ones arrive. A locale the site has no version of
  * (the Content Manager answers it with an empty `data`) is the `error` state with status 404, so the
  * page offers no form and no save there.
@@ -37,7 +38,10 @@ export function useSiteCustomization(
   locale: string
 ): {
   state: CustomizationState
-  save: (values: CustomizeValues) => Promise<CustomizationSaveOutcome>
+  save: (
+    values: CustomizeValues,
+    bodyOf?: (values: CustomizeValues) => Record<string, unknown>
+  ) => Promise<CustomizationSaveOutcome>
 } {
   // The client is rebuilt on every render; the effects must not depend on it.
   const client = useFetchClient()
@@ -78,10 +82,13 @@ export function useSiteCustomization(
   }, [path, locale, count])
 
   const save = useCallback(
-    async (values: CustomizeValues): Promise<CustomizationSaveOutcome> => {
+    async (
+      values: CustomizeValues,
+      bodyOf: (values: CustomizeValues) => Record<string, unknown> = customizeBodyOf
+    ): Promise<CustomizationSaveOutcome> => {
       if (!path) return { ok: false, refusal: '' }
       try {
-        await clientRef.current.put(path, customizeBodyOf(values), { params: { locale } })
+        await clientRef.current.put(path, bodyOf(values), { params: { locale } })
         isQuietRef.current = true
         setCount((value) => value + 1)
         return { ok: true }

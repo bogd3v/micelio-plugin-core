@@ -208,7 +208,12 @@ never`; a CMS-wide one is a row of its owner site with `scope: cms`), the `pageT
   through the Content Manager's admin API by `hooks/useSiteCustomization.ts`; the AA result comes
   from the frontend's `GET /_micelio/contrast` with the editor's preview grant, `hooks/useContrast.ts`;
   the pure part, `customizeBodyOf` and `accentResult`, is `utils/customize.ts`; its cards are in
-  `components/customize/`; the guide is `docs/guide/customize.md`), `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
+  `components/customize/`; the guide is `docs/guide/customize.md`), `CustomizerPage` at
+  `customize/live?site=<slug>` (#61, no item, opened by the Customize page's "Open with live
+  preview": the accent of each mode with its contrast matrix, `components/customize/AccentPanel.tsx` (its bar and column in `customizerLayout.tsx`),
+  beside a frame of the site loaded with a token bound to the candidates, `usePreviewSource`'s
+  option `accentOverrides`, one token per pause; Save writes only the site's `theme`,
+  `accentsBodyOf`), `BlocksPage` with `BlockDrawer`, `TemplatesGalleryPage` at `new/:uid` with the
   Save as template dialog, `ReviewPage` (the In review page), `ThemesPage` at `themes` and `ThemePreviewPage` at
   `themes/preview` (#59: two `PreviewFrame`s, the candidate's token with `theme`; `hooks/useThemes.ts`,
   `hooks/useThemeChange.ts`, `utils/themes.ts`), `TemplatesManagePage` at `templates`
