@@ -9,8 +9,14 @@ import { getTranslation } from './utils/getTranslation'
 export interface Messages {
   /** The message `id` (a key of `translations/en.json`), filled with `values`. */
   t: (id: string, values?: Record<string, string | number>) => string
-  /** `t` with elements as values (a `<time>` inside the sentence): the pieces to render. */
-  rich: (id: string, values: Record<string, ReactNode>) => ReactNode
+  /**
+   * `t` with elements as values (a `<time>` inside the sentence): the pieces to render. A function
+   * value renders a tag of the message (`<b>…</b>`) from its pieces.
+   */
+  rich: (
+    id: string,
+    values: Record<string, ReactNode | ((chunks: ReactNode[]) => ReactNode)>
+  ) => ReactNode
   /** A date and time, in the admin's language. */
   date: (iso: string) => string
   /** A date and time as they read in the IANA time zone `zone`, in the admin's language. */

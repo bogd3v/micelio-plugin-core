@@ -2,6 +2,11 @@
 // activation writes, and whether a pin is still installed. No Strapi import.
 
 import type {
+  CatalogueAccessibility,
+  CatalogueCheckStatus,
+  CatalogueChecks,
+  CatalogueLayout,
+  CatalogueMode,
   FrontendThemeCatalogue,
   FrontendThemeStatus,
   RequestedTheme,
@@ -30,6 +35,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isString = (value: unknown): value is string => typeof value === 'string'
 
 const optionalString = (value: unknown): string | undefined => (isString(value) ? value : undefined)
+
+// The fields of bogd3v/micelio#1018: an older frontend answers none, and one of another shape is left out.
+const CHECK_STATUSES = new Set(['passed', 'failed', 'skipped', 'missing'])
+const ACCESSIBILITY_STATUSES = new Set(['passed', 'passed-with-core-failures', 'partial', 'failed'])
 
 /**
  * The plan of activating `theme` on a frontend whose status and catalogue are given.
@@ -133,7 +142,11 @@ export function parseThemeStatus(body: unknown): FrontendThemeStatus | null {
   }
 }
 
-/** The frontend's catalogue, or `null` when the body is not one. Entries of another shape are left out. */
+/**
+ * The frontend's catalogue, or `null` when the body is not one. Entries of another shape are left out,
+ * and so is an optional field of bogd3v/micelio#1018 (`name`, `modes`, `layout`, `checks`,
+ * `accessibility`) that an older frontend lacks or that has another shape.
+ */
 export function parseThemeCatalogue(body: unknown): FrontendThemeCatalogue | null {
   if (!isRecord(body) || !Array.isArray(body.installed)) return null
   const list = (value: unknown): Record<string, unknown>[] =>
@@ -150,6 +163,9 @@ export function parseThemeCatalogue(body: unknown): FrontendThemeCatalogue | nul
               code: item.code === true,
               store: item.store === 'deployment' ? ('deployment' as const) : ('built-in' as const),
               report: optionalString(item.report),
+              name: isString(item.name) && item.name !== '' ? item.name : undefined,
+              modes: modesOf(item.modes),
+              layout: layoutOf(item.layout),
             },
           ]
         : []
@@ -206,10 +222,63 @@ export function parseThemeCatalogue(body: unknown): FrontendThemeCatalogue | nul
               digest: report.digest,
               ok: report.ok === true,
               summary: isString(report.summary) ? report.summary : '',
+              checks: checksOf(report.checks),
+              accessibility: accessibilityOf(report.accessibility),
             },
           ]
         : []
     ),
+  }
+}
+
+function modesOf(value: unknown): CatalogueMode[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  return value.flatMap((mode: unknown) =>
+    isRecord(mode) && isString(mode.id) && (mode.scheme === 'light' || mode.scheme === 'dark')
+      ? [{ id: mode.id, scheme: mode.scheme, name: optionalString(mode.name) }]
+      : []
+  )
+}
+
+function layoutOf(value: unknown): CatalogueLayout | undefined {
+  if (!isRecord(value)) return undefined
+  const { header, home, postList, article, footer } = value
+  return isString(header) &&
+    isString(home) &&
+    isString(postList) &&
+    isString(article) &&
+    isString(footer)
+    ? { header, home, postList, article, footer }
+    : undefined
+}
+
+function checksOf(value: unknown): CatalogueChecks | undefined {
+  if (!isRecord(value)) return undefined
+  const { static: staticCheck, quality, performance } = value
+  return isCheckStatus(staticCheck) && isCheckStatus(quality) && isCheckStatus(performance)
+    ? { static: staticCheck, quality, performance }
+    : undefined
+}
+
+function isCheckStatus(value: unknown): value is CatalogueCheckStatus {
+  return isString(value) && CHECK_STATUSES.has(value)
+}
+
+function accessibilityOf(value: unknown): CatalogueAccessibility | null | undefined {
+  if (value === null) return null
+  if (
+    !isRecord(value) ||
+    !isString(value.status) ||
+    !ACCESSIBILITY_STATUSES.has(value.status) ||
+    typeof value.current !== 'boolean' ||
+    !(value.date === null || isString(value.date))
+  ) {
+    return undefined
+  }
+  return {
+    status: value.status as CatalogueAccessibility['status'],
+    current: value.current,
+    date: value.date,
   }
 }
 

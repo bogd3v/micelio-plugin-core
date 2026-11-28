@@ -1,6 +1,6 @@
 # Themes page
 
-**Kind:** how-to. The **Themes** page of the Micelio section (group **Site**) shows, for one site at a time, the themes its frontend holds, those of the registry and the updates, each with the result of its admission report; it previews a theme on the site's own pages beside the active one, activates it and reverts the last activation. It is in English and Spanish. The routes are in [docs/api.md](../api.md#themes).
+**Kind:** how-to. The **Themes** page of the Micelio section (group **Site**) shows, for one site at a time, the themes its frontend holds, those of the registry and the updates, in three tabs, each theme a card with the result of its admission report; it previews a theme on the site's own pages beside the active one, where the theme is activated, links the active theme to the **Customize** page, and reverts the last activation. It is in English and Spanish. The routes are in [docs/api.md](../api.md#themes).
 
 ## Who may use it
 
@@ -12,12 +12,17 @@ The Content Manager still edits the pin (**Content Manager → Site → Theme**)
 
 ## What the page reads
 
-The plugin's server asks the site's frontend, at the origin of the site's `url`, for `GET /api/theme/status` and `GET /api/theme/catalogue`, at most two seconds each, every time the page loads. The browser never calls the frontend or the registry. The frontend must be a `micelio` image that serves both routes (bogd3v/micelio#403 and #993) and the preview of a theme (bogd3v/micelio#736); a frontend that does not answer is said so on the page, which then shows no theme and activates nothing.
+The plugin's server asks the site's frontend, at the origin of the site's `url`, for `GET /api/theme/status` and `GET /api/theme/catalogue`, at most two seconds each, every time the page loads. The browser never calls the frontend or the registry. The frontend must be a `micelio` image that serves both routes (bogd3v/micelio#403 and #993) and the preview of a theme (bogd3v/micelio#736); a frontend that does not answer is said so on the page, which then shows no theme. From bogd3v/micelio#1018 on, the catalogue also names each installed theme's name, modes and layout variants, and each report's checks and manual accessibility check; an older frontend's cards show the theme's id instead of its name, no modes or variants, and **Admitted** alone.
 
-- **Installed**: the themes of the frontend's stores, with version, contract, whether they ship code, and the store (built into the image, or installed on this deployment). The theme the frontend renders is marked **Active**.
-- **Available in the registry**: the newest version of each theme of the registry's index, with its tier, licence and whether it runs on this core. When the frontend could not read the index, the page shows why.
-- **Updates**: a newer version of an installed theme that runs on this core.
-- Each theme shows **Admitted** or **Refused at admission**, and the summary of its admission report, when the frontend read one. Contrast and axe come from that report: they were checked at admission and do not depend on the site's content.
+The **Site** picker, beside the title, chooses the site; the subtitle names the theme it runs. Three tabs list the themes, **Installed** first:
+
+- **Installed (n)**: the themes of the frontend's stores, the one it renders first, with a 2 px green border and the badge **Active**; the others have **Installed**.
+- **Available in the registry (n)**: the newest version of each theme of the registry's index, with the badge **Registry · <tier>** and its licence. The frontend reads the registry once an hour; when it could not read the index, the tab shows why.
+- **Updates (n)**: a newer version of an installed theme that runs on this core, with the badge **Update**, the version it replaces, whether the change is major, minor or patch, and what a preview compares.
+
+A card shows the theme's name (its id when the catalogue has none), the line `<id> <version> · contract <c> · code theme|data-only` (and the licence of a registry version), and chips: its modes; the five variants it picked for header, home, post list, article and footer, which a site cannot change; **Admitted**, with **AA** when the report's static and quality checks passed and **budgets pass** when its performance runs did, or **Refused at admission**, or **No admission report**; **Manual a11y check <date>** when the report records a passed check of that version; **Activates without a rebuild** for a data-only theme, **Needs an image built with it** for a code theme the image was not built with; and **Does not run on this core** for a registry version the index marks so. Contrast and axe come from the admission report: they were checked at admission and do not depend on the site's content.
+
+The buttons of a card: the active theme has **Customize**, which opens the [Customize page](../guide/customize.md) of the site (`customize?site=<slug>`), and **Admission report**, which opens the report's summary in a dialog; another installed theme has **Preview on <site>** and **Admission report**; a registry theme **Preview on <site>**; an update **Preview the update**. No card activates a theme: that is done from its preview.
 
 ## Preview
 
@@ -25,17 +30,17 @@ The plugin's server asks the site's frontend, at the origin of the site's `url`,
 
 ## Activate
 
-**Activate** writes the site's theme pin (the `theme` component of the site; its mode, accents and font are kept):
+**Activate on <site>**, at the top of the theme preview, writes the site's theme pin (the `theme` component of the site; its mode, accents and font are kept):
 
 | The theme                                             | The pin written                                                                                                           |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Built into the frontend's image (`available.builtIn`) | `themeId` alone                                                                                                           |
 | Data-only, in the deployment store or the registry    | `themeId`, `themeVersion` and `themeDigest` (the package digest the catalogue lists); the frontend installs it at runtime |
-| A code theme the image was not built with             | Nothing: refused with `themeRebuildRequired`. The page shows **Needs a rebuild** instead of the button                    |
+| A code theme the image was not built with             | Nothing: refused with `themeRebuildRequired`. The preview shows **Needs a rebuild** instead of the button                 |
 
 A code theme activates only on an image built with it (ADR-0009, section 4): the operator rebuilds the frontend's image with the theme in its `themes.lock.json`, deploys it, and the theme is then built in. The page never falls back to the default slots for it.
 
-The frontend reads the pin when it renders a page of the site, once its cache of the site settings (up to a minute) has expired, and switches in the background: a site nobody visits does not switch until someone does, so the page links to the site while it waits. The page reads its status every three seconds, for three minutes at most, until it renders the theme asked for or says why not (a pin it refused, a registry it could not reach, an install that failed).
+The frontend reads the pin when it renders a page of the site, once its cache of the site settings (up to a minute) has expired, and switches in the background: a site nobody visits does not switch until someone does, so the preview links to the site while it waits. The page reads its status every three seconds, for three minutes at most, until it renders the theme asked for or says why not (a pin it refused, a registry it could not reach, an install that failed).
 
 An admin user may activate and revert 5 times a minute, the two together; the page then says when to try again.
 

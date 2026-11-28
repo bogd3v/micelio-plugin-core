@@ -189,6 +189,80 @@ describe('the themes routes', () => {
     expect(await missing.json()).toMatchObject({ code: 'themeSiteNotFound' })
   })
 
+  it("passes on each installed theme's name, modes and layout and each report's checks, and answers without them for a frontend that has none", async () => {
+    const read = async () =>
+      ((await (await call('/micelio/themes')).json()) as { data: ThemesAnswer }).data.catalogue
+    const catalogue = await read()
+    expect(catalogue?.installed.find(({ id }) => id === 'bogota')).toMatchObject({
+      name: 'Bogotá',
+      modes: [
+        { id: 'claro', scheme: 'light' },
+        { id: 'oscuro', scheme: 'dark' },
+      ],
+      layout: {
+        header: 'bar',
+        home: 'showcase',
+        postList: 'list',
+        article: 'aside',
+        footer: 'minimal',
+      },
+    })
+    expect(catalogue?.installed.find(({ id }) => id === 'starter')).toMatchObject({
+      name: 'Starter',
+      modes: [
+        { id: 'light', scheme: 'light' },
+        { id: 'dark', scheme: 'dark' },
+      ],
+    })
+    expect(catalogue?.reports.find(({ id }) => id === 'bogota')).toMatchObject({
+      checks: { static: 'passed', quality: 'passed', performance: 'passed' },
+      accessibility: { status: 'passed', current: true, date: '2026-10-18' },
+    })
+    expect(catalogue?.reports.find(({ id }) => id === 'mosaico')).toMatchObject({
+      checks: { static: 'passed', quality: 'failed', performance: 'passed' },
+      accessibility: null,
+    })
+
+    const stub = frontend.themes.behaviour.catalogue
+    const { installed, reports } = stub
+    const optional = ['name', 'modes', 'layout', 'checks', 'accessibility']
+    const keysOf = (each: object) => Object.keys(each).filter((key) => optional.includes(key))
+    try {
+      // A frontend that predates bogd3v/micelio#1018 answers none of them: neither does the route.
+      stub.installed = installed.map(
+        ({ name: _name, modes: _modes, layout: _layout, ...rest }) => rest
+      )
+      stub.reports = reports.map(
+        ({ checks: _checks, accessibility: _accessibility, ...rest }) => rest
+      )
+      const older = await read()
+      expect(older?.installed.map(({ id }) => id)).toEqual(['bogota', 'starter'])
+      expect([...(older?.installed ?? []), ...(older?.reports ?? [])].flatMap(keysOf)).toEqual([])
+
+      // One of another shape is left out, and the rest of the entry kept.
+      stub.installed = [
+        { ...installed[0]!, name: 7, modes: 'claro', layout: { header: 'bar' } } as never,
+        installed[1]!,
+      ]
+      stub.reports = [
+        {
+          ...reports[0]!,
+          checks: { static: 'green' },
+          accessibility: { status: 'passed' },
+        } as never,
+        ...reports.slice(1),
+      ]
+      const malformed = await read()
+      expect(keysOf(malformed?.installed[0] ?? {})).toEqual([])
+      expect(keysOf(malformed?.reports[0] ?? {})).toEqual([])
+      expect(malformed?.installed[0]).toMatchObject({ id: 'bogota', version: '1.0.0', code: true })
+      expect(malformed?.installed[1]).toMatchObject({ name: 'Starter' })
+    } finally {
+      stub.installed = installed
+      stub.reports = reports
+    }
+  })
+
   it('answers in pages the newest draft of each page type of the site', async () => {
     const guides = strapi.documents('api::guide.guide' as UID.ContentType)
     const { documentId: siteId } = await siteRow('default')
