@@ -3,13 +3,16 @@ import {
   DISPLAY_FONTS,
   MODULE_KEYS,
   accentResult,
+  accentsBodyOf,
   blocksSave,
   candidatesOf,
+  changedModes,
   contrastRoute,
   customizationOf,
   customizeBodyOf,
   isLinkUrl,
   parseContrastAnswer,
+  previewOverridesOf,
   type ContrastAnswer,
   type ContrastPair,
 } from '../admin/src/utils/customize'
@@ -296,5 +299,54 @@ describe('the save of the Customize page', () => {
         expect(es, id).toHaveProperty([id])
       }
     }
+  })
+})
+
+describe('the customizer', () => {
+  it('counts the modes whose candidate differs from the saved accent', () => {
+    const saved = { light: '#276a3f', dark: '#9fd6a8' }
+    // Nothing typed, or the same colour in another case: no mode changed.
+    expect(changedModes(saved, saved)).toEqual([])
+    expect(changedModes({ light: '#276A3F', dark: '#9FD6A8' }, saved)).toEqual([])
+    // A changed accent, an added one and a reset one each count once, in the order of the modes.
+    expect(changedModes({ light: '#276a3f', dark: '#3f8a56' }, saved)).toEqual(['dark'])
+    expect(changedModes({ ...saved, sepia: '#884400' }, saved)).toEqual(['sepia'])
+    expect(changedModes({ light: '#276a3f' }, saved)).toEqual(['dark'])
+    expect(changedModes({ dark: '#000000', sepia: '#884400' }, saved)).toEqual([
+      'dark',
+      'light',
+      'sepia',
+    ])
+    // A colour still being typed differs too.
+    expect(changedModes({ ...saved, dark: '#3f8' }, saved)).toEqual(['dark'])
+  })
+
+  it("asks the frame's token with every mode's candidate, and with none when nothing changed", () => {
+    const saved = { light: '#276a3f' }
+    expect(previewOverridesOf(saved, saved)).toBeUndefined()
+    expect(previewOverridesOf({ light: '#276A3F' }, saved)).toBeUndefined()
+    expect(previewOverridesOf({ ...saved, dark: '#3f8a56' }, saved)).toEqual([
+      { mode: 'dark', color: '#3f8a56' },
+      { mode: 'light', color: '#276a3f' },
+    ])
+    // Every override reset: an empty list, so the frame renders the theme's own accents.
+    expect(previewOverridesOf({}, saved)).toEqual([])
+  })
+
+  it('saves the theme alone, with the pin and the other theme fields as read', () => {
+    const values = customizationOf(ENTRY)
+    expect(accentsBodyOf({ ...values, accents: { dark: '#3f8a56', light: '#276A3F' } })).toEqual({
+      theme: {
+        themeId: 'espora',
+        themeVersion: '0.2.0',
+        themeDigest: 'sha256-abc',
+        accentOverrides: [
+          { mode: 'dark', color: '#3f8a56' },
+          { mode: 'light', color: '#276A3F' },
+        ],
+        displayFont: 'fraunces',
+        defaultMode: 'dark',
+      },
+    })
   })
 })

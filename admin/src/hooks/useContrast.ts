@@ -18,6 +18,8 @@ export type ContrastState =
 
 /** The page the grant is for, and the frame that gets it: what the page renders, hidden. */
 export interface ContrastFrame {
+  /** The content type of the page, which the customizer's own frame previews too (#61). */
+  uid: string
   src: string
   origin: string
   documentId: string
@@ -203,6 +205,7 @@ export function useContrast(
   const frame =
     target.kind === 'found' && source.kind === 'ready'
       ? {
+          uid: target.uid,
           src: source.src,
           origin: source.origin,
           documentId: target.documentId,

@@ -67,11 +67,46 @@ frontend still adjusts a failing accent:
 The default mode offers the modes the route lists; with no answer, only the saved one and the
 theme's default.
 
+## The live preview
+
+**Open with live preview**, at the top of the page, opens the customizer of the site and locale
+the page shows (`/admin/plugins/micelio/customize/live?site=<slug>&locale=<code>`): the accent of
+each mode beside the site's own page, rendered by its frontend with the accents you type, before
+anything is saved. It needs the same permissions as the page: to read the **Site** type to open
+it, to update it for **Save** and **Discard**, and **Preview drafts on the frontend**
+(`plugin::micelio.preview`) for the frame: without it, or with no Page or Article of the site the
+role may read, the pane says why in place of the frame.
+
+- **The top bar**: **Close** (back to this page), the site, the theme as pinned, how many modes
+  of the theme have an accent that differs from the saved one ("1 of 2 modes changed · not
+  saved"), a tab per mode of the theme (the modes the contrast route lists; the arrow keys move
+  between them), **Discard** and **Save**.
+- **The accent of the selected mode**: its `#RRGGBB` field, its AA result, **Use `#…`** when the
+  frontend would move it to another shade, and **Reset to theme**, which drops the mode's override.
+  Only the accent of each mode is an override; every other role is a pair of the matrix.
+- **The contrast matrix** of the selected mode: each pair the frontend measures (`role` on
+  `surface`), its ratio, the minimum and whether it passes, asked again for the accents in the
+  form each time you stop typing.
+- **The frame**: the page the contrast check uses (the most recently updated Page, else Article,
+  of the site that you may read). Each time you stop changing an accent it loads again with a new
+  preview token bound to every mode's accent (`accentOverrides`, `docs/api.md`, "Preview
+  overrides"): one token per pause, never one per key, and the admin page itself does not reload.
+  The accents travel only in the token's body, never in the frame's URL. The frame shows the mode
+  the site renders by default: a tab chooses the accent you edit, not the frame's mode; switch the
+  frame's mode with the site's own mode switch inside it.
+
+**Save** writes the accents of every mode, and nothing else of the site: the body is the site's
+`theme` alone, with its pin, display font and default mode as they were read. It follows the rule
+of this page: off while a mode is adjusted or fails, with the mode, the pair, its ratio and the
+minimum under the accent; an unchecked result does not turn it off. **Discard** returns every mode
+to the saved accents, and the frame to a token with none. **Escape** closes the customizer, and
+asks first when an accent is not saved.
+
 ## Not here on purpose
 
 Layout variants, fonts outside the set the frontend ships, spacing and any colour but the accent of
-each mode are the theme's (ADR-0005 of `micelio`, section 8). The live preview of a change is the
-customizer's (#61); the theme itself is chosen on the Themes page (#59).
+each mode are the theme's (ADR-0005 of `micelio`, section 8); the theme itself is chosen on the
+Themes page (#59).
 
 `docs/operate/manual-testing.md`, "Try the Customize page", walks through the page on the
 development stack.

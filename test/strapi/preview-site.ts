@@ -55,6 +55,12 @@ export function newContrastBehaviour(): ContrastBehaviour {
   }
 }
 
+/** The `overrides` of one exchange's answer, or `null` when it had none. */
+export type ExchangedOverrides = {
+  theme?: { id: string; version: string }
+  accentOverrides?: { mode: string; color: string }[]
+} | null
+
 /** The stub site of the browser suite. */
 export interface PreviewSite {
   origin: string
@@ -74,6 +80,11 @@ export interface PreviewSite {
   contrast: ContrastBehaviour
   /** How many tokens it exchanged. */
   readonly exchanges: number
+  /**
+   * The `overrides` the CMS answered on each exchange, in order (`data.overrides`, `docs/api.md`,
+   * "Preview overrides"): `null` for a token asked without one, which answers no `overrides` key.
+   */
+  readonly exchangedOverrides: ExchangedOverrides[]
   /** How many times the draft route answered a page. */
   readonly draftLoads: number
   /**
@@ -227,6 +238,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
   let cms: { base: string; apiToken: string; adminOrigin: string } | undefined
   let exchanges = 0
   let draftLoads = 0
+  const exchangedOverrides: ExchangedOverrides[] = []
   const cardRequests: PreviewSite['cardRequests'] = []
 
   async function handle(request: http.IncomingMessage, response: http.ServerResponse) {
@@ -296,7 +308,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
           grant: string
           documentId: string
           locale: string | null
-          overrides?: { theme?: { id: string; version: string } }
+          overrides?: NonNullable<ExchangedOverrides>
         }
       }
       const theme = data.overrides?.theme
@@ -307,6 +319,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
         return
       }
       exchanges++
+      exchangedOverrides.push(data.overrides ?? null)
       const query = new URLSearchParams()
       if (data.locale) query.set('locale', data.locale)
       if (url.searchParams.get('mode') === 'static') query.set('mode', 'static')
@@ -477,6 +490,7 @@ export async function startPreviewSite(): Promise<PreviewSite> {
     get draftLoads() {
       return draftLoads
     },
+    exchangedOverrides,
     cardRequests,
     close: () => new Promise((resolve) => server.close(() => resolve())),
   }
